@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import SignOutButton from "@/components/SignOutButton";
-import ChatPanel from "@/components/ChatPanel";
 import Icon from "@/components/Icon";
 import { useAppStore } from "@/stores/useAppStore";
 import { monthLabel, shiftMonth } from "@/lib/dates";
@@ -204,8 +203,6 @@ export default function AppShell({
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
         {children}
       </main>
-
-      <ChatPanel />
     </div>
   );
 }
