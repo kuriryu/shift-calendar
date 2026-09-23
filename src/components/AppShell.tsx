@@ -1,22 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import SignOutButton from "@/components/SignOutButton";
 import ChatPanel from "@/components/ChatPanel";
 import Icon from "@/components/Icon";
 import { useAppStore } from "@/stores/useAppStore";
 import { monthLabel, shiftMonth } from "@/lib/dates";
 import { useMounted } from "@/hooks/useMounted";
-
-const TABS = [
-  { href: "/", label: "ダッシュボード", icon: "dashboard" },
-  { href: "/shifts", label: "シフト表", icon: "calendar_month" },
-  { href: "/requests", label: "希望入力", icon: "edit_calendar" },
-  { href: "/staff", label: "スタッフ", icon: "group" },
-  { href: "/stats", label: "集計", icon: "bar_chart" },
-] as const;
 
 function formatAt(iso: string): string {
   const d = new Date(iso);
@@ -141,7 +131,6 @@ export default function AppShell({
   email: string | null;
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const mounted = useMounted();
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   const setMonth = useAppStore((s) => s.setMonth);
@@ -161,9 +150,6 @@ export default function AppShell({
     (v) => v.severity === "warning",
   ).length;
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
-
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -171,23 +157,6 @@ export default function AppShell({
           <h1 className="text-base font-bold text-slate-800">
             シフトカレンダー
           </h1>
-
-          <nav className="flex items-center gap-1 rounded-lg bg-slate-100 p-1">
-            {TABS.map((t) => (
-              <Link
-                key={t.href}
-                href={t.href}
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                  isActive(t.href)
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                <Icon name={t.icon} size={15} />
-                <span className="hidden sm:inline">{t.label}</span>
-              </Link>
-            ))}
-          </nav>
 
           <div className="flex items-center gap-1">
             <button

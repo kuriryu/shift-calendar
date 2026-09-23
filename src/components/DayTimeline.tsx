@@ -5,7 +5,6 @@ import Link from "next/link";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { businessHoursOf } from "@/lib/coverage";
-import { computeBreak } from "@/lib/generator";
 import Icon from "@/components/Icon";
 import { toMinutes } from "@/lib/time";
 import { dayLabel } from "@/lib/dates";
@@ -23,6 +22,9 @@ for (let m = 9 * 60; m <= 21 * 60 + 30; m += 30) {
     `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`,
   );
 }
+
+/** 指定可能な休憩時間（分） */
+const BREAK_OPTIONS = [0, 30, 45, 60, 75, 90, 120];
 
 type EditState = {
   assignment: ShiftAssignment;
@@ -48,9 +50,12 @@ export default function DayTimeline({ date }: { date: string }) {
   const [edit, setEdit] = useState<EditState | null>(null);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("18:00");
+  const [breakMin, setBreakMin] = useState("60");
+  const [breakStart, setBreakStart] = useState("14:00");
   const [addStaffId, setAddStaffId] = useState("");
   const [addStart, setAddStart] = useState("09:00");
   const [addEnd, setAddEnd] = useState("13:00");
+  const [addBreakMin, setAddBreakMin] = useState("auto");
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
@@ -71,10 +76,25 @@ export default function DayTimeline({ date }: { date: string }) {
   const openEdit = (e: React.MouseEvent, a: ShiftAssignment) => {
     setStart(a.startTime);
     setEnd(a.endTime);
+    setBreakMin(String(a.breakMinutes));
+    setBreakStart(a.breakStartTime ?? "14:00");
     const x = Math.min(e.clientX, window.innerWidth - 240);
-    const y = Math.min(e.clientY, window.innerHeight - 260);
+    const y = Math.min(e.clientY, window.innerHeight - 320);
     setEdit({ assignment: a, staff: staffById.get(a.staffId)!, x, y });
   };
+
+  // 選択中の勤務時間・休憩時間に対して有効な休憩開始時刻の候補
+  const breakMinNum = Number(breakMin);
+  const breakStartOptions =
+    breakMinNum > 0 && start < end
+      ? TIME_OPTIONS.filter((t) => {
+          const m = toMinutes(t);
+          return m >= toMinutes(start) && m + breakMinNum <= toMinutes(end);
+        })
+      : [];
+  const validBreakStart = breakStartOptions.includes(breakStart)
+    ? breakStart
+    : (breakStartOptions[0] ?? "");
 
   const hours: number[] = [];
   for (let m = openMin; m <= closeMin; m += 60) hours.push(m);
@@ -214,6 +234,19 @@ export default function DayTimeline({ date }: { date: string }) {
                 </option>
               ))}
             </select>
+            <span className="text-xs text-slate-400">休憩</span>
+            <select
+              value={addBreakMin}
+              onChange={(e) => setAddBreakMin(e.target.value)}
+              className="rounded border border-slate-200 px-1 py-1 text-xs"
+            >
+              <option value="auto">自動</option>
+              {BREAK_OPTIONS.map((b) => (
+                <option key={b} value={String(b)}>
+                  {b === 0 ? "なし" : `${b}分`}
+                </option>
+              ))}
+            </select>
             <button
               onClick={() => {
                 if (addStaffId && addStart < addEnd) {
@@ -222,6 +255,9 @@ export default function DayTimeline({ date }: { date: string }) {
                     date,
                     startTime: addStart,
                     endTime: addEnd,
+                    ...(addBreakMin !== "auto"
+                      ? { breakMinutes: Number(addBreakMin) }
+                      : {}),
                   });
                   setAddStaffId("");
                 }
@@ -292,6 +328,33 @@ export default function DayTimeline({ date }: { date: string }) {
                 ))}
               </select>
             </div>
+            <div className="mt-1.5 flex items-center gap-1">
+              <span className="shrink-0 text-[10px] text-slate-400">休憩</span>
+              <select
+                value={breakMin}
+                onChange={(e) => setBreakMin(e.target.value)}
+                className="w-full rounded border border-slate-200 px-1 py-1 text-xs"
+              >
+                {BREAK_OPTIONS.map((b) => (
+                  <option key={b} value={String(b)}>
+                    {b === 0 ? "なし" : `${b}分`}
+                  </option>
+                ))}
+              </select>
+              {breakMinNum > 0 && (
+                <select
+                  value={validBreakStart}
+                  onChange={(e) => setBreakStart(e.target.value)}
+                  className="w-full rounded border border-slate-200 px-1 py-1 text-xs"
+                >
+                  {breakStartOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}〜
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
             <button
               onClick={() => {
                 if (start < end) {
@@ -299,7 +362,11 @@ export default function DayTimeline({ date }: { date: string }) {
                     ...edit.assignment,
                     startTime: start,
                     endTime: end,
-                    ...computeBreak(start, end),
+                    breakMinutes: breakMinNum,
+                    breakStartTime:
+                      breakMinNum > 0 && validBreakStart
+                        ? validBreakStart
+                        : undefined,
                     source: "manual",
                   });
                   setEdit(null);

@@ -5,15 +5,9 @@ import { useAppStore, EMPTY_ASSIGNMENTS } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, dayLabel, monthLabel } from "@/lib/dates";
 import Icon from "@/components/Icon";
+import ShiftBoard from "@/components/ShiftBoard";
 
 const QUICK_ACTIONS = [
-  {
-    href: "/shifts",
-    icon: "calendar_month",
-    title: "シフト表",
-    desc: "曜日ビュー・時間ビューで確認",
-    cls: "bg-indigo-50 text-indigo-600",
-  },
   {
     href: "/requests",
     icon: "edit_calendar",
@@ -115,6 +109,15 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* シフト表 */}
+      <section className="space-y-3">
+        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+          <Icon name="calendar_month" size={16} />
+          シフト表
+        </h3>
+        <ShiftBoard />
+      </section>
+
       <div className="grid gap-4 lg:grid-cols-2">
         {/* 違反リスト */}
         <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -152,15 +155,6 @@ export default function Dashboard() {
               ))}
             </ul>
           )}
-          {shownViolations.length > 0 && (
-            <Link
-              href="/shifts"
-              className="mt-3 flex items-center justify-end gap-1 text-xs text-indigo-600 hover:underline"
-            >
-              シフト表で確認
-              <Icon name="arrow_forward" size={12} />
-            </Link>
-          )}
         </div>
 
         {/* 日別出勤数 */}
@@ -190,7 +184,7 @@ export default function Dashboard() {
       </div>
 
       {/* クイックアクション */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {QUICK_ACTIONS.map((a) => (
           <Link
             key={a.href}

@@ -15,7 +15,8 @@ import { INITIAL_STAFF } from "@/lib/staff-data";
 import { daysOfMonth } from "@/lib/dates";
 import { generateMonth } from "@/lib/generator";
 import { validateMonth } from "@/lib/validator";
-import { computeBreak } from "@/lib/generator";
+import { computeBreak, placeBreakStart } from "@/lib/generator";
+import { toMinutes } from "@/lib/time";
 import { parseCommand } from "@/lib/ai";
 
 const DEFAULT_MONTH = "2026-10";
@@ -83,7 +84,11 @@ type AppState = {
   updateAssignment: (a: ShiftAssignment) => void;
   removeAssignment: (id: string) => void;
   addAssignment: (
-    a: Omit<ShiftAssignment, "id" | "source" | "breakMinutes" | "breakStartTime">,
+    a: Omit<ShiftAssignment, "id" | "source" | "breakMinutes" | "breakStartTime"> & {
+      /** 省略時は実働時間から自動計算 */
+      breakMinutes?: number;
+      breakStartTime?: string;
+    },
   ) => void;
   applyAiCommand: (text: string) => string;
   updateSettings: (s: Partial<ShopSettings>) => void;
@@ -252,7 +257,21 @@ export const useAppStore = create<AppState>()(
         addAssignment: (partial) =>
           set((s) => {
             const month = partial.date.slice(0, 7);
-            const brk = computeBreak(partial.startTime, partial.endTime);
+            const brk =
+              partial.breakMinutes !== undefined
+                ? {
+                    breakMinutes: partial.breakMinutes,
+                    breakStartTime:
+                      partial.breakMinutes > 0
+                        ? (partial.breakStartTime ??
+                          placeBreakStart(
+                            toMinutes(partial.startTime),
+                            toMinutes(partial.endTime),
+                            partial.breakMinutes,
+                          ))
+                        : undefined,
+                  }
+                : computeBreak(partial.startTime, partial.endTime);
             const a: ShiftAssignment = {
               ...partial,
               ...brk,
