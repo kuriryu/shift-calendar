@@ -1,4 +1,5 @@
 import type {
+  ParsedConstraints,
   ShiftAssignment,
   ShiftRequest,
   ShopSettings,
@@ -7,6 +8,7 @@ import type {
 import { daysOfMonth, formatDate, parseDate, weekKeyOf, weekdayOf } from "./dates";
 import { businessHoursOf, coversSlot, slotPlanOf } from "./coverage";
 import { toMinutes, toTimeString, workMinutesOf } from "./time";
+import { parseSpecialNote } from "./notes";
 
 // 段階的ヒューリスティック:
 // 1. 日単位で割当（前日までの累積状態を参照）
@@ -21,6 +23,7 @@ const BREAK_MIN = 60;
 
 type StaffState = {
   weekMinutes: number;
+  weekDays: number;
   streak: number;
   workDays: number;
   offDays: number;
@@ -45,21 +48,27 @@ function availabilityWindow(
   request: ShiftRequest | undefined,
   open: number,
   close: number,
+  note?: ParsedConstraints,
 ): { start: number; end: number } | null {
   if (request?.type === "off") return null;
+  let win: { start: number; end: number };
   if (request?.type === "time_limited" && request.timeRange) {
-    return {
+    win = {
       start: toMinutes(request.timeRange.start),
       end: toMinutes(request.timeRange.end),
     };
-  }
-  if (!request && staff.defaultPattern) {
-    return {
+  } else if (!request && staff.defaultPattern) {
+    win = {
       start: toMinutes(staff.defaultPattern.start),
       end: toMinutes(staff.defaultPattern.end),
     };
+  } else {
+    win = { start: open, end: close };
   }
-  return { start: open, end: close };
+  // 特別な要望の時間制約で絞り込む
+  if (note?.earliestStart) win.start = Math.max(win.start, toMinutes(note.earliestStart));
+  if (note?.latestEnd) win.end = Math.min(win.end, toMinutes(note.latestEnd));
+  return win;
 }
 
 /** 休憩の開始時刻を決める（preferred（既定14:00）開始を優先、収まらなければ中点） */
@@ -136,6 +145,7 @@ export function generateMonth(
   for (const s of staffList) {
     state.set(s.id, {
       weekMinutes: 0,
+      weekDays: 0,
       streak: 0,
       workDays: 0,
       offDays: 0,
@@ -145,6 +155,12 @@ export function generateMonth(
 
   const assignments: ShiftAssignment[] = [];
   let prevWeekKey = "";
+
+  // 特別な要望の解釈結果を事前パース
+  const notesMap = new Map<string, ParsedConstraints>();
+  for (const s of staffList) {
+    if (s.specialNote) notesMap.set(s.id, parseSpecialNote(s.specialNote));
+  }
 
   for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
     const date = days[dayIndex];
@@ -156,7 +172,10 @@ export function generateMonth(
     // 週またぎで週次時間をリセット / 昨日休みなら連勤リセット
     for (const s of staffList) {
       const st = state.get(s.id)!;
-      if (weekKey !== prevWeekKey) st.weekMinutes = 0;
+      if (weekKey !== prevWeekKey) {
+        st.weekMinutes = 0;
+        st.weekDays = 0;
+      }
       if (st.lastWorkDate !== yesterday) st.streak = 0;
     }
     prevWeekKey = weekKey;
@@ -165,9 +184,14 @@ export function generateMonth(
     const candidates: Candidate[] = [];
     for (const s of staffList) {
       const st = state.get(s.id)!;
+      const note = notesMap.get(s.id);
       if (s.unavailableWeekdays?.includes(weekday)) continue;
+      if (note?.unavailableWeekdays.includes(weekday)) continue;
+      if (note?.onlyWeekdays && !note.onlyWeekdays.includes(weekday)) continue;
+      if (note?.maxDaysPerWeek != null && st.weekDays >= note.maxDaysPerWeek)
+        continue;
       if (st.streak >= s.maxConsecutiveDays) continue;
-      const win = availabilityWindow(s, requestMap.get(`${s.id}:${date}`), open, close);
+      const win = availabilityWindow(s, requestMap.get(`${s.id}:${date}`), open, close, note);
       if (!win) continue;
       if (win.end - win.start < 60) continue;
       candidates.push({ staff: s, windowStart: win.start, windowEnd: win.end });
@@ -189,6 +213,7 @@ export function generateMonth(
       dayAssignments.push(a);
       assignedToday.add(c.staff.id);
       st.weekMinutes += workMin;
+      st.weekDays += 1;
       st.streak += 1;
       st.workDays += 1;
       st.lastWorkDate = date;

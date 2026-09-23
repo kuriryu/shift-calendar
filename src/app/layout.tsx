@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Noto_Sans_JP } from "next/font/google";
+import SmartHRProvider from "@/components/SmartHRProvider";
+import "smarthr-ui/smarthr-ui.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,7 +25,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ja"
       className={`${geistSans.variable} ${notoSansJp.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+        />
+      </head>
+      <body className="min-h-full flex flex-col font-sans">
+        <SmartHRProvider>{children}</SmartHRProvider>
+      </body>
     </html>
   );
 }

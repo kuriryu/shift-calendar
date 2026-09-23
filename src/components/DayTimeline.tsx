@@ -6,6 +6,7 @@ import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { businessHoursOf } from "@/lib/coverage";
 import { computeBreak } from "@/lib/generator";
+import Icon from "@/components/Icon";
 import { toMinutes } from "@/lib/time";
 import { dayLabel } from "@/lib/dates";
 import type { Role, ShiftAssignment, Staff } from "@/types";
@@ -84,8 +85,12 @@ export default function DayTimeline({ date }: { date: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Link href="/" className="text-xs text-slate-400 hover:text-slate-600">
-          ← シフト表
+        <Link
+          href="/shifts"
+          className="flex items-center gap-0.5 text-xs text-slate-400 hover:text-slate-600"
+        >
+          <Icon name="arrow_back" size={14} />
+          シフト表
         </Link>
         <h2 className="text-lg font-bold text-slate-800">{dayLabel(date)}</h2>
         <span className="text-xs text-slate-400">

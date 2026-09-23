@@ -14,7 +14,26 @@ export type Staff = {
   monthlyDaysOffTarget: number; // 社員のみ意味を持つ（他は0）
   defaultPattern?: TimeRange; // 未入力日に自動適用される基本パターン
   unavailableWeekdays?: number[]; // 0=日 … 6=土
+  specialNote?: string; // 特別な要望（自由テキスト。AIが解釈して生成に反映）
   note?: string;
+};
+
+/** 特別な要望テキストの解釈結果 */
+export type ParsedConstraints = {
+  unavailableWeekdays: number[]; // 「水曜は休み」
+  onlyWeekdays: number[] | null; // 「土日のみ」
+  earliestStart?: string; // 「10時から」
+  latestEnd?: string; // 「17時まで」
+  maxDaysPerWeek?: number; // 「週2日まで」
+  summary: string[]; // 解釈結果の人間向け表示
+};
+
+/** ログイン・編集などの活動履歴 */
+export type ActivityEntry = {
+  id: string;
+  at: string; // ISO 8601
+  kind: "login" | "generate" | "manual" | "ai" | "request" | "staff" | "settings";
+  message: string;
 };
 
 export type RequestType = "available" | "off" | "time_limited";

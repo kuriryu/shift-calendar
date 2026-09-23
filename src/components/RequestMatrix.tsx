@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
+import Icon from "@/components/Icon";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
 import type { Role, ShiftRequest, Staff } from "@/types";
@@ -129,23 +130,26 @@ export default function RequestMatrix() {
         <div className="ml-auto flex gap-2">
           <button
             onClick={fillTestRequests}
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
           >
+            <Icon name="science" size={14} />
             テストデータ投入
           </button>
           <button
             onClick={clearAllRequests}
-            className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
+            className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
           >
+            <Icon name="delete_sweep" size={14} />
             全クリア
           </button>
           <button
             onClick={() => {
               generate();
-              router.push("/");
+              router.push("/shifts");
             }}
-            className="rounded-md bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+            className="flex items-center gap-1 rounded-md bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
           >
+            <Icon name="auto_awesome" size={14} />
             自動生成する
           </button>
         </div>

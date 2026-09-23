@@ -1,5 +1,5 @@
-import MonthMatrix from "@/components/MonthMatrix";
+import Dashboard from "@/components/Dashboard";
 
-export default function ShiftPage() {
-  return <MonthMatrix />;
+export default function HomePage() {
+  return <Dashboard />;
 }

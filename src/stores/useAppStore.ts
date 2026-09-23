@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
+  ActivityEntry,
   ShiftAssignment,
   ShiftRequest,
   ShopSettings,
@@ -25,6 +26,15 @@ export const EMPTY_REQUESTS: ShiftRequest[] = [];
 
 function uid(): string {
   return `a-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const MAX_ACTIVITIES = 200;
+
+function makeActivity(
+  kind: ActivityEntry["kind"],
+  message: string,
+): ActivityEntry {
+  return { id: uid(), at: new Date().toISOString(), kind, message };
 }
 
 /** デモ用の希望休を生成（決定的: 再実行しても同じ結果） */
@@ -61,6 +71,7 @@ type AppState = {
   requests: Record<string, ShiftRequest[]>;
   assignments: Record<string, ShiftAssignment[]>;
   violations: Violation[];
+  activities: ActivityEntry[];
 
   setMonth: (month: string) => void;
   setRequest: (req: ShiftRequest) => void;
@@ -76,6 +87,8 @@ type AppState = {
   ) => void;
   applyAiCommand: (text: string) => string;
   updateSettings: (s: Partial<ShopSettings>) => void;
+  updateStaff: (staff: Staff) => void;
+  recordLogin: (email: string) => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -103,6 +116,7 @@ export const useAppStore = create<AppState>()(
         requests: {},
         assignments: {},
         violations: [],
+        activities: [],
 
         setMonth: (month) =>
           set((s) => ({
@@ -173,29 +187,65 @@ export const useAppStore = create<AppState>()(
               s.settings,
             );
             const assignments = { ...s.assignments, [month]: generated };
-            return { assignments, ...revalidate({ ...s, assignments }) };
+            return {
+              assignments,
+              activities: [
+                makeActivity("generate", `${month} のシフトを自動生成（${generated.length}件）`),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, assignments }),
+            };
           }),
 
         updateAssignment: (a) =>
           set((s) => {
             const month = a.date.slice(0, 7);
+            const staffName =
+              s.staff.find((x) => x.id === a.staffId)?.name ?? a.staffId;
             const assignments = {
               ...s.assignments,
               [month]: (s.assignments[month] ?? []).map((x) =>
                 x.id === a.id ? a : x,
               ),
             };
-            return { assignments, ...revalidate({ ...s, assignments }) };
+            return {
+              assignments,
+              activities: [
+                makeActivity(
+                  "manual",
+                  `${a.date.slice(5)} ${staffName} のシフトを ${a.startTime}–${a.endTime} に変更`,
+                ),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, assignments }),
+            };
           }),
 
         removeAssignment: (id) =>
           set((s) => {
             const month = s.selectedMonth;
+            const target = (s.assignments[month] ?? []).find(
+              (x) => x.id === id,
+            );
+            const staffName = target
+              ? (s.staff.find((x) => x.id === target.staffId)?.name ??
+                target.staffId)
+              : "";
             const assignments = {
               ...s.assignments,
               [month]: (s.assignments[month] ?? []).filter((x) => x.id !== id),
             };
-            return { assignments, ...revalidate({ ...s, assignments }) };
+            return {
+              assignments,
+              activities: [
+                makeActivity(
+                  "manual",
+                  `${target?.date.slice(5) ?? ""} ${staffName} のシフトを削除`,
+                ),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, assignments }),
+            };
           }),
 
         addAssignment: (partial) =>
@@ -208,11 +258,24 @@ export const useAppStore = create<AppState>()(
               id: uid(),
               source: "manual",
             };
+            const staffName =
+              s.staff.find((x) => x.id === partial.staffId)?.name ??
+              partial.staffId;
             const assignments = {
               ...s.assignments,
               [month]: [...(s.assignments[month] ?? []), a],
             };
-            return { assignments, ...revalidate({ ...s, assignments }) };
+            return {
+              assignments,
+              activities: [
+                makeActivity(
+                  "manual",
+                  `${partial.date.slice(5)} ${staffName} のシフトを追加（${partial.startTime}–${partial.endTime}）`,
+                ),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, assignments }),
+            };
           }),
 
         applyAiCommand: (text) => {
@@ -301,7 +364,14 @@ export const useAppStore = create<AppState>()(
           const after = get().violations;
           const errors = after.filter((v) => v.severity === "error").length;
           const warnings = after.filter((v) => v.severity === "warning").length;
-          return `${parsed.summary} しました。現在の違反: エラー${errors}件 / 警告${warnings}件`;
+          const reply = `${parsed.summary} しました。現在の違反: エラー${errors}件 / 警告${warnings}件`;
+          set((prev) => ({
+            activities: [
+              makeActivity("ai", `AI指示「${text}」→ ${parsed.summary}`),
+              ...prev.activities,
+            ].slice(0, MAX_ACTIVITIES),
+          }));
+          return reply;
         },
 
         updateSettings: (partial) =>
@@ -309,15 +379,63 @@ export const useAppStore = create<AppState>()(
             const settings = { ...s.settings, ...partial };
             return { settings, ...revalidate({ ...s, settings }) };
           }),
+
+        updateStaff: (staff) =>
+          set((s) => ({
+            staff: s.staff.map((x) => (x.id === staff.id ? staff : x)),
+            activities: [
+              makeActivity("staff", `${staff.name} のスタッフ情報を更新`),
+              ...s.activities,
+            ].slice(0, MAX_ACTIVITIES),
+          })),
+
+        recordLogin: (email) =>
+          set((s) => {
+            const last = s.activities.find((a) => a.kind === "login");
+            // 30分以内の連続記録はスキップ
+            if (
+              last &&
+              Date.now() - new Date(last.at).getTime() < 30 * 60 * 1000
+            ) {
+              return {};
+            }
+            return {
+              activities: [
+                makeActivity("login", `${email} がログイン`),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+            };
+          }),
       };
     },
     {
       name: "shift-app-v1",
+      version: 2,
+      migrate: (persisted) => {
+        const p = (persisted ?? {}) as Partial<{
+          staff: Staff[];
+          settings: ShopSettings;
+          selectedMonth: string;
+          requests: Record<string, ShiftRequest[]>;
+          assignments: Record<string, ShiftAssignment[]>;
+          activities: ActivityEntry[];
+        }>;
+        return {
+          staff: p.staff ?? INITIAL_STAFF,
+          settings: p.settings ?? DEFAULT_SETTINGS,
+          selectedMonth: p.selectedMonth ?? DEFAULT_MONTH,
+          requests: p.requests ?? {},
+          assignments: p.assignments ?? {},
+          activities: p.activities ?? [],
+        };
+      },
       partialize: (s) => ({
+        staff: s.staff,
         settings: s.settings,
         selectedMonth: s.selectedMonth,
         requests: s.requests,
         assignments: s.assignments,
+        activities: s.activities,
       }),
     },
   ),
