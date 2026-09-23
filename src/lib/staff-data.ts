@@ -1,0 +1,183 @@
+import type { Staff } from "@/types";
+
+// ダミースタッフ19名: 社員3名 + パート9名 + 学生7名
+// 社員3名 × 月20〜21日勤務 ≒ 62人日 = 1日2名（早番・遅番）でちょうど均衡
+export const INITIAL_STAFF: Staff[] = [
+  // ── 社員（連勤7・実働8h+休憩1h・月9〜10日休） ──
+  {
+    id: "emp-1",
+    name: "田中 店長",
+    role: "employee",
+    maxHoursPerWeek: 40,
+    maxConsecutiveDays: 7,
+    monthlyDaysOffTarget: 9,
+  },
+  {
+    id: "emp-2",
+    name: "佐藤 副店長",
+    role: "employee",
+    maxHoursPerWeek: 40,
+    maxConsecutiveDays: 7,
+    monthlyDaysOffTarget: 10,
+  },
+  {
+    id: "emp-3",
+    name: "鈴木 社員",
+    role: "employee",
+    maxHoursPerWeek: 40,
+    maxConsecutiveDays: 7,
+    monthlyDaysOffTarget: 9,
+  },
+
+  // ── パート（連勤3） ──
+  {
+    id: "part-1",
+    name: "Aさん",
+    role: "part_time",
+    maxHoursPerWeek: 19.5, // 週20時間未満
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "09:00", end: "13:00" }, // 基本 9-13 or 9-14
+    unavailableWeekdays: [0, 6], // 土日休み希望
+    note: "土日休み希望。出勤時は9:00-13:00（または14:00）",
+  },
+  {
+    id: "part-2",
+    name: "Bさん",
+    role: "part_time",
+    maxHoursPerWeek: 40,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    note: "条件なしフリー",
+  },
+  {
+    id: "part-3",
+    name: "伊藤",
+    role: "part_time",
+    maxHoursPerWeek: 24,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "09:00", end: "14:00" },
+  },
+  {
+    id: "part-4",
+    name: "渡辺",
+    role: "part_time",
+    maxHoursPerWeek: 28,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "10:00", end: "15:00" },
+  },
+  {
+    id: "part-5",
+    name: "小林",
+    role: "part_time",
+    maxHoursPerWeek: 20,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "13:00", end: "17:00" },
+  },
+  {
+    id: "part-6",
+    name: "加藤",
+    role: "part_time",
+    maxHoursPerWeek: 30,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "09:00", end: "15:00" },
+  },
+  {
+    id: "part-7",
+    name: "山本",
+    role: "part_time",
+    maxHoursPerWeek: 24,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "14:00", end: "18:00" },
+  },
+  {
+    id: "part-8",
+    name: "中島",
+    role: "part_time",
+    maxHoursPerWeek: 28,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "15:00", end: "20:00" },
+  },
+  {
+    id: "part-9",
+    name: "高橋",
+    role: "part_time",
+    maxHoursPerWeek: 20,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "09:00", end: "13:00" },
+    unavailableWeekdays: [1, 4], // 月・木は都合が悪い
+  },
+
+  // ── 学生（連勤3・夕方以降中心） ──
+  {
+    id: "stu-1",
+    name: "吉田",
+    role: "student",
+    maxHoursPerWeek: 20,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "17:00", end: "21:30" },
+  },
+  {
+    id: "stu-2",
+    name: "山口",
+    role: "student",
+    maxHoursPerWeek: 16,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "18:00", end: "21:30" },
+  },
+  {
+    id: "stu-3",
+    name: "松本",
+    role: "student",
+    maxHoursPerWeek: 20,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "16:00", end: "20:30" },
+  },
+  {
+    id: "stu-4",
+    name: "井上",
+    role: "student",
+    maxHoursPerWeek: 16,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "17:00", end: "21:00" },
+  },
+  {
+    id: "stu-5",
+    name: "木村",
+    role: "student",
+    maxHoursPerWeek: 20,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "15:00", end: "20:00" },
+  },
+  {
+    id: "stu-6",
+    name: "林",
+    role: "student",
+    maxHoursPerWeek: 16,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "18:00", end: "21:30" },
+    unavailableWeekdays: [2], // 火曜は授業
+  },
+  {
+    id: "stu-7",
+    name: "斎藤",
+    role: "student",
+    maxHoursPerWeek: 20,
+    maxConsecutiveDays: 3,
+    monthlyDaysOffTarget: 0,
+    defaultPattern: { start: "16:00", end: "21:00" },
+  },
+];
