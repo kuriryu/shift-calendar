@@ -89,6 +89,7 @@ type AppState = {
   updateSettings: (s: Partial<ShopSettings>) => void;
   updateStaff: (staff: Staff) => void;
   recordLogin: (email: string) => void;
+  clearLoginHistory: () => void;
 };
 
 export const useAppStore = create<AppState>()(
@@ -406,11 +407,16 @@ export const useAppStore = create<AppState>()(
               ].slice(0, MAX_ACTIVITIES),
             };
           }),
+
+        clearLoginHistory: () =>
+          set((s) => ({
+            activities: s.activities.filter((a) => a.kind !== "login"),
+          })),
       };
     },
     {
       name: "shift-app-v1",
-      version: 2,
+      version: 3,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<{
           staff: Staff[];
@@ -426,7 +432,8 @@ export const useAppStore = create<AppState>()(
           selectedMonth: p.selectedMonth ?? DEFAULT_MONTH,
           requests: p.requests ?? {},
           assignments: p.assignments ?? {},
-          activities: p.activities ?? [],
+          // v3: 過去のログイン履歴を全削除（編集履歴は保持）
+          activities: (p.activities ?? []).filter((a) => a.kind !== "login"),
         };
       },
       partialize: (s) => ({

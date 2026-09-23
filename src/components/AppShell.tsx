@@ -26,6 +26,7 @@ function formatAt(iso: string): string {
 function ProfileMenu({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
   const activities = useAppStore((s) => s.activities);
+  const clearLoginHistory = useAppStore((s) => s.clearLoginHistory);
   const logins = activities.filter((a) => a.kind === "login").slice(0, 5);
   const edits = activities.filter((a) => a.kind !== "login").slice(0, 8);
 
@@ -56,10 +57,26 @@ function ProfileMenu({ email }: { email: string }) {
             </div>
 
             <div className="mb-3">
-              <p className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold text-slate-500">
-                <Icon name="login" size={13} />
-                ログイン履歴
-              </p>
+              <div className="mb-1.5 flex items-center justify-between">
+                <p className="flex items-center gap-1 text-[11px] font-semibold text-slate-500">
+                  <Icon name="login" size={13} />
+                  ログイン履歴
+                </p>
+                {logins.length > 0 && (
+                  <button
+                    onClick={() => {
+                      if (window.confirm("ログイン履歴をすべて削除しますか？")) {
+                        clearLoginHistory();
+                      }
+                    }}
+                    className="flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                    aria-label="ログイン履歴をすべて削除"
+                  >
+                    <Icon name="delete" size={12} />
+                    すべて削除
+                  </button>
+                )}
+              </div>
               {logins.length === 0 ? (
                 <p className="text-[11px] text-slate-400">記録なし</p>
               ) : (
