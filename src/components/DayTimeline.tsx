@@ -6,17 +6,10 @@ import { useMounted } from "@/hooks/useMounted";
 import { useDismissable } from "@/hooks/useDismissable";
 import { businessHoursOf, timeOptionsOf } from "@/lib/coverage";
 import Icon from "@/components/Icon";
-import StaffEditModal from "@/components/StaffEditModal";
 import { toMinutes } from "@/lib/time";
-import { dayLabel, weekdayLabel } from "@/lib/dates";
-import type { Role, ShiftAssignment, Staff } from "@/types";
-import { ROLE_LABELS } from "@/types";
-
-const ROLE_BAR: Record<Role, string> = {
-  employee: "bg-indigo-500",
-  part_time: "bg-emerald-500",
-  student: "bg-amber-500",
-};
+import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
+import type { ShiftAssignment, Staff } from "@/types";
+import { staffColorOf } from "@/lib/staff-color";
 
 /** 指定可能な休憩時間（分） */
 const BREAK_OPTIONS = [0, 30, 45, 60, 75, 90, 120];
@@ -42,6 +35,7 @@ export default function DayTimeline({ date }: { date: string }) {
   const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
   const highlight = useAppStore((s) => s.highlight);
   const clearHighlight = useAppStore((s) => s.clearHighlight);
+  const setSelectedDate = useAppStore((s) => s.setSelectedDate);
 
   const [edit, setEdit] = useState<EditState | null>(null);
   const closeEdit = useCallback(() => setEdit(null), []);
@@ -54,7 +48,6 @@ export default function DayTimeline({ date }: { date: string }) {
   const [addStart, setAddStart] = useState("09:00");
   const [addEnd, setAddEnd] = useState("13:00");
   const [addBreakMin, setAddBreakMin] = useState("auto");
-  const [creatingStaff, setCreatingStaff] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
 
   // ハイライト対象へスクロールし、数秒後に解除
@@ -119,24 +112,63 @@ export default function DayTimeline({ date }: { date: string }) {
   const highlightRange = isHighlightDay ? highlight?.timeRange : undefined;
   const highlightStaffId = isHighlightDay ? highlight?.staffId : undefined;
 
+  const month = date.slice(0, 7);
+  const monthDays = daysOfMonth(month);
+  const dayIndex = Math.max(0, monthDays.indexOf(date));
+
+  const goDay = (delta: number) => {
+    const next = monthDays[dayIndex + delta];
+    if (next) setSelectedDate(next);
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-3">
-        <h4 className="text-lg font-bold text-slate-800">
-          {dayLabel(date)}（{weekdayLabel(date)}）
-        </h4>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => goDay(-1)}
+            disabled={dayIndex <= 0}
+            aria-label="前の日"
+            className="rounded-full border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="chevron_left" size={20} />
+          </button>
+          <h4 className="min-w-[7.5rem] text-center text-lg font-bold text-slate-800" aria-live="polite">
+            {dayLabel(date)}（{weekdayLabel(date)}）
+          </h4>
+          <button
+            type="button"
+            onClick={() => goDay(1)}
+            disabled={dayIndex >= monthDays.length - 1}
+            aria-label="次の日"
+            className="rounded-full border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="chevron_right" size={20} />
+          </button>
+        </div>
         <span className="text-xs text-slate-400">
           営業 {String(Math.floor(openMin / 60)).padStart(2, "0")}:{String(openMin % 60).padStart(2, "0")}〜
           {String(Math.floor(closeMin / 60)).padStart(2, "0")}:{String(closeMin % 60).padStart(2, "0")}
           ・バーをタップで編集（休憩は白い切れ目）
         </span>
-        <ul className="ml-auto flex items-center gap-3 text-[11px] text-slate-500" aria-label="凡例">
-          {(Object.keys(ROLE_BAR) as Role[]).map((r) => (
-            <li key={r} className="flex items-center gap-1">
-              <span className={`h-2.5 w-2.5 rounded-sm ${ROLE_BAR[r]}`} aria-hidden />
-              {ROLE_LABELS[r]}
-            </li>
-          ))}
+        <ul className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-slate-500" aria-label="凡例">
+          {visibleStaff.slice(0, 8).map((s) => {
+            const color = staffColorOf(s.id);
+            return (
+              <li key={s.id} className="flex items-center gap-1">
+                <span
+                  className="h-2.5 w-2.5 rounded-sm"
+                  style={{ backgroundColor: color.bg }}
+                  aria-hidden
+                />
+                {s.name}
+              </li>
+            );
+          })}
+          {visibleStaff.length > 8 && (
+            <li className="text-slate-400">他 {visibleStaff.length - 8}名</li>
+          )}
           <li className="flex items-center gap-1">
             <span className="h-2.5 w-2.5 rounded-sm bg-rose-100" aria-hidden />
             ピーク
@@ -224,10 +256,11 @@ export default function DayTimeline({ date }: { date: string }) {
                       aria-label={`${s.name} ${a.startTime}〜${a.endTime}${
                         a.breakMinutes > 0 ? `、休憩${a.breakMinutes}分` : ""
                       }。タップで編集`}
-                      className={`absolute h-7 rounded-md ${ROLE_BAR[s.role]} text-left text-[11px] font-semibold text-white shadow-sm hover:opacity-85`}
+                      className="absolute h-7 rounded-md text-left text-[11px] font-semibold text-white shadow-sm hover:opacity-85"
                       style={{
                         left: `${pct(sMin)}%`,
                         width: `${pct(eMin) - pct(sMin)}%`,
+                        backgroundColor: staffColorOf(s.id).bg,
                       }}
                     >
                       <span className="px-2 leading-7">
@@ -257,15 +290,6 @@ export default function DayTimeline({ date }: { date: string }) {
               表示するスタッフがいません（サイドバーの絞り込みを確認してください）
             </p>
           )}
-
-          {/* スタッフ新規登録バー */}
-          <button
-            onClick={() => setCreatingStaff(true)}
-            className="relative mt-2 flex h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 text-xs font-medium text-slate-500 transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600"
-          >
-            <Icon name="person_add" size={18} />
-            スタッフを新規登録
-          </button>
         </div>
        </div>
 
@@ -482,13 +506,6 @@ export default function DayTimeline({ date }: { date: string }) {
           </div>
         </>
       )}
-
-      {/* スタッフ新規登録モーダル */}
-      <StaffEditModal
-        staff={null}
-        isOpen={creatingStaff}
-        onClose={() => setCreatingStaff(false)}
-      />
     </div>
   );
 }

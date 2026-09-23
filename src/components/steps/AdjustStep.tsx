@@ -2,13 +2,19 @@
 
 import Icon from "@/components/Icon";
 import DayTimeline from "@/components/DayTimeline";
-import MonthMatrix from "@/components/MonthMatrix";
+import WeekCalendarView from "@/components/WeekCalendarView";
+import MonthCalendarView from "@/components/MonthCalendarView";
 import StepPanel from "@/components/steps/StepPanel";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 
+const VIEWS = [
+  { id: "day" as const, label: "日", icon: "schedule" },
+  { id: "week" as const, label: "週", icon: "view_week" },
+  { id: "month" as const, label: "月", icon: "calendar_month" },
+];
+
 export default function AdjustStep() {
   const selectedDate = useAppStore((s) => s.selectedDate);
-  const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const view = useAppStore((s) => s.adjustView);
   const setView = useAppStore((s) => s.setAdjustView);
   const assignments = useAppStore(
@@ -19,7 +25,6 @@ export default function AdjustStep() {
   return (
     <StepPanel
       step={6}
-      description="サイドバーのカレンダーで日を選び、ガントチャートで自由に編集します。上部の件数バッジから条件チェックの結果を確認できます。"
       hideNext
       actions={
         <div
@@ -27,30 +32,21 @@ export default function AdjustStep() {
           role="group"
           aria-label="表示切替"
         >
-          <button
-            onClick={() => setView("day")}
-            aria-pressed={view === "day"}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              view === "day"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Icon name="schedule" size={16} />
-            時間ビュー
-          </button>
-          <button
-            onClick={() => setView("month")}
-            aria-pressed={view === "month"}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-              view === "month"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            <Icon name="calendar_month" size={16} />
-            曜日ビュー
-          </button>
+          {VIEWS.map((v) => (
+            <button
+              key={v.id}
+              onClick={() => setView(v.id)}
+              aria-pressed={view === v.id}
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                view === v.id
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Icon name={v.icon} size={16} />
+              {v.label}
+            </button>
+          ))}
         </div>
       }
     >
@@ -67,16 +63,9 @@ export default function AdjustStep() {
         </p>
       )}
 
-      {view === "day" ? (
-        <DayTimeline key={selectedDate} date={selectedDate} />
-      ) : (
-        <MonthMatrix
-          onSelectDate={(d) => {
-            setSelectedDate(d);
-            setView("day");
-          }}
-        />
-      )}
+      {view === "day" && <DayTimeline key={selectedDate} date={selectedDate} />}
+      {view === "week" && <WeekCalendarView />}
+      {view === "month" && <MonthCalendarView />}
     </StepPanel>
   );
 }

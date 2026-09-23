@@ -42,6 +42,11 @@ export function shiftMonth(month: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+/** 今日の翌月（YYYY-MM）。シフト作成のデフォルト対象月 */
+export function nextMonthOf(from: Date = new Date()): string {
+  return shiftMonth(formatDate(from).slice(0, 7), 1);
+}
+
 export function dayLabel(dateStr: string): string {
   const d = parseDate(dateStr);
   return `${d.getMonth() + 1}/${d.getDate()}`;

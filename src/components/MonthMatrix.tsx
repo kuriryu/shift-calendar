@@ -6,14 +6,9 @@ import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
 import type { Role, ShiftAssignment, Staff, Violation } from "@/types";
 import { ROLE_LABELS } from "@/types";
+import { staffColorOf } from "@/lib/staff-color";
 
 const ROLE_ORDER: Role[] = ["employee", "part_time", "student"];
-
-const ROLE_CELL: Record<Role, string> = {
-  employee: "bg-indigo-100 text-indigo-800",
-  part_time: "bg-emerald-100 text-emerald-800",
-  student: "bg-amber-100 text-amber-800",
-};
 
 /** "09:00" → "9", "13:30" → "13.5" */
 function shortTime(t: string): string {
@@ -101,9 +96,11 @@ export default function MonthMatrix({
   const cellOf = (s: Staff, date: string) => {
     const a = byStaffDate.get(`${s.id}:${date}`);
     if (a) {
+      const color = staffColorOf(s.id);
       return (
         <span
-          className={`inline-block w-full rounded px-0.5 py-1 text-[10px] font-medium leading-tight ${ROLE_CELL[s.role]}`}
+          className="inline-block w-full rounded px-0.5 py-1 text-[10px] font-medium leading-tight"
+          style={{ backgroundColor: color.soft, color: color.text }}
         >
           {shortTime(a.startTime)}-{shortTime(a.endTime)}
         </span>

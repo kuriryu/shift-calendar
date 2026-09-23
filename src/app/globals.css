@@ -38,3 +38,19 @@ body {
   animation: highlight-pulse 1s ease-in-out 4;
   border-radius: 8px;
 }
+
+/* スタッフ登録・編集モーダルの見出し／フッター区切り線を非表示 */
+.staff-edit-dialog .smarthr-ui-Dialog-titleArea {
+  border-bottom-width: 0;
+}
+.staff-edit-dialog .smarthr-ui-Dialog-actionArea {
+  border-top-width: 0;
+}
+
+/* 条件設定モーダルの見出し／フッター区切り線を非表示 */
+.settings-dialog .smarthr-ui-Dialog-titleArea {
+  border-bottom-width: 0;
+}
+.settings-dialog .smarthr-ui-Dialog-actionArea {
+  border-top-width: 0;
+}

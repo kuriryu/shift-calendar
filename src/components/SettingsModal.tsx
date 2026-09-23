@@ -1,20 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Cluster,
-  ControlledActionDialog,
-  FormControl,
-  Input,
-  Select,
-  Stack,
-} from "smarthr-ui";
+import { ControlledActionDialog, Select } from "smarthr-ui";
 import type { ShopSettings, TimeRange } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { useAppStore } from "@/stores/useAppStore";
 import Icon from "@/components/Icon";
 
-/** 6:00〜24:00 の30分刻み（営業時間・ピーク時間帯の選択肢） */
+/** 6:00〜24:00 の30分刻み */
 const CLOCK_OPTIONS: string[] = [];
 for (let m = 6 * 60; m <= 24 * 60; m += 30) {
   CLOCK_OPTIONS.push(
@@ -22,6 +15,96 @@ for (let m = 6 * 60; m <= 24 * 60; m += 30) {
   );
 }
 const clockOptions = CLOCK_OPTIONS.map((t) => ({ value: t, label: t }));
+
+function SectionCard({
+  icon,
+  title,
+  children,
+}: {
+  icon: string;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+          <Icon name={icon} size={16} />
+        </span>
+        {title}
+      </h3>
+      <div className="space-y-2.5">{children}</div>
+    </section>
+  );
+}
+
+/** ラベル列を揃えた設定行 */
+function SettingRow({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-3">
+      <div className="min-w-0">
+        <p className="truncate text-xs font-medium text-slate-600">{label}</p>
+        {hint && <p className="truncate text-[10px] text-slate-400">{hint}</p>}
+      </div>
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+function Stepper({
+  value,
+  min,
+  max,
+  unit,
+  onChange,
+  ariaLabel,
+}: {
+  value: number;
+  min: number;
+  max: number;
+  unit: string;
+  onChange: (n: number) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white"
+      role="group"
+      aria-label={ariaLabel}
+    >
+      <button
+        type="button"
+        aria-label={`${ariaLabel}を減らす`}
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+        className="flex h-9 w-9 items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+      >
+        <Icon name="remove" size={16} />
+      </button>
+      <span className="min-w-[3.5rem] text-center text-base font-bold tabular-nums text-slate-800">
+        {value}
+        <span className="ml-0.5 text-[10px] font-medium text-slate-400">{unit}</span>
+      </span>
+      <button
+        type="button"
+        aria-label={`${ariaLabel}を増やす`}
+        disabled={value >= max}
+        onClick={() => onChange(Math.min(max, value + 1))}
+        className="flex h-9 w-9 items-center justify-center text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+      >
+        <Icon name="add" size={16} />
+      </button>
+    </div>
+  );
+}
 
 export default function SettingsModal({
   isOpen,
@@ -33,7 +116,6 @@ export default function SettingsModal({
   const settings = useAppStore((s) => s.settings);
   const updateSettings = useAppStore((s) => s.updateSettings);
 
-  // 親側で開くたびにマウントし直すため、初期値はマウント時の設定でよい
   const [form, setForm] = useState<ShopSettings>(settings);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,29 +128,15 @@ export default function SettingsModal({
       peakHours: f.peakHours.map((p, i) => (i === index ? { ...p, ...patch } : p)),
     }));
 
-  const numberField = (key: keyof ShopSettings, min: number, max: number) => (
-    <Input
-      type="number"
-      min={min}
-      max={max}
-      value={String(form[key])}
-      onChange={(e) => {
-        const n = Number(e.target.value);
-        if (Number.isNaN(n)) return;
-        setField(key, Math.min(max, Math.max(min, n)) as never);
-      }}
-    />
-  );
-
   const validate = (): string | null => {
     if (form.openTime >= form.closeTimeWeekday) {
-      return "日〜木の閉店時刻は開店時刻より後にしてください";
+      return "日〜木の閉店は開店より後にしてください";
     }
     if (form.openTime >= form.closeTimeWeekend) {
-      return "金・土の閉店時刻は開店時刻より後にしてください";
+      return "金・土の閉店は開店より後にしてください";
     }
     for (const p of form.peakHours) {
-      if (p.start >= p.end) return "ピーク時間帯の終了は開始より後にしてください";
+      if (p.start >= p.end) return "ピークの終了は開始より後にしてください";
     }
     return null;
   };
@@ -91,82 +159,82 @@ export default function SettingsModal({
       onClickAction={() => save()}
       onClickClose={onClose}
       onClickOverlay={onClose}
-      width={600}
+      width={560}
+      className="settings-dialog"
     >
-      <Stack gap={1.5}>
-        <p className="text-xs text-slate-500">
-          ここで変更した条件は、自動生成と条件チェック（エラー・警告）にすぐ反映されます。
-        </p>
+      <div className="space-y-3">
+        <SectionCard icon="schedule" title="営業時間">
+          <SettingRow label="開店">
+            <Select
+              value={form.openTime}
+              onChange={(e) => setField("openTime", e.target.value)}
+              options={clockOptions}
+            />
+          </SettingRow>
+          <SettingRow label="閉店・平日" hint="日〜木">
+            <Select
+              value={form.closeTimeWeekday}
+              onChange={(e) => setField("closeTimeWeekday", e.target.value)}
+              options={clockOptions}
+            />
+          </SettingRow>
+          <SettingRow label="閉店・金土" hint="金・土">
+            <Select
+              value={form.closeTimeWeekend}
+              onChange={(e) => setField("closeTimeWeekend", e.target.value)}
+              options={clockOptions}
+            />
+          </SettingRow>
+        </SectionCard>
 
-        {/* 営業時間 */}
-        <section aria-labelledby="settings-hours">
-          <h3 id="settings-hours" className="mb-2 text-sm font-semibold text-slate-700">
-            営業時間
-          </h3>
-          <Stack gap={1}>
-            <FormControl label="開店時刻">
-              <Select
-                value={form.openTime}
-                onChange={(e) => setField("openTime", e.target.value)}
-                options={clockOptions}
-              />
-            </FormControl>
-            <Cluster gap={1.5}>
-              <FormControl label="閉店時刻（日〜木）">
-                <Select
-                  value={form.closeTimeWeekday}
-                  onChange={(e) => setField("closeTimeWeekday", e.target.value)}
-                  options={clockOptions}
-                />
-              </FormControl>
-              <FormControl label="閉店時刻（金・土）">
-                <Select
-                  value={form.closeTimeWeekend}
-                  onChange={(e) => setField("closeTimeWeekend", e.target.value)}
-                  options={clockOptions}
-                />
-              </FormControl>
-            </Cluster>
-          </Stack>
-        </section>
+        <SectionCard icon="groups" title="必要人数">
+          <SettingRow label="通常" hint="不足で警告">
+            <Stepper
+              value={form.normalRequired}
+              min={1}
+              max={20}
+              unit="人"
+              ariaLabel="原則の人数"
+              onChange={(n) => setField("normalRequired", n)}
+            />
+          </SettingRow>
+          <SettingRow label="ピーク">
+            <Stepper
+              value={form.peakRequired}
+              min={1}
+              max={20}
+              unit="人"
+              ariaLabel="ピーク時の人数"
+              onChange={(n) => setField("peakRequired", n)}
+            />
+          </SettingRow>
+          <SettingRow label="開店・閉店" hint="不足でエラー">
+            <Stepper
+              value={form.edgeRequired}
+              min={1}
+              max={20}
+              unit="人"
+              ariaLabel="開店閉店時の必須人数"
+              onChange={(n) => setField("edgeRequired", n)}
+            />
+          </SettingRow>
+        </SectionCard>
 
-        {/* 必要人数 */}
-        <section aria-labelledby="settings-headcount">
-          <h3 id="settings-headcount" className="mb-2 text-sm font-semibold text-slate-700">
-            必要人数
-          </h3>
-          <Cluster gap={1.5}>
-            <FormControl label="原則の人数" helpMessage="下回ると警告">
-              {numberField("normalRequired", 1, 20)}
-            </FormControl>
-            <FormControl label="ピーク時の人数">
-              {numberField("peakRequired", 1, 20)}
-            </FormControl>
-            <FormControl label="開店・閉店時の必須人数" helpMessage="下回るとエラー">
-              {numberField("edgeRequired", 1, 20)}
-            </FormControl>
-          </Cluster>
-        </section>
+        <SectionCard icon="badge" title="社員">
+          <SettingRow label="月間休日" hint="目標">
+            <Stepper
+              value={form.employeeDaysOffTarget}
+              min={0}
+              max={31}
+              unit="日"
+              ariaLabel="月間休日の目標"
+              onChange={(n) => setField("employeeDaysOffTarget", n)}
+            />
+          </SettingRow>
+        </SectionCard>
 
-        {/* 社員 */}
-        <section aria-labelledby="settings-employee">
-          <h3 id="settings-employee" className="mb-2 text-sm font-semibold text-slate-700">
-            社員
-          </h3>
-          <FormControl
-            label="月間休日の目標（日）"
-            helpMessage="社員の休みがこの日数を下回ると警告。社員は1日に最低1人配置されます"
-          >
-            {numberField("employeeDaysOffTarget", 0, 31)}
-          </FormControl>
-        </section>
-
-        {/* ピーク時間帯 */}
-        <section aria-labelledby="settings-peak">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 id="settings-peak" className="text-sm font-semibold text-slate-700">
-              ピーク時間帯
-            </h3>
+        <SectionCard icon="trending_up" title="ピーク時間帯">
+          <div className="mb-1 flex justify-end">
             <button
               type="button"
               onClick={() =>
@@ -175,39 +243,45 @@ export default function SettingsModal({
                   peakHours: [...f.peakHours, { start: "12:00", end: "14:00" }],
                 }))
               }
-              className="flex items-center gap-1 rounded-md border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              className="flex items-center gap-1 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50"
             >
               <Icon name="add" size={14} />
               追加
             </button>
           </div>
           {form.peakHours.length === 0 ? (
-            <p className="text-xs text-slate-400">ピーク時間帯なし</p>
+            <p className="py-2 text-center text-xs text-slate-400">未設定</p>
           ) : (
-            <Stack gap={0.75}>
+            <ul className="space-y-2">
               {form.peakHours.map((p, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <label className="sr-only" htmlFor={`peak-start-${i}`}>
-                    ピーク{i + 1} 開始
-                  </label>
-                  <Select
-                    id={`peak-start-${i}`}
-                    value={p.start}
-                    onChange={(e) => setPeak(i, { start: e.target.value })}
-                    options={clockOptions}
-                  />
-                  <span aria-hidden className="text-slate-400">
-                    –
-                  </span>
-                  <label className="sr-only" htmlFor={`peak-end-${i}`}>
-                    ピーク{i + 1} 終了
-                  </label>
-                  <Select
-                    id={`peak-end-${i}`}
-                    value={p.end}
-                    onChange={(e) => setPeak(i, { end: e.target.value })}
-                    options={clockOptions}
-                  />
+                <li
+                  key={i}
+                  className="grid grid-cols-[8.5rem_minmax(0,1fr)_auto] items-center gap-3"
+                >
+                  <span className="text-xs font-medium text-slate-500">帯 {i + 1}</span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <label className="sr-only" htmlFor={`peak-start-${i}`}>
+                      ピーク{i + 1} 開始
+                    </label>
+                    <Select
+                      id={`peak-start-${i}`}
+                      value={p.start}
+                      onChange={(e) => setPeak(i, { start: e.target.value })}
+                      options={clockOptions}
+                    />
+                    <span aria-hidden className="shrink-0 text-slate-400">
+                      –
+                    </span>
+                    <label className="sr-only" htmlFor={`peak-end-${i}`}>
+                      ピーク{i + 1} 終了
+                    </label>
+                    <Select
+                      id={`peak-end-${i}`}
+                      value={p.end}
+                      onChange={(e) => setPeak(i, { end: e.target.value })}
+                      options={clockOptions}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={() =>
@@ -221,41 +295,65 @@ export default function SettingsModal({
                   >
                     <Icon name="delete" size={16} />
                   </button>
-                </div>
+                </li>
               ))}
-            </Stack>
+            </ul>
           )}
-        </section>
+        </SectionCard>
 
-        {/* 休憩 */}
-        <section aria-labelledby="settings-break">
-          <h3 id="settings-break" className="mb-2 text-sm font-semibold text-slate-700">
-            休憩
-          </h3>
-          <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
-              checked={form.strictBreakMode}
-              onChange={(e) => setField("strictBreakMode", e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-indigo-600"
-            />
-            <span>
-              休憩中の人数割れもエラーにする
-              <span className="block text-xs text-slate-400">
-                オフの場合、休憩による一時的な不足は警告として表示します
-              </span>
+        <button
+          type="button"
+          onClick={() => setField("strictBreakMode", !form.strictBreakMode)}
+          aria-pressed={form.strictBreakMode}
+          className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+            form.strictBreakMode
+              ? "border-indigo-300 bg-indigo-50"
+              : "border-slate-200 bg-slate-50/60 hover:bg-slate-50"
+          }`}
+        >
+          <span
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+              form.strictBreakMode
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-200 text-slate-500"
+            }`}
+          >
+            <Icon name="coffee" size={16} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-slate-800">
+              休憩中も人数を厳守
             </span>
-          </label>
-        </section>
+            <span className="block text-[11px] text-slate-400">
+              {form.strictBreakMode ? "不足はエラー" : "不足は警告（ゆるめ）"}
+            </span>
+          </span>
+          <span
+            className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
+              form.strictBreakMode ? "bg-indigo-600" : "bg-slate-300"
+            }`}
+            aria-hidden
+          >
+            <span
+              className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left]"
+              style={{
+                left: form.strictBreakMode ? "1.25rem" : "0.125rem",
+              }}
+            />
+          </span>
+        </button>
 
         {error && (
-          <p role="alert" className="flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <p
+            role="alert"
+            className="flex items-center gap-1.5 rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700"
+          >
             <Icon name="error" size={14} />
             {error}
           </p>
         )}
 
-        <div className="flex justify-end border-t border-slate-100 pt-3">
+        <div className="flex justify-end pt-1">
           <button
             type="button"
             onClick={() => setForm(DEFAULT_SETTINGS)}
@@ -265,7 +363,7 @@ export default function SettingsModal({
             既定値に戻す
           </button>
         </div>
-      </Stack>
+      </div>
     </ControlledActionDialog>
   );
 }

@@ -14,43 +14,38 @@ const ROLE_ORDER: Role[] = ["employee", "part_time", "student"];
 export default function StaffStep() {
   const staff = useAppStore((s) => s.staff);
   const [creating, setCreating] = useState(false);
-  const employees = staff.filter((s) => s.role === "employee").length;
 
   return (
-    <StepPanel
-      step={2}
-      description="学生・パート・社員などの属性と、希望する時間帯（基本パターン）・固定休を登録します。ここで登録した内容は次のステップで候補として表示されます。"
-      actions={
+    <StepPanel step={2} nextDisabled={staff.length === 0}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <dl className="grid flex-1 grid-cols-3 gap-3">
+          {ROLE_ORDER.map((role) => (
+            <div
+              key={role}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 sm:px-5 sm:py-5"
+            >
+              <dt className="text-xs font-medium text-slate-500 sm:text-sm">
+                {ROLE_LABELS[role]}
+              </dt>
+              <dd className="mt-1.5 text-2xl font-bold tabular-nums text-slate-800 sm:text-3xl">
+                {staff.filter((s) => s.role === role).length}
+                <span className="ml-1 text-sm font-medium text-slate-400">名</span>
+              </dd>
+            </div>
+          ))}
+        </dl>
         <button
           onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          className="flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
         >
           <Icon name="person_add" size={18} />
           スタッフを新規登録
         </button>
-      }
-      nextDisabled={staff.length === 0}
-    >
-      {/* 属性別の人数 */}
-      <dl className="flex flex-wrap gap-3">
-        {ROLE_ORDER.map((role) => (
-          <div key={role} className="flex items-center gap-2 rounded-full bg-slate-50 px-4 py-1.5 text-sm">
-            <dt className="text-slate-500">{ROLE_LABELS[role]}</dt>
-            <dd className="font-bold text-slate-800">
-              {staff.filter((s) => s.role === role).length}名
-            </dd>
-          </div>
-        ))}
-      </dl>
+      </div>
 
-      {employees === 0 && (
-        <p role="alert" className="flex items-center gap-2 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <Icon name="warning" size={18} />
-          社員が登録されていません。各日に社員を最低1人配置する条件があるため、社員を1人以上登録してください。
-        </p>
-      )}
-
-      <StaffManager />
+      <div className="pt-2">
+        <StaffManager />
+      </div>
 
       <StaffEditModal staff={null} isOpen={creating} onClose={() => setCreating(false)} />
     </StepPanel>

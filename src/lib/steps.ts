@@ -9,12 +9,42 @@ export type StepDef = {
 
 /** シフト作成の行動フロー */
 export const STEPS: StepDef[] = [
-  { id: 1, label: "対象月", icon: "calendar_month", desc: "何月のシフトを作るか選ぶ" },
-  { id: 2, label: "スタッフ", icon: "group", desc: "属性・希望の時間帯・固定休を登録" },
-  { id: 3, label: "希望入力", icon: "edit_calendar", desc: "みんなの希望を日ごとに入力" },
-  { id: 4, label: "自動生成", icon: "auto_awesome", desc: "条件を確認しながら作成" },
-  { id: 5, label: "確認", icon: "fact_check", desc: "提案内容と懸念事項を確認して確定" },
-  { id: 6, label: "微調整", icon: "tune", desc: "ガントチャートで自由に編集" },
+  {
+    id: 1,
+    label: "対象月",
+    icon: "calendar_month",
+    desc: "作成するシフトの対象月を選んでください。",
+  },
+  {
+    id: 2,
+    label: "スタッフ",
+    icon: "group",
+    desc: "シフトに入れるスタッフを登録してください。名前と属性は必須です。",
+  },
+  {
+    id: 3,
+    label: "希望入力",
+    icon: "edit_calendar",
+    desc: "スタッフごとの希望（休・出勤・時間帯）を入力してください。",
+  },
+  {
+    id: 4,
+    label: "自動生成",
+    icon: "auto_awesome",
+    desc: "内容を確認し、シフト案を自動生成してください。",
+  },
+  {
+    id: 5,
+    label: "確認",
+    icon: "fact_check",
+    desc: "生成されたシフト案を確認し、問題なければ出力してください。",
+  },
+  {
+    id: 6,
+    label: "微調整",
+    icon: "tune",
+    desc: "確定後のシフトを日・週・月で確認し、必要なら微調整してください。",
+  },
 ];
 
 export type StepStatus = "done" | "current" | "pending";

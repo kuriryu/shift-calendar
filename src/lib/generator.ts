@@ -9,6 +9,7 @@ import { daysOfMonth, formatDate, parseDate, weekKeyOf, weekdayOf } from "./date
 import { businessHoursOf, coversSlot, slotPlanOf } from "./coverage";
 import { toMinutes, toTimeString, workMinutesOf } from "./time";
 import { parseSpecialNote } from "./notes";
+import { patternOf } from "./staff-pattern";
 
 // 段階的ヒューリスティック:
 // 1. 日単位で割当（前日までの累積状態を参照）
@@ -45,6 +46,7 @@ function yesterdayOf(dateStr: string): string {
 /** 希望（明示 > 基本パターン > 終日可）から勤務可能時間帯を求める。不可なら null */
 function availabilityWindow(
   staff: Staff,
+  date: string,
   request: ShiftRequest | undefined,
   open: number,
   close: number,
@@ -57,11 +59,11 @@ function availabilityWindow(
       start: toMinutes(request.timeRange.start),
       end: toMinutes(request.timeRange.end),
     };
-  } else if (!request && staff.defaultPattern) {
-    win = {
-      start: toMinutes(staff.defaultPattern.start),
-      end: toMinutes(staff.defaultPattern.end),
-    };
+  } else if (!request) {
+    const pat = patternOf(staff, date);
+    win = pat
+      ? { start: toMinutes(pat.start), end: toMinutes(pat.end) }
+      : { start: open, end: close };
   } else {
     win = { start: open, end: close };
   }
@@ -191,7 +193,7 @@ export function generateMonth(
       if (note?.maxDaysPerWeek != null && st.weekDays >= note.maxDaysPerWeek)
         continue;
       if (st.streak >= s.maxConsecutiveDays) continue;
-      const win = availabilityWindow(s, requestMap.get(`${s.id}:${date}`), open, close, note);
+      const win = availabilityWindow(s, date, requestMap.get(`${s.id}:${date}`), open, close, note);
       if (!win) continue;
       if (win.end - win.start < 60) continue;
       candidates.push({ staff: s, windowStart: win.start, windowEnd: win.end });

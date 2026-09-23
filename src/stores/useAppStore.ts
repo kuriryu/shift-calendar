@@ -15,14 +15,15 @@ import type {
 } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { INITIAL_STAFF } from "@/lib/staff-data";
-import { daysOfMonth, weekdayOf } from "@/lib/dates";
+import { daysOfMonth, nextMonthOf, weekdayOf } from "@/lib/dates";
+import { patternOf } from "@/lib/staff-pattern";
 import { generateMonth } from "@/lib/generator";
 import { validateMonth } from "@/lib/validator";
 import { computeBreak, placeBreakStart } from "@/lib/generator";
 import { toMinutes } from "@/lib/time";
 import { parseCommand } from "@/lib/ai";
 
-const DEFAULT_MONTH = "2026-10";
+const DEFAULT_MONTH = nextMonthOf();
 
 /** セレクタ用の安定した空配列（参照が変わらないようにする） */
 export const EMPTY_ASSIGNMENTS: ShiftAssignment[] = [];
@@ -87,7 +88,7 @@ type AppState = {
   /** シフト作成フローの現在ステップ（null は自動判定） */
   currentStep: StepId | null;
   /** ステップ6（微調整）の表示モード */
-  adjustView: "day" | "month";
+  adjustView: "day" | "week" | "month";
   /** 確定前の仮生成結果 */
   draft: {
     month: string;
@@ -117,7 +118,7 @@ type AppState = {
   confirmDraft: () => void;
   discardDraft: () => void;
   setStep: (step: StepId) => void;
-  setAdjustView: (view: "day" | "month") => void;
+  setAdjustView: (view: "day" | "week" | "month") => void;
   /** 違反をクリックしたときに該当箇所へ移動・ハイライト */
   focusViolation: (v: Violation) => void;
   clearHighlight: () => void;
@@ -297,13 +298,16 @@ export const useAppStore = create<AppState>()(
                 if (has.has(`${st.id}:${date}`)) continue;
                 if (st.unavailableWeekdays?.includes(weekdayOf(date))) {
                   added.push({ staffId: st.id, date, type: "off" });
-                } else if (st.defaultPattern) {
-                  added.push({
-                    staffId: st.id,
-                    date,
-                    type: "time_limited",
-                    timeRange: { ...st.defaultPattern },
-                  });
+                } else {
+                  const pat = patternOf(st, date);
+                  if (pat) {
+                    added.push({
+                      staffId: st.id,
+                      date,
+                      type: "time_limited",
+                      timeRange: { ...pat },
+                    });
+                  }
                 }
               }
             }
@@ -678,12 +682,12 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "shift-app-v1",
-      version: 5,
+      version: 6,
       // 復元直後に違反リストを再計算（violations は永続化していないため）
       onRehydrateStorage: () => (state) => {
         state?.recompute();
       },
-      migrate: (persisted) => {
+      migrate: (persisted, fromVersion) => {
         const p = (persisted ?? {}) as Partial<{
           staff: Staff[];
           settings: Partial<ShopSettings>;
@@ -696,9 +700,24 @@ export const useAppStore = create<AppState>()(
           activities: ActivityEntry[];
         }>;
         const selectedMonth = p.selectedMonth ?? DEFAULT_MONTH;
+
+        // v6: ダミースタッフを捨てて空から開始。希望・シフトもクリア
+        if (fromVersion < 6) {
+          return {
+            staff: [],
+            settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
+            selectedMonth,
+            selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
+            sidebarCollapsed: p.sidebarCollapsed ?? false,
+            hiddenStaffIds: [],
+            requests: {},
+            assignments: {},
+            activities: (p.activities ?? []).filter((a) => a.kind !== "login"),
+          };
+        }
+
         return {
-          staff: p.staff ?? INITIAL_STAFF,
-          // v5: 営業時間・開閉店必須人数・社員休日目標を追加（不足分は既定値で補完）
+          staff: p.staff ?? [],
           settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
           selectedMonth,
           selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
@@ -706,7 +725,6 @@ export const useAppStore = create<AppState>()(
           hiddenStaffIds: p.hiddenStaffIds ?? [],
           requests: p.requests ?? {},
           assignments: p.assignments ?? {},
-          // v3: 過去のログイン履歴を全削除（編集履歴は保持）
           activities: (p.activities ?? []).filter((a) => a.kind !== "login"),
         };
       },

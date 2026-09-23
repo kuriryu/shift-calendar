@@ -2,8 +2,7 @@
 
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
-import { monthLabel } from "@/lib/dates";
-import type { StepStatus } from "@/lib/steps";
+import { STEPS } from "@/lib/steps";
 import StepProgress from "@/components/StepProgress";
 import ViolationBadge from "@/components/ViolationBadge";
 import MonthStep from "@/components/steps/MonthStep";
@@ -24,13 +23,11 @@ export default function Dashboard() {
   );
   const draft = useAppStore((s) => s.draft);
   const currentStep = useAppStore((s) => s.currentStep);
-  const setStep = useAppStore((s) => s.setStep);
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
   }
 
-  // ── 進捗はデータから自動判定 ──
   const hasDraft = draft?.month === month;
   const confirmed = assignments.length > 0;
   const done: Record<StepId, boolean> = {
@@ -41,16 +38,10 @@ export default function Dashboard() {
     5: confirmed,
     6: confirmed,
   };
-  // 未指定時は「最初の未完了ステップ」を現在地にする（作成済みなら微調整）
   const firstPending = ([1, 2, 3, 4, 5, 6] as StepId[]).find((id) => !done[id]);
   const active: StepId = currentStep ?? (confirmed ? 6 : (firstPending ?? 6));
 
-  const statuses = Object.fromEntries(
-    ([1, 2, 3, 4, 5, 6] as StepId[]).map((id) => [
-      id,
-      (id === active ? "current" : done[id] ? "done" : "pending") as StepStatus,
-    ]),
-  ) as Record<StepId, StepStatus>;
+  const def = STEPS[active - 1];
 
   const panel = {
     1: <MonthStep />,
@@ -62,20 +53,28 @@ export default function Dashboard() {
   }[active];
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">{monthLabel(month)} のシフト</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            ステップに沿って作成し、確認してから確定・微調整します
+    <div className="space-y-14">
+      <StepProgress current={active} />
+
+      <header className="flex flex-wrap items-start justify-between gap-4 pt-3 pb-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold tracking-wide text-indigo-600">
+            STEP {active}
           </p>
+          <h1
+            id={`step-${active}-title`}
+            className="mt-5 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
+          >
+            {def.label}
+          </h1>
+          <p className="mt-2 text-base leading-relaxed text-slate-500">{def.desc}</p>
         </div>
         <ViolationBadge />
       </header>
 
-      <StepProgress current={active} statuses={statuses} onSelect={setStep} />
-
-      <div aria-live="polite">{panel}</div>
+      <div aria-live="polite" className="pt-2">
+        {panel}
+      </div>
     </div>
   );
 }

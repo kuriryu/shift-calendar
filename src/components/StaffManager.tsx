@@ -28,8 +28,8 @@ export default function StaffManager() {
   }
 
   return (
-    <div className="space-y-3">
-      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+    <div className="space-y-5">
+      <p className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
         <Icon name="info" size={14} />
         名前をクリックすると属性・基本パターン・特別な要望を編集できます。
       </p>
@@ -80,9 +80,21 @@ export default function StaffManager() {
                         {s.maxHoursPerWeek > 0 ? `${s.maxHoursPerWeek}h` : "—"}
                       </td>
                       <td className="px-4 py-2 text-slate-600">
-                        {s.defaultPattern
-                          ? `${s.defaultPattern.start}–${s.defaultPattern.end}`
-                          : "—"}
+                        {[
+                          s.weekdayPattern
+                            ? `平 ${s.weekdayPattern.start}–${s.weekdayPattern.end}`
+                            : null,
+                          s.weekendPattern
+                            ? `休 ${s.weekendPattern.start}–${s.weekendPattern.end}`
+                            : null,
+                          !s.weekdayPattern &&
+                          !s.weekendPattern &&
+                          s.defaultPattern
+                            ? `${s.defaultPattern.start}–${s.defaultPattern.end}`
+                            : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" / ") || "—"}
                       </td>
                       <td className="px-4 py-2 text-slate-600">
                         {s.unavailableWeekdays && s.unavailableWeekdays.length > 0

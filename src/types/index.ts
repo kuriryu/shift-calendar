@@ -12,7 +12,12 @@ export type Staff = {
   maxHoursPerWeek: number;
   maxConsecutiveDays: number;
   monthlyDaysOffTarget: number; // 社員のみ意味を持つ（他は0）
-  defaultPattern?: TimeRange; // 未入力日に自動適用される基本パターン
+  /** @deprecated 平日・土日パターンへ移行。マイグレーション用に残す */
+  defaultPattern?: TimeRange;
+  /** 平日（月〜金）の基本パターン。未入力日に自動適用 */
+  weekdayPattern?: TimeRange;
+  /** 休日（土・日）の基本パターン。未入力日に自動適用 */
+  weekendPattern?: TimeRange;
   unavailableWeekdays?: number[]; // 0=日 … 6=土
   specialNote?: string; // 特別な要望（自由テキスト。AIが解釈して生成に反映）
   note?: string;
