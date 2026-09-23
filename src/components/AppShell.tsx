@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import SignOutButton from "@/components/SignOutButton";
+import SidebarCalendar from "@/components/SidebarCalendar";
+import StaffFilter from "@/components/StaffFilter";
 import Icon from "@/components/Icon";
 import { useAppStore } from "@/stores/useAppStore";
 import { monthLabel, shiftMonth } from "@/lib/dates";
@@ -145,6 +147,8 @@ export default function AppShell({
   const setMonth = useAppStore((s) => s.setMonth);
   const violations = useAppStore((s) => s.violations);
   const recordLogin = useAppStore((s) => s.recordLogin);
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
 
   // ログイン履歴を記録（セッション中は1回）
   useEffect(() => {
@@ -162,37 +166,75 @@ export default function AppShell({
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
+  // LocalStorage からの復元値とSSR HTMLの不一致（ハイドレーションエラー）を防ぐため、
+  // マウント後までは展開状態として描画する
+  const collapsed = mounted ? sidebarCollapsed : false;
+
   return (
     <div className="flex min-h-full flex-1">
-      {/* サイドバー */}
-      <aside className="sticky top-0 z-30 flex h-screen w-14 shrink-0 flex-col border-r border-slate-200 bg-white sm:w-52">
-        <div className="flex h-14 items-center justify-center border-b border-slate-100 sm:justify-start sm:px-4">
-          <Icon
-            name="calendar_month"
-            size={20}
-            className="shrink-0 text-indigo-600 sm:hidden"
-          />
-          <h1 className="hidden text-sm font-bold text-slate-800 sm:block">
-            シフトカレンダー
-          </h1>
+      {/* サイドバー（折りたたみ可能） */}
+      <aside
+        className={`sticky top-0 z-30 flex h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] ${
+          collapsed ? "w-14" : "w-60"
+        }`}
+      >
+        <div
+          className={`flex h-14 shrink-0 items-center border-b border-slate-100 ${
+            collapsed ? "justify-center" : "justify-between px-4"
+          }`}
+        >
+          {!collapsed && (
+            <h1 className="text-sm font-bold text-slate-800">
+              シフトカレンダー
+            </h1>
+          )}
+          <button
+            onClick={toggleSidebar}
+            aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
+            className="rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+          >
+            <Icon
+              name={
+                collapsed
+                  ? "keyboard_double_arrow_right"
+                  : "keyboard_double_arrow_left"
+              }
+              size={18}
+            />
+          </button>
         </div>
-        <nav className="flex flex-col gap-1 p-2">
+
+        <nav className="flex shrink-0 flex-col gap-1 p-2">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               aria-label={item.label}
-              className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:justify-start ${
+              title={item.label}
+              className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                collapsed ? "justify-center px-0" : ""
+                } ${
                 isActive(item.href)
                   ? "bg-indigo-50 text-indigo-700"
                   : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
               }`}
             >
               <Icon name={item.icon} size={18} />
-              <span className="hidden sm:inline">{item.label}</span>
+              {!collapsed && <span>{item.label}</span>}
             </Link>
           ))}
         </nav>
+
+        {!collapsed && (
+          <div className="flex-1 overflow-y-auto pb-4">
+            <div className="border-t border-slate-100 py-3">
+              <SidebarCalendar />
+            </div>
+            <div className="border-t border-slate-100 py-3">
+              <StaffFilter />
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* 右カラム */}

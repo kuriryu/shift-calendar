@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   ActivityEntry,
+  Role,
   ShiftAssignment,
   ShiftRequest,
   ShopSettings,
@@ -69,12 +70,23 @@ type AppState = {
   staff: Staff[];
   settings: ShopSettings;
   selectedMonth: string;
+  /** ガントチャートに表示する日付 */
+  selectedDate: string;
+  /** サイドバーの折りたたみ状態 */
+  sidebarCollapsed: boolean;
+  /** ガントから非表示にするスタッフID */
+  hiddenStaffIds: string[];
   requests: Record<string, ShiftRequest[]>;
   assignments: Record<string, ShiftAssignment[]>;
   violations: Violation[];
   activities: ActivityEntry[];
 
   setMonth: (month: string) => void;
+  setSelectedDate: (date: string) => void;
+  toggleSidebar: () => void;
+  toggleStaffFilter: (staffId: string) => void;
+  toggleRoleFilter: (role: Role) => void;
+  addStaff: (staff: Omit<Staff, "id">) => void;
   setRequest: (req: ShiftRequest) => void;
   clearRequest: (staffId: string, date: string) => void;
   bulkSetRequests: (staffId: string, type: "available" | "off") => void;
@@ -119,15 +131,77 @@ export const useAppStore = create<AppState>()(
         staff: INITIAL_STAFF,
         settings: DEFAULT_SETTINGS,
         selectedMonth: DEFAULT_MONTH,
+        selectedDate: `${DEFAULT_MONTH}-01`,
+        // スマートフォンではデフォルトで折りたたみ
+        sidebarCollapsed:
+          typeof window !== "undefined" && window.innerWidth < 640,
+        hiddenStaffIds: [],
         requests: {},
         assignments: {},
         violations: [],
         activities: [],
 
         setMonth: (month) =>
+          set((s) => {
+            // 選択日も新しい月にクランプして移動
+            const day = Math.min(
+              Number(s.selectedDate.slice(8)),
+              daysOfMonth(month).length,
+            );
+            const selectedDate = `${month}-${String(day).padStart(2, "0")}`;
+            return {
+              selectedMonth: month,
+              selectedDate,
+              ...revalidate({ ...s, selectedMonth: month }),
+            };
+          }),
+
+        setSelectedDate: (date) =>
+          set((s) => {
+            const month = date.slice(0, 7);
+            if (month === s.selectedMonth) return { selectedDate: date };
+            return {
+              selectedDate: date,
+              selectedMonth: month,
+              ...revalidate({ ...s, selectedMonth: month }),
+            };
+          }),
+
+        toggleSidebar: () =>
+          set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+        toggleStaffFilter: (staffId) =>
           set((s) => ({
-            selectedMonth: month,
-            ...revalidate({ ...s, selectedMonth: month }),
+            hiddenStaffIds: s.hiddenStaffIds.includes(staffId)
+              ? s.hiddenStaffIds.filter((id) => id !== staffId)
+              : [...s.hiddenStaffIds, staffId],
+          })),
+
+        toggleRoleFilter: (role) =>
+          set((s) => {
+            const ids = s.staff
+              .filter((x) => x.role === role)
+              .map((x) => x.id);
+            const anyVisible = ids.some(
+              (id) => !s.hiddenStaffIds.includes(id),
+            );
+            return {
+              hiddenStaffIds: anyVisible
+                ? [...new Set([...s.hiddenStaffIds, ...ids])]
+                : s.hiddenStaffIds.filter((id) => !ids.includes(id)),
+            };
+          }),
+
+        addStaff: (partial) =>
+          set((s) => ({
+            staff: [
+              ...s.staff,
+              { ...partial, id: `staff-${Date.now().toString(36)}` },
+            ],
+            activities: [
+              makeActivity("staff", `${partial.name} を新規登録`),
+              ...s.activities,
+            ].slice(0, MAX_ACTIVITIES),
           })),
 
         setRequest: (req) =>
@@ -435,20 +509,27 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "shift-app-v1",
-      version: 3,
+      version: 4,
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<{
           staff: Staff[];
           settings: ShopSettings;
           selectedMonth: string;
+          selectedDate: string;
+          sidebarCollapsed: boolean;
+          hiddenStaffIds: string[];
           requests: Record<string, ShiftRequest[]>;
           assignments: Record<string, ShiftAssignment[]>;
           activities: ActivityEntry[];
         }>;
+        const selectedMonth = p.selectedMonth ?? DEFAULT_MONTH;
         return {
           staff: p.staff ?? INITIAL_STAFF,
           settings: p.settings ?? DEFAULT_SETTINGS,
-          selectedMonth: p.selectedMonth ?? DEFAULT_MONTH,
+          selectedMonth,
+          selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
+          sidebarCollapsed: p.sidebarCollapsed ?? false,
+          hiddenStaffIds: p.hiddenStaffIds ?? [],
           requests: p.requests ?? {},
           assignments: p.assignments ?? {},
           // v3: 過去のログイン履歴を全削除（編集履歴は保持）
@@ -459,6 +540,9 @@ export const useAppStore = create<AppState>()(
         staff: s.staff,
         settings: s.settings,
         selectedMonth: s.selectedMonth,
+        selectedDate: s.selectedDate,
+        sidebarCollapsed: s.sidebarCollapsed,
+        hiddenStaffIds: s.hiddenStaffIds,
         requests: s.requests,
         assignments: s.assignments,
         activities: s.activities,

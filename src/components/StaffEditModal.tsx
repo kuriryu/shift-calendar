@@ -29,36 +29,40 @@ export default function StaffEditModal({
   isOpen,
   onClose,
 }: {
-  staff: Staff;
+  /** null のとき新規登録モード */
+  staff: Staff | null;
   isOpen: boolean;
   onClose: () => void;
 }) {
   const updateStaff = useAppStore((s) => s.updateStaff);
+  const addStaff = useAppStore((s) => s.addStaff);
 
-  const [name, setName] = useState(staff.name);
-  const [role, setRole] = useState<Role>(staff.role);
-  const [maxHours, setMaxHours] = useState(String(staff.maxHoursPerWeek));
-  const [maxConsec, setMaxConsec] = useState(String(staff.maxConsecutiveDays));
+  const [name, setName] = useState(staff?.name ?? "");
+  const [role, setRole] = useState<Role>(staff?.role ?? "part_time");
+  const [maxHours, setMaxHours] = useState(String(staff?.maxHoursPerWeek ?? 20));
+  const [maxConsec, setMaxConsec] = useState(
+    String(staff?.maxConsecutiveDays ?? 3),
+  );
   const [patternStart, setPatternStart] = useState(
-    staff.defaultPattern?.start ?? "",
+    staff?.defaultPattern?.start ?? "",
   );
-  const [patternEnd, setPatternEnd] = useState(staff.defaultPattern?.end ?? "");
+  const [patternEnd, setPatternEnd] = useState(staff?.defaultPattern?.end ?? "");
   const [offWeekdays, setOffWeekdays] = useState<number[]>(
-    staff.unavailableWeekdays ?? [],
+    staff?.unavailableWeekdays ?? [],
   );
-  const [specialNote, setSpecialNote] = useState(staff.specialNote ?? "");
+  const [specialNote, setSpecialNote] = useState(staff?.specialNote ?? "");
 
   // 別のスタッフで開き直したときに初期化
   useEffect(() => {
     if (!isOpen) return;
-    setName(staff.name);
-    setRole(staff.role);
-    setMaxHours(String(staff.maxHoursPerWeek));
-    setMaxConsec(String(staff.maxConsecutiveDays));
-    setPatternStart(staff.defaultPattern?.start ?? "");
-    setPatternEnd(staff.defaultPattern?.end ?? "");
-    setOffWeekdays(staff.unavailableWeekdays ?? []);
-    setSpecialNote(staff.specialNote ?? "");
+    setName(staff?.name ?? "");
+    setRole(staff?.role ?? "part_time");
+    setMaxHours(String(staff?.maxHoursPerWeek ?? 20));
+    setMaxConsec(String(staff?.maxConsecutiveDays ?? 3));
+    setPatternStart(staff?.defaultPattern?.start ?? "");
+    setPatternEnd(staff?.defaultPattern?.end ?? "");
+    setOffWeekdays(staff?.unavailableWeekdays ?? []);
+    setSpecialNote(staff?.specialNote ?? "");
   }, [staff, isOpen]);
 
   const parsed = useMemo(() => parseSpecialNote(specialNote), [specialNote]);
@@ -69,27 +73,37 @@ export default function StaffEditModal({
     );
 
   const save = () => {
-    updateStaff({
-      ...staff,
-      name: name.trim() || staff.name,
+    const base = {
+      name: name.trim() || (staff?.name ?? "新しいスタッフ"),
       role,
       maxHoursPerWeek: Number(maxHours) || 0,
       maxConsecutiveDays: Number(maxConsec) || 1,
+      // 社員の月間休日目標（新規の社員は8日を既定）
+      monthlyDaysOffTarget:
+        staff?.monthlyDaysOffTarget ?? (role === "employee" ? 8 : 0),
       defaultPattern:
         patternStart && patternEnd && patternStart < patternEnd
           ? { start: patternStart, end: patternEnd }
           : undefined,
       unavailableWeekdays: offWeekdays.length > 0 ? offWeekdays : undefined,
       specialNote: specialNote.trim() || undefined,
-    });
+    };
+    if (staff) {
+      updateStaff({ ...staff, ...base });
+    } else {
+      addStaff(base);
+    }
     onClose();
   };
 
   return (
     <ControlledActionDialog
       isOpen={isOpen}
-      heading={`${staff.name} の編集`}
-      actionButton={{ text: "保存する", theme: "primary" }}
+      heading={staff ? `${staff.name} の編集` : "スタッフを新規登録"}
+      actionButton={{
+        text: staff ? "保存する" : "登録する",
+        theme: "primary",
+      }}
       onClickAction={() => save()}
       onClickClose={onClose}
       onClickOverlay={onClose}

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { businessHoursOf } from "@/lib/coverage";
 import Icon from "@/components/Icon";
+import StaffEditModal from "@/components/StaffEditModal";
 import { toMinutes } from "@/lib/time";
 import { dayLabel } from "@/lib/dates";
 import type { Role, ShiftAssignment, Staff } from "@/types";
@@ -56,6 +56,8 @@ export default function DayTimeline({ date }: { date: string }) {
   const [addStart, setAddStart] = useState("09:00");
   const [addEnd, setAddEnd] = useState("13:00");
   const [addBreakMin, setAddBreakMin] = useState("auto");
+  const [creatingStaff, setCreatingStaff] = useState(false);
+  const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
@@ -65,11 +67,11 @@ export default function DayTimeline({ date }: { date: string }) {
   const total = closeMin - openMin;
   const staffById = new Map(staff.map((s) => [s.id, s]));
 
-  const rows = [...assignments].sort((a, b) =>
-    a.startTime.localeCompare(b.startTime),
-  );
-  const assignedIds = new Set(assignments.map((a) => a.staffId));
-  const unassigned = staff.filter((s) => !assignedIds.has(s.id));
+  // 行は全スタッフ（絞り込み反映・ストア順）。未割当のスタッフは空行で表示する
+  const hidden = new Set(hiddenStaffIds);
+  const visibleStaff = staff.filter((s) => !hidden.has(s.id));
+  const assignmentByStaff = new Map(assignments.map((a) => [a.staffId, a]));
+  const unassigned = visibleStaff.filter((s) => !assignmentByStaff.has(s.id));
 
   const pct = (min: number) => ((min - openMin) / total) * 100;
 
@@ -105,13 +107,6 @@ export default function DayTimeline({ date }: { date: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Link
-          href="/shifts"
-          className="flex items-center gap-0.5 text-xs text-slate-400 hover:text-slate-600"
-        >
-          <Icon name="arrow_back" size={14} />
-          シフト表
-        </Link>
         <h2 className="text-lg font-bold text-slate-800">{dayLabel(date)}</h2>
         <span className="text-xs text-slate-400">
           バーをクリックで編集（休憩は白い切れ目）
@@ -153,46 +148,56 @@ export default function DayTimeline({ date }: { date: string }) {
             />
           ))}
 
-          {rows.map((a) => {
-            const s = staffById.get(a.staffId);
-            if (!s) return null;
-            const sMin = toMinutes(a.startTime);
-            const eMin = toMinutes(a.endTime);
+          {visibleStaff.map((s) => {
+            const a = assignmentByStaff.get(s.id);
+            const sMin = a ? toMinutes(a.startTime) : 0;
+            const eMin = a ? toMinutes(a.endTime) : 0;
             return (
-              <div key={a.id} className="relative flex h-9 items-center">
+              <div key={s.id} className="relative flex h-9 items-center">
                 <div className="absolute -left-28 w-24 truncate text-right text-xs font-medium text-slate-700">
                   {s.name}
                 </div>
-                <button
-                  onClick={(e) => openEdit(e, a)}
-                  className={`absolute h-6 rounded-md ${ROLE_BAR[s.role]} text-left text-[10px] font-semibold text-white shadow-sm hover:opacity-80`}
-                  style={{
-                    left: `${pct(sMin)}%`,
-                    width: `${pct(eMin) - pct(sMin)}%`,
-                  }}
-                >
-                  <span className="px-1.5 leading-6">
-                    {a.startTime}-{a.endTime}
-                  </span>
-                  {a.breakStartTime && a.breakMinutes > 0 && (
-                    <span
-                      className="absolute top-0 h-full bg-white/90"
-                      style={{
-                        left: `${((toMinutes(a.breakStartTime) - sMin) / (eMin - sMin)) * 100}%`,
-                        width: `${(a.breakMinutes / (eMin - sMin)) * 100}%`,
-                      }}
-                    />
-                  )}
-                </button>
+                {a && (
+                  <button
+                    onClick={(e) => openEdit(e, a)}
+                    className={`absolute h-6 rounded-md ${ROLE_BAR[s.role]} text-left text-[10px] font-semibold text-white shadow-sm hover:opacity-80`}
+                    style={{
+                      left: `${pct(sMin)}%`,
+                      width: `${pct(eMin) - pct(sMin)}%`,
+                    }}
+                  >
+                    <span className="px-1.5 leading-6">
+                      {a.startTime}-{a.endTime}
+                    </span>
+                    {a.breakStartTime && a.breakMinutes > 0 && (
+                      <span
+                        className="absolute top-0 h-full bg-white/90"
+                        style={{
+                          left: `${((toMinutes(a.breakStartTime) - sMin) / (eMin - sMin)) * 100}%`,
+                          width: `${(a.breakMinutes / (eMin - sMin)) * 100}%`,
+                        }}
+                      />
+                    )}
+                  </button>
+                )}
               </div>
             );
           })}
 
-          {rows.length === 0 && (
+          {visibleStaff.length === 0 && (
             <p className="py-8 text-center text-sm text-slate-400">
-              この日のシフトはありません
+              表示するスタッフがいません（サイドバーの絞り込みを確認してください）
             </p>
           )}
+
+          {/* スタッフ新規登録バー */}
+          <button
+            onClick={() => setCreatingStaff(true)}
+            className="relative mt-1 flex h-9 w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-xs font-medium text-slate-400 transition-colors hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600"
+          >
+            <Icon name="person_add" size={16} />
+            スタッフを新規登録
+          </button>
         </div>
 
         {/* 追加フォーム */}
@@ -388,6 +393,13 @@ export default function DayTimeline({ date }: { date: string }) {
           </div>
         </>
       )}
+
+      {/* スタッフ新規登録モーダル */}
+      <StaffEditModal
+        staff={null}
+        isOpen={creatingStaff}
+        onClose={() => setCreatingStaff(false)}
+      />
     </div>
   );
 }

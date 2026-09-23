@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
@@ -21,9 +20,13 @@ function shortTime(t: string): string {
   return m === 0 ? String(h) : `${h}.5`;
 }
 
-export default function MonthMatrix() {
+export default function MonthMatrix({
+  onSelectDate,
+}: {
+  /** 日付ヘッダークリック時（時間ビューへの切替などに使う） */
+  onSelectDate: (date: string) => void;
+}) {
   const mounted = useMounted();
-  const router = useRouter();
   const staff = useAppStore((s) => s.staff);
   const month = useAppStore((s) => s.selectedMonth);
   const assignments = useAppStore(
@@ -95,9 +98,9 @@ export default function MonthMatrix() {
               return (
                 <th key={date} className={`min-w-10 px-1 py-1 ${tint}`}>
                   <button
-                    onClick={() => router.push(`/day/${date}`)}
+                    onClick={() => onSelectDate(date)}
                     className="flex w-full flex-col items-center rounded py-0.5 hover:bg-white/70"
-                    title="日別ビューへ"
+                    title="時間ビューでこの日を表示"
                   >
                     <span className="text-xs font-semibold text-slate-700">
                       {dayNum}
