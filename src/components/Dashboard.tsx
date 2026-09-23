@@ -57,7 +57,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-slate-800">ダッシュボード</h2>
+        <h2 className="text-xl font-bold text-slate-800">トップ</h2>
         <p className="text-xs text-slate-400">{monthLabel(month)} の状況</p>
       </div>
 

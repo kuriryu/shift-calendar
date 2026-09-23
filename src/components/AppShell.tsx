@@ -1,11 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import SignOutButton from "@/components/SignOutButton";
 import Icon from "@/components/Icon";
 import { useAppStore } from "@/stores/useAppStore";
 import { monthLabel, shiftMonth } from "@/lib/dates";
 import { useMounted } from "@/hooks/useMounted";
+
+const NAV_ITEMS = [
+  { href: "/", label: "トップ", icon: "home" },
+  { href: "/requests", label: "希望入力", icon: "edit_calendar" },
+  { href: "/staff", label: "スタッフ", icon: "group" },
+  { href: "/stats", label: "集計", icon: "bar_chart" },
+] as const;
 
 function formatAt(iso: string): string {
   const d = new Date(iso);
@@ -130,6 +139,7 @@ export default function AppShell({
   email: string | null;
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const mounted = useMounted();
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   const setMonth = useAppStore((s) => s.setMonth);
@@ -149,60 +159,93 @@ export default function AppShell({
     (v) => v.severity === "warning",
   ).length;
 
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
-          <h1 className="text-base font-bold text-slate-800">
+    <div className="flex min-h-full flex-1">
+      {/* サイドバー */}
+      <aside className="sticky top-0 z-30 flex h-screen w-14 shrink-0 flex-col border-r border-slate-200 bg-white sm:w-52">
+        <div className="flex h-14 items-center justify-center border-b border-slate-100 sm:justify-start sm:px-4">
+          <Icon
+            name="calendar_month"
+            size={20}
+            className="shrink-0 text-indigo-600 sm:hidden"
+          />
+          <h1 className="hidden text-sm font-bold text-slate-800 sm:block">
             シフトカレンダー
           </h1>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setMonth(shiftMonth(selectedMonth, -1))}
-              className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
-              aria-label="前の月"
-            >
-              <Icon name="chevron_left" size={18} />
-            </button>
-            <span className="min-w-24 text-center text-sm font-semibold text-slate-800">
-              {mounted ? monthLabel(selectedMonth) : "…"}
-            </span>
-            <button
-              onClick={() => setMonth(shiftMonth(selectedMonth, 1))}
-              className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
-              aria-label="次の月"
-            >
-              <Icon name="chevron_right" size={18} />
-            </button>
-          </div>
-
-          {mounted && (errorCount > 0 || warningCount > 0) && (
-            <div className="flex items-center gap-2 text-xs font-medium">
-              {errorCount > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-red-700">
-                  <Icon name="error" size={12} />
-                  {errorCount}
-                </span>
-              )}
-              {warningCount > 0 && (
-                <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
-                  <Icon name="warning" size={12} />
-                  {warningCount}
-                </span>
-              )}
-            </div>
-          )}
-
-          <div className="relative ml-auto">
-            <ProfileMenu email={email} />
-          </div>
         </div>
-      </header>
+        <nav className="flex flex-col gap-1 p-2">
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={item.label}
+              className={`flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:justify-start ${
+                isActive(item.href)
+                  ? "bg-indigo-50 text-indigo-700"
+                  : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              }`}
+            >
+              <Icon name={item.icon} size={18} />
+              <span className="hidden sm:inline">{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+      </aside>
 
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
-        {children}
-      </main>
+      {/* 右カラム */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setMonth(shiftMonth(selectedMonth, -1))}
+                className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
+                aria-label="前の月"
+              >
+                <Icon name="chevron_left" size={18} />
+              </button>
+              <span className="min-w-24 text-center text-sm font-semibold text-slate-800">
+                {mounted ? monthLabel(selectedMonth) : "…"}
+              </span>
+              <button
+                onClick={() => setMonth(shiftMonth(selectedMonth, 1))}
+                className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
+                aria-label="次の月"
+              >
+                <Icon name="chevron_right" size={18} />
+              </button>
+            </div>
+
+            {mounted && (errorCount > 0 || warningCount > 0) && (
+              <div className="flex items-center gap-2 text-xs font-medium">
+                {errorCount > 0 && (
+                  <span className="flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-red-700">
+                    <Icon name="error" size={12} />
+                    {errorCount}
+                  </span>
+                )}
+                {warningCount > 0 && (
+                  <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
+                    <Icon name="warning" size={12} />
+                    {warningCount}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <div className="relative ml-auto">
+              <ProfileMenu email={email} />
+            </div>
+          </div>
+        </header>
+
+        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
