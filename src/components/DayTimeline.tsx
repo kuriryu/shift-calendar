@@ -3,23 +3,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
-import { useDismissable } from "@/hooks/useDismissable";
 import { businessHoursOf, timeOptionsOf } from "@/lib/coverage";
 import Icon from "@/components/Icon";
+import AssignmentAddForm from "@/components/AssignmentAddForm";
+import AssignmentEditPopover, {
+  positionEditPopover,
+  type AssignmentEditTarget,
+} from "@/components/AssignmentEditPopover";
+import StaffHoursModal from "@/components/StaffHoursModal";
 import { toMinutes } from "@/lib/time";
 import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
 import type { ShiftAssignment, Staff } from "@/types";
 import { staffColorOf } from "@/lib/staff-color";
-
-/** 指定可能な休憩時間（分） */
-const BREAK_OPTIONS = [0, 30, 45, 60, 75, 90, 120];
-
-type EditState = {
-  assignment: ShiftAssignment;
-  staff: Staff;
-  x: number;
-  y: number;
-};
 
 export default function DayTimeline({ date }: { date: string }) {
   const mounted = useMounted();
@@ -29,25 +24,17 @@ export default function DayTimeline({ date }: { date: string }) {
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const assignments = monthAssignments.filter((a) => a.date === date);
-  const updateAssignment = useAppStore((s) => s.updateAssignment);
-  const removeAssignment = useAppStore((s) => s.removeAssignment);
-  const addAssignment = useAppStore((s) => s.addAssignment);
   const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
   const highlight = useAppStore((s) => s.highlight);
   const clearHighlight = useAppStore((s) => s.clearHighlight);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
+  const reorderStaff = useAppStore((s) => s.reorderStaff);
 
-  const [edit, setEdit] = useState<EditState | null>(null);
+  const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
+  const [hoursStaff, setHoursStaff] = useState<Staff | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const lastOverRef = useRef<string | null>(null);
   const closeEdit = useCallback(() => setEdit(null), []);
-  const editRef = useDismissable<HTMLDivElement>(edit !== null, closeEdit);
-  const [start, setStart] = useState("09:00");
-  const [end, setEnd] = useState("18:00");
-  const [breakMin, setBreakMin] = useState("60");
-  const [breakStart, setBreakStart] = useState("14:00");
-  const [addStaffId, setAddStaffId] = useState("");
-  const [addStart, setAddStart] = useState("09:00");
-  const [addEnd, setAddEnd] = useState("13:00");
-  const [addBreakMin, setAddBreakMin] = useState("auto");
   const chartRef = useRef<HTMLDivElement>(null);
 
   // ハイライト対象へスクロールし、数秒後に解除
@@ -82,28 +69,38 @@ export default function DayTimeline({ date }: { date: string }) {
   const pct = (min: number) => clamp(((min - openMin) / total) * 100);
 
   const openEdit = (e: React.MouseEvent, a: ShiftAssignment) => {
-    setStart(a.startTime);
-    setEnd(a.endTime);
-    setBreakMin(String(a.breakMinutes));
-    setBreakStart(a.breakStartTime ?? "14:00");
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = Math.min(rect.left, window.innerWidth - 250);
-    const y = Math.min(rect.bottom + 6, window.innerHeight - 330);
-    setEdit({ assignment: a, staff: staffById.get(a.staffId)!, x, y });
+    const staffMember = staffById.get(a.staffId);
+    if (!staffMember) return;
+    const { x, y } = positionEditPopover(e);
+    setEdit({ assignment: a, staff: staffMember, date, x, y });
   };
 
-  // 選択中の勤務時間・休憩時間に対して有効な休憩開始時刻の候補
-  const breakMinNum = Number(breakMin);
-  const breakStartOptions =
-    breakMinNum > 0 && start < end
-      ? timeOptions.filter((t) => {
-          const m = toMinutes(t);
-          return m >= toMinutes(start) && m + breakMinNum <= toMinutes(end);
-        })
-      : [];
-  const validBreakStart = breakStartOptions.includes(breakStart)
-    ? breakStart
-    : (breakStartOptions[0] ?? "");
+  const onStaffDragStart = (e: React.DragEvent, id: string) => {
+    setDragId(id);
+    lastOverRef.current = null;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+  const onStaffDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const id = dragId || e.dataTransfer.getData("text/plain");
+    if (!id || id === targetId) return;
+    if (lastOverRef.current === targetId) return;
+    lastOverRef.current = targetId;
+    reorderStaff(id, targetId);
+  };
+  const onStaffDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || dragId;
+    if (id && id !== targetId) reorderStaff(id, targetId);
+    setDragId(null);
+    lastOverRef.current = null;
+  };
+  const onStaffDragEnd = () => {
+    setDragId(null);
+    lastOverRef.current = null;
+  };
 
   const hours: number[] = [];
   for (let m = openMin; m <= closeMin; m += 60) hours.push(m);
@@ -150,7 +147,7 @@ export default function DayTimeline({ date }: { date: string }) {
         <span className="text-xs text-slate-400">
           営業 {String(Math.floor(openMin / 60)).padStart(2, "0")}:{String(openMin % 60).padStart(2, "0")}〜
           {String(Math.floor(closeMin / 60)).padStart(2, "0")}:{String(closeMin % 60).padStart(2, "0")}
-          ・バーをタップで編集（休憩は白い切れ目）
+          ・名前をドラッグで並べ替え／タップで稼働時間
         </span>
         <ul className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-slate-500" aria-label="凡例">
           {visibleStaff.slice(0, 8).map((s) => {
@@ -182,7 +179,7 @@ export default function DayTimeline({ date }: { date: string }) {
       >
        <div className="min-w-[40rem]">
         {/* 時間軸 */}
-        <div className="relative ml-32 h-6">
+        <div className="relative ml-36 h-6">
           {hours.map((m) => (
             <span
               key={m}
@@ -194,7 +191,7 @@ export default function DayTimeline({ date }: { date: string }) {
           ))}
         </div>
 
-        <div className="relative ml-32">
+        <div className="relative ml-36">
           {/* ピーク時間帯の背景 */}
           {settings.peakHours.map((r, i) => (
             <div
@@ -239,16 +236,33 @@ export default function DayTimeline({ date }: { date: string }) {
                 <li
                   key={s.id}
                   data-staff-id={s.id}
+                  draggable
+                  onDragStart={(e) => onStaffDragStart(e, s.id)}
+                  onDragOver={(e) => onStaffDragOver(e, s.id)}
+                  onDrop={(e) => onStaffDrop(e, s.id)}
+                  onDragEnd={onStaffDragEnd}
                   className={`relative flex h-11 items-center ${
                     isHl ? "violation-highlight bg-red-50/70" : ""
-                  }`}
+                  } ${dragId === s.id ? "opacity-60 ring-2 ring-inset ring-indigo-300" : ""}`}
                 >
-                  <div
-                    className={`absolute -left-32 w-28 truncate pr-2 text-right text-xs font-medium ${
-                      isHl ? "text-red-700" : "text-slate-700"
-                    }`}
-                  >
-                    {s.name}
+                  <div className="absolute -left-36 flex w-32 items-center gap-0.5 pr-1">
+                    <span
+                      className="inline-flex shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+                      title="ドラッグで並べ替え"
+                      aria-hidden
+                    >
+                      <Icon name="drag_indicator" size={16} />
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setHoursStaff(s)}
+                      aria-label={`${s.name}の稼働時間を表示`}
+                      className={`min-w-0 flex-1 truncate text-left text-xs font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-600 ${
+                        isHl ? "text-red-700" : "text-slate-700"
+                      }`}
+                    >
+                      {s.name}
+                    </button>
                   </div>
                   {a ? (
                     <button
@@ -293,218 +307,38 @@ export default function DayTimeline({ date }: { date: string }) {
         </div>
        </div>
 
-        {/* 追加フォーム */}
-        {unassigned.length > 0 && (
-          <form
-            className="mt-6 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4"
-            aria-label="シフトを追加"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (addStaffId && addStart < addEnd) {
-                addAssignment({
-                  staffId: addStaffId,
-                  date,
-                  startTime: addStart,
-                  endTime: addEnd,
-                  ...(addBreakMin !== "auto" ? { breakMinutes: Number(addBreakMin) } : {}),
-                });
-                setAddStaffId("");
-              }
-            }}
-          >
-            <span className="text-xs font-medium text-slate-500">＋ シフトを追加</span>
-            <label className="sr-only" htmlFor="add-staff">
-              スタッフ
-            </label>
-            <select
-              id="add-staff"
-              value={addStaffId}
-              onChange={(e) => setAddStaffId(e.target.value)}
-              className="rounded-md border border-slate-200 px-2 py-1.5 text-xs"
-            >
-              <option value="">スタッフを選択</option>
-              {unassigned.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-            <label className="sr-only" htmlFor="add-start">
-              開始時刻
-            </label>
-            <select
-              id="add-start"
-              value={addStart}
-              onChange={(e) => setAddStart(e.target.value)}
-              className="rounded-md border border-slate-200 px-1.5 py-1.5 text-xs"
-            >
-              {timeOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <span className="text-xs text-slate-400" aria-hidden>
-              -
-            </span>
-            <label className="sr-only" htmlFor="add-end">
-              終了時刻
-            </label>
-            <select
-              id="add-end"
-              value={addEnd}
-              onChange={(e) => setAddEnd(e.target.value)}
-              className="rounded-md border border-slate-200 px-1.5 py-1.5 text-xs"
-            >
-              {timeOptions.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="add-break" className="text-xs text-slate-400">
-              休憩
-            </label>
-            <select
-              id="add-break"
-              value={addBreakMin}
-              onChange={(e) => setAddBreakMin(e.target.value)}
-              className="rounded-md border border-slate-200 px-1.5 py-1.5 text-xs"
-            >
-              <option value="auto">自動</option>
-              {BREAK_OPTIONS.map((b) => (
-                <option key={b} value={String(b)}>
-                  {b === 0 ? "なし" : `${b}分`}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              disabled={!addStaffId || addStart >= addEnd}
-              className="rounded-md bg-indigo-600 px-3.5 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              追加
-            </button>
-          </form>
-        )}
+        <AssignmentAddForm date={date} candidates={unassigned} />
       </div>
 
-      {/* 編集ポップオーバー */}
       {edit && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={closeEdit} aria-hidden />
-          <div
-            ref={editRef}
-            role="dialog"
-            aria-label={`${edit.staff.name} ${dayLabel(date)} のシフトを編集`}
-            className="fixed z-50 w-60 rounded-xl border border-slate-200 bg-white p-3.5 shadow-xl"
-            style={{ left: edit.x, top: edit.y }}
-          >
-            <p className="mb-2 text-xs font-semibold text-slate-700">
-              {edit.staff.name} · {dayLabel(date)}
-            </p>
-            <div className="flex items-center gap-1">
-              <label className="sr-only" htmlFor="edit-start">
-                開始時刻
-              </label>
-              <select
-                id="edit-start"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-                className="w-full rounded-md border border-slate-200 px-1 py-1.5 text-xs"
-              >
-                {timeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-slate-400" aria-hidden>
-                -
-              </span>
-              <label className="sr-only" htmlFor="edit-end">
-                終了時刻
-              </label>
-              <select
-                id="edit-end"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                className="w-full rounded-md border border-slate-200 px-1 py-1.5 text-xs"
-              >
-                {timeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="mt-2 flex items-center gap-1">
-              <label htmlFor="edit-break" className="shrink-0 text-[10px] text-slate-400">
-                休憩
-              </label>
-              <select
-                id="edit-break"
-                value={breakMin}
-                onChange={(e) => setBreakMin(e.target.value)}
-                className="w-full rounded-md border border-slate-200 px-1 py-1.5 text-xs"
-              >
-                {BREAK_OPTIONS.map((b) => (
-                  <option key={b} value={String(b)}>
-                    {b === 0 ? "なし" : `${b}分`}
-                  </option>
-                ))}
-              </select>
-              {breakMinNum > 0 && (
-                <>
-                  <label className="sr-only" htmlFor="edit-break-start">
-                    休憩開始時刻
-                  </label>
-                  <select
-                    id="edit-break-start"
-                    value={validBreakStart}
-                    onChange={(e) => setBreakStart(e.target.value)}
-                    className="w-full rounded-md border border-slate-200 px-1 py-1.5 text-xs"
-                  >
-                    {breakStartOptions.map((t) => (
-                      <option key={t} value={t}>
-                        {t}〜
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-            </div>
-            <button
-              onClick={() => {
-                if (start < end) {
-                  updateAssignment({
-                    ...edit.assignment,
-                    startTime: start,
-                    endTime: end,
-                    breakMinutes: breakMinNum,
-                    breakStartTime:
-                      breakMinNum > 0 && validBreakStart ? validBreakStart : undefined,
-                    source: "manual",
+        <AssignmentEditPopover
+          edit={edit}
+          timeOptions={timeOptions}
+          onClose={closeEdit}
+        />
+      )}
+
+      {hoursStaff && (
+        <StaffHoursModal
+          staff={hoursStaff}
+          date={date}
+          assignments={monthAssignments}
+          onClose={() => setHoursStaff(null)}
+          onEditToday={
+            assignmentByStaff.get(hoursStaff.id)
+              ? () => {
+                  const a = assignmentByStaff.get(hoursStaff.id)!;
+                  setEdit({
+                    assignment: a,
+                    staff: hoursStaff,
+                    date,
+                    x: typeof window !== "undefined" ? window.innerWidth / 2 : 200,
+                    y: typeof window !== "undefined" ? window.innerHeight / 3 : 120,
                   });
-                  closeEdit();
                 }
-              }}
-              disabled={start >= end}
-              className="mt-2.5 w-full rounded-md bg-indigo-600 py-2 text-xs font-medium text-white hover:bg-indigo-700 disabled:bg-slate-300"
-            >
-              時間を変更
-            </button>
-            <button
-              onClick={() => {
-                removeAssignment(edit.assignment.id);
-                closeEdit();
-              }}
-              className="mt-1.5 w-full rounded-md bg-red-50 py-2 text-xs font-medium text-red-700 hover:bg-red-100"
-            >
-              このシフトを削除
-            </button>
-          </div>
-        </>
+              : undefined
+          }
+        />
       )}
     </div>
   );

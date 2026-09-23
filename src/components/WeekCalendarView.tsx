@@ -1,8 +1,15 @@
 "use client";
 
 import Icon from "@/components/Icon";
+import { useCallback, useState } from "react";
+import AssignmentAddForm from "@/components/AssignmentAddForm";
+import AssignmentEditPopover, {
+  type AssignmentEditTarget,
+} from "@/components/AssignmentEditPopover";
+import StaffHoursModal from "@/components/StaffHoursModal";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
+import { timeOptionsOf } from "@/lib/coverage";
 import {
   dayLabel,
   formatDate,
@@ -11,6 +18,7 @@ import {
   weeksOfMonth,
 } from "@/lib/dates";
 import { staffColorOf } from "@/lib/staff-color";
+import type { ShiftAssignment, Staff } from "@/types";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
 
@@ -39,10 +47,19 @@ export default function WeekCalendarView({
   const selectedDate = useAppStore((s) => s.selectedDate);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const staff = useAppStore((s) => s.staff);
+  const settings = useAppStore((s) => s.settings);
   const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
+
+  const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
+  const [hoursTarget, setHoursTarget] = useState<{
+    staff: Staff;
+    date: string;
+    assignment: ShiftAssignment;
+  } | null>(null);
+  const closeEdit = useCallback(() => setEdit(null), []);
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
@@ -50,6 +67,7 @@ export default function WeekCalendarView({
 
   const hidden = new Set(hiddenStaffIds);
   const staffMap = new Map(staff.map((s) => [s.id, s]));
+  const timeOptions = timeOptionsOf(settings);
   const weekDates = weekDatesAround(selectedDate);
   const weeks = weeksOfMonth(month);
   const weekIndex = Math.max(
@@ -74,6 +92,33 @@ export default function WeekCalendarView({
       next.dates[0];
     select(prefer);
   };
+
+  const openHours = (e: React.MouseEvent, a: ShiftAssignment) => {
+    e.stopPropagation();
+    const staffMember = staffMap.get(a.staffId);
+    if (!staffMember) return;
+    setSelectedDate(a.date);
+    onSelectDate?.(a.date);
+    setHoursTarget({ staff: staffMember, date: a.date, assignment: a });
+  };
+
+  const openEditFromHours = () => {
+    if (!hoursTarget) return;
+    setEdit({
+      assignment: hoursTarget.assignment,
+      staff: hoursTarget.staff,
+      date: hoursTarget.date,
+      x: typeof window !== "undefined" ? Math.min(window.innerWidth / 2 - 140, window.innerWidth - 300) : 200,
+      y: typeof window !== "undefined" ? Math.min(window.innerHeight / 3, window.innerHeight - 480) : 120,
+    });
+  };
+
+  const assignedOnSelected = new Set(
+    assignments.filter((a) => a.date === selectedDate).map((a) => a.staffId),
+  );
+  const addCandidates = staff.filter(
+    (s) => !hidden.has(s.id) && !assignedOnSelected.has(s.id),
+  );
 
   return (
     <div className="space-y-3">
@@ -141,10 +186,12 @@ export default function WeekCalendarView({
                     return (
                       <li key={a.id}>
                         <button
-                          onClick={() => select(date)}
-                          className="w-full truncate rounded px-1.5 py-1 text-left text-[10px] font-medium text-white"
+                          type="button"
+                          onClick={(e) => openHours(e, a)}
+                          className="w-full truncate rounded px-1.5 py-1 text-left text-[10px] font-medium text-white hover:opacity-90"
                           style={{ backgroundColor: color.bg }}
-                          title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}`}
+                          title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
+                          aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
                         >
                           {s?.name ?? a.staffId} {shortTime(a.startTime)}–
                           {shortTime(a.endTime)}
@@ -163,6 +210,26 @@ export default function WeekCalendarView({
           })}
         </div>
       </div>
+
+      <AssignmentAddForm date={selectedDate} candidates={addCandidates} />
+
+      {edit && (
+        <AssignmentEditPopover
+          edit={edit}
+          timeOptions={timeOptions}
+          onClose={closeEdit}
+        />
+      )}
+
+      {hoursTarget && (
+        <StaffHoursModal
+          staff={hoursTarget.staff}
+          date={hoursTarget.date}
+          assignments={assignments}
+          onClose={() => setHoursTarget(null)}
+          onEditToday={openEditFromHours}
+        />
+      )}
     </div>
   );
 }

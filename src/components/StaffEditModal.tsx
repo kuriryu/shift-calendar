@@ -8,12 +8,10 @@ import {
   Input,
   Select,
   Stack,
-  Textarea,
 } from "smarthr-ui";
 import type { Role, Staff, TimeRange } from "@/types";
 import { ROLE_LABELS } from "@/types";
 import { ROLE_META } from "@/lib/roles";
-import { parseSpecialNote } from "@/lib/notes";
 import { timeOptionsOf } from "@/lib/coverage";
 import { migrateStaffPatterns } from "@/lib/staff-pattern";
 import { useAppStore } from "@/stores/useAppStore";
@@ -92,6 +90,7 @@ export default function StaffEditModal({
 }) {
   const updateStaff = useAppStore((s) => s.updateStaff);
   const addStaff = useAppStore((s) => s.addStaff);
+  const removeStaff = useAppStore((s) => s.removeStaff);
   const settings = useAppStore((s) => s.settings);
   const TIME_OPTIONS = useMemo(() => timeOptionsOf(settings), [settings]);
 
@@ -106,7 +105,6 @@ export default function StaffEditModal({
   const [weekendStart, setWeekendStart] = useState(seeded?.weekendPattern?.start ?? "");
   const [weekendEnd, setWeekendEnd] = useState(seeded?.weekendPattern?.end ?? "");
   const [offWeekdays, setOffWeekdays] = useState<number[]>(seeded?.unavailableWeekdays ?? []);
-  const [specialNote, setSpecialNote] = useState(seeded?.specialNote ?? "");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -121,11 +119,8 @@ export default function StaffEditModal({
     setWeekendStart(s?.weekendPattern?.start ?? "");
     setWeekendEnd(s?.weekendPattern?.end ?? "");
     setOffWeekdays(s?.unavailableWeekdays ?? []);
-    setSpecialNote(s?.specialNote ?? "");
     setError(null);
   }, [staff, isOpen]);
-
-  const parsed = useMemo(() => parseSpecialNote(specialNote), [specialNote]);
 
   const weekdayErr = patternError(weekdayStart, weekdayEnd);
   const weekendErr = patternError(weekendStart, weekendEnd);
@@ -164,7 +159,8 @@ export default function StaffEditModal({
       // 旧フィールドはクリア
       defaultPattern: undefined,
       unavailableWeekdays: offWeekdays.length > 0 ? offWeekdays : undefined,
-      specialNote: specialNote.trim() || undefined,
+      // 特別要望UIは非表示。既存値は編集時に維持
+      specialNote: staff?.specialNote,
     };
     if (staff) {
       updateStaff({ ...staff, ...base });
@@ -198,7 +194,20 @@ export default function StaffEditModal({
           </p>
         )}
 
-        <FormControl label="名前（必須）">
+        <FormControl
+          label={
+            <>
+              名前
+              <span className="ms-0.5 text-red-600" aria-hidden>
+                *
+              </span>
+              <span className="sr-only">必須</span>
+              <span className="ms-2 text-xs font-normal text-slate-400">
+                ニックネームでも可
+              </span>
+            </>
+          }
+        >
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -206,7 +215,17 @@ export default function StaffEditModal({
           />
         </FormControl>
 
-        <FormControl label="属性（必須）">
+        <FormControl
+          label={
+            <>
+              属性
+              <span className="ms-0.5 text-red-600" aria-hidden>
+                *
+              </span>
+              <span className="sr-only">必須</span>
+            </>
+          }
+        >
           <Select
             value={role}
             onChange={(e) => setRole(e.target.value as Role | "")}
@@ -279,30 +298,26 @@ export default function StaffEditModal({
           </Cluster>
         </FormControl>
 
-        <FormControl label="特別な要望（任意・AIが解釈して生成に反映）">
-          <Stack gap={0.5}>
-            <Textarea
-              value={specialNote}
-              onChange={(e) => setSpecialNote(e.target.value)}
-              rows={3}
-              placeholder="例: 水曜は休み、17時まで、週2日まで"
-            />
-            <div className="rounded-lg bg-slate-50 px-3 py-2">
-              <p className="mb-1 text-[10px] font-semibold text-slate-500">AIの解釈結果</p>
-              {specialNote.trim() === "" ? (
-                <p className="text-xs text-slate-400">（未入力）</p>
-              ) : (
-                <ul className="list-inside list-disc space-y-0.5">
-                  {parsed.summary.map((s, i) => (
-                    <li key={i} className="text-xs text-slate-700">
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </Stack>
-        </FormControl>
+        {staff && (
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `${staff.name} を削除しますか？関連する希望・シフトも削除されます。`,
+                  )
+                ) {
+                  removeStaff(staff.id);
+                  onClose();
+                }
+              }}
+              className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+            >
+              このスタッフを削除
+            </button>
+          </div>
+        )}
       </Stack>
     </ControlledActionDialog>
   );

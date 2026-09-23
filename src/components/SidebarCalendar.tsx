@@ -50,17 +50,20 @@ function DayDetail({
   if (mode === "requests") {
     const byStaff = new Map(requests.filter((r) => r.date === date).map((r) => [r.staffId, r]));
     return (
-      <div className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2">
-        <p className="mb-1 px-1 text-[10px] font-semibold text-slate-500">
+      <div className="mt-4 max-h-56 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
+        <p className="mb-2.5 px-0.5 text-[10px] font-semibold text-slate-500">
           {dayLabel(date)} の希望
         </p>
         {staff.length === 0 ? (
-          <p className="px-1 text-[11px] text-slate-400">スタッフ未登録</p>
+          <p className="px-0.5 py-1 text-[11px] text-slate-400">スタッフ未登録</p>
         ) : (
           staff.map((s) => {
             const r = byStaff.get(s.id);
             return (
-              <div key={s.id} className="flex items-center justify-between gap-1 px-1 text-[11px]">
+              <div
+                key={s.id}
+                className="flex items-center justify-between gap-2 px-0.5 py-1.5 text-[11px]"
+              >
                 <span className="flex min-w-0 items-center gap-1.5 truncate text-slate-700">
                   <span
                     className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -83,18 +86,21 @@ function DayDetail({
   const dayAssignments = assignments.filter((a) => a.date === date);
   const staffMap = new Map(staff.map((s) => [s.id, s]));
   return (
-    <div className="mt-3 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 p-2">
-      <p className="mb-1 px-1 text-[10px] font-semibold text-slate-500">
+    <div className="mt-4 max-h-56 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
+      <p className="mb-2.5 px-0.5 text-[10px] font-semibold text-slate-500">
         {dayLabel(date)} の{mode === "draft" ? "案" : "シフト"}
       </p>
       {dayAssignments.length === 0 ? (
-        <p className="px-1 text-[11px] text-slate-400">割当なし</p>
+        <p className="px-0.5 py-1 text-[11px] text-slate-400">割当なし</p>
       ) : (
         dayAssignments.map((a) => {
           const s = staffMap.get(a.staffId);
           const color = staffColorOf(a.staffId);
           return (
-            <div key={a.id} className="flex items-center justify-between gap-1 px-1 text-[11px]">
+            <div
+              key={a.id}
+              className="flex items-center justify-between gap-2 px-0.5 py-1.5 text-[11px]"
+            >
               <span className="flex min-w-0 items-center gap-1.5 truncate text-slate-700">
                 <span
                   className="h-1.5 w-1.5 shrink-0 rounded-full"
@@ -103,7 +109,7 @@ function DayDetail({
                 />
                 <span className="truncate">{s?.name ?? a.staffId}</span>
               </span>
-              <span className="shrink-0 text-slate-600">
+              <span className="shrink-0 tabular-nums text-slate-600">
                 {a.startTime}–{a.endTime}
               </span>
             </div>

@@ -1,7 +1,14 @@
 "use client";
 
+import { useCallback, useState } from "react";
+import AssignmentAddForm from "@/components/AssignmentAddForm";
+import AssignmentEditPopover, {
+  type AssignmentEditTarget,
+} from "@/components/AssignmentEditPopover";
+import StaffHoursModal from "@/components/StaffHoursModal";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
+import { timeOptionsOf } from "@/lib/coverage";
 import {
   daysOfMonth,
   formatDate,
@@ -9,6 +16,7 @@ import {
   weekdayOf,
 } from "@/lib/dates";
 import { staffColorOf } from "@/lib/staff-color";
+import type { ShiftAssignment, Staff } from "@/types";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
 
@@ -28,10 +36,19 @@ export default function MonthCalendarView({
   const selectedDate = useAppStore((s) => s.selectedDate);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const staff = useAppStore((s) => s.staff);
+  const settings = useAppStore((s) => s.settings);
   const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
+
+  const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
+  const [hoursTarget, setHoursTarget] = useState<{
+    staff: Staff;
+    date: string;
+    assignment: ShiftAssignment;
+  } | null>(null);
+  const closeEdit = useCallback(() => setEdit(null), []);
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
@@ -39,6 +56,7 @@ export default function MonthCalendarView({
 
   const hidden = new Set(hiddenStaffIds);
   const staffMap = new Map(staff.map((s) => [s.id, s]));
+  const timeOptions = timeOptionsOf(settings);
   const days = daysOfMonth(month);
   const firstWeekday = weekdayOf(days[0]);
   const leadBlanks = firstWeekday === 0 ? 6 : firstWeekday - 1;
@@ -56,80 +74,139 @@ export default function MonthCalendarView({
     onSelectDate?.(date);
   };
 
+  const openHours = (e: React.MouseEvent, a: ShiftAssignment) => {
+    e.stopPropagation();
+    const staffMember = staffMap.get(a.staffId);
+    if (!staffMember) return;
+    setSelectedDate(a.date);
+    onSelectDate?.(a.date);
+    setHoursTarget({ staff: staffMember, date: a.date, assignment: a });
+  };
+
+  const openEditFromHours = () => {
+    if (!hoursTarget) return;
+    setEdit({
+      assignment: hoursTarget.assignment,
+      staff: hoursTarget.staff,
+      date: hoursTarget.date,
+      x: typeof window !== "undefined" ? Math.min(window.innerWidth / 2 - 140, window.innerWidth - 300) : 200,
+      y: typeof window !== "undefined" ? Math.min(window.innerHeight / 3, window.innerHeight - 480) : 120,
+    });
+  };
+
+  const assignedOnSelected = new Set(
+    assignments.filter((a) => a.date === selectedDate).map((a) => a.staffId),
+  );
+  const addCandidates = staff.filter(
+    (s) => !hidden.has(s.id) && !assignedOnSelected.has(s.id),
+  );
+
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-      <p className="border-b border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700">
-        {monthLabel(month)}
-      </p>
-      <div className="grid grid-cols-7 border-b border-slate-100 bg-slate-50">
-        {WEEKDAY_HEADERS.map((w) => (
-          <span
-            key={w}
-            className="py-1.5 text-center text-[11px] font-medium text-slate-500"
-          >
-            {w}
-          </span>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 auto-rows-[minmax(5.5rem,auto)]">
-        {cells.map((d, i) =>
-          d === null ? (
-            <div key={`blank-${i}`} className="border-b border-r border-slate-100 bg-slate-50/50" />
-          ) : (
-            (() => {
-              const dayAssignments = assignments
-                .filter((a) => a.date === d && !hidden.has(a.staffId))
-                .sort((a, b) => a.startTime.localeCompare(b.startTime));
-              const selected = d === selectedDate;
-              const isToday = d === today;
-              const extra = dayAssignments.length - 3;
-              return (
-                <button
-                  key={d}
-                  onClick={() => select(d)}
-                  aria-label={`${Number(d.slice(8))}日 出勤${dayAssignments.length}名${
-                    selected ? " 選択中" : ""
-                  }`}
-                  aria-pressed={selected}
-                  className={`flex flex-col items-stretch gap-0.5 border-b border-r border-slate-100 p-1.5 text-left transition-colors hover:bg-slate-50 ${
-                    selected ? "bg-indigo-50 ring-2 ring-inset ring-indigo-400" : ""
-                  }`}
-                >
-                  <span
-                    className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
-                      selected
-                        ? "bg-indigo-600 text-white"
-                        : isToday
-                          ? "text-indigo-600 ring-1 ring-indigo-400"
-                          : "text-slate-700"
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+        <p className="px-4 py-2.5 text-sm font-semibold text-slate-700">
+          {monthLabel(month)}
+        </p>
+        <div className="grid grid-cols-7 bg-slate-50">
+          {WEEKDAY_HEADERS.map((w) => (
+            <span
+              key={w}
+              className="py-1.5 text-center text-[11px] font-medium text-slate-500"
+            >
+              {w}
+            </span>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 auto-rows-[minmax(5.5rem,auto)]">
+          {cells.map((d, i) =>
+            d === null ? (
+              <div key={`blank-${i}`} className="bg-slate-50/50" />
+            ) : (
+              (() => {
+                const dayAssignments = assignments
+                  .filter((a) => a.date === d && !hidden.has(a.staffId))
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                const selected = d === selectedDate;
+                const isToday = d === today;
+                const extra = dayAssignments.length - 3;
+                return (
+                  <div
+                    key={d}
+                    className={`flex flex-col items-stretch gap-0.5 p-1.5 text-left transition-colors ${
+                      selected ? "bg-indigo-50 ring-2 ring-inset ring-indigo-400" : ""
                     }`}
                   >
-                    {Number(d.slice(8))}
-                  </span>
-                  {dayAssignments.slice(0, 3).map((a) => {
-                    const s = staffMap.get(a.staffId);
-                    const color = staffColorOf(a.staffId);
-                    return (
-                      <span
-                        key={a.id}
-                        className="truncate rounded px-1 py-0.5 text-[9px] font-medium text-white"
-                        style={{ backgroundColor: color.bg }}
-                        title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}`}
+                    <button
+                      type="button"
+                      onClick={() => select(d)}
+                      aria-label={`${Number(d.slice(8))}日 出勤${dayAssignments.length}名${
+                        selected ? " 選択中" : ""
+                      }`}
+                      aria-pressed={selected}
+                      className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:bg-slate-100 ${
+                        selected
+                          ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                          : isToday
+                            ? "text-indigo-600 ring-1 ring-indigo-400"
+                            : "text-slate-700"
+                      }`}
+                    >
+                      {Number(d.slice(8))}
+                    </button>
+                    {dayAssignments.slice(0, 3).map((a) => {
+                      const s = staffMap.get(a.staffId);
+                      const color = staffColorOf(a.staffId);
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={(e) => openHours(e, a)}
+                          className="truncate rounded px-1 py-0.5 text-left text-[9px] font-medium text-white hover:opacity-90"
+                          style={{ backgroundColor: color.bg }}
+                          title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
+                          aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
+                        >
+                          {s?.name ?? a.staffId} {shortTime(a.startTime)}–
+                          {shortTime(a.endTime)}
+                        </button>
+                      );
+                    })}
+                    {extra > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => select(d)}
+                        className="px-1 text-left text-[9px] text-slate-400 hover:text-slate-600"
                       >
-                        {s?.name ?? a.staffId} {shortTime(a.startTime)}–
-                        {shortTime(a.endTime)}
-                      </span>
-                    );
-                  })}
-                  {extra > 0 && (
-                    <span className="px-1 text-[9px] text-slate-400">+{extra}件</span>
-                  )}
-                </button>
-              );
-            })()
-          ),
-        )}
+                        +{extra}件
+                      </button>
+                    )}
+                  </div>
+                );
+              })()
+            ),
+          )}
+        </div>
       </div>
+
+      <AssignmentAddForm date={selectedDate} candidates={addCandidates} />
+
+      {edit && (
+        <AssignmentEditPopover
+          edit={edit}
+          timeOptions={timeOptions}
+          onClose={closeEdit}
+        />
+      )}
+
+      {hoursTarget && (
+        <StaffHoursModal
+          staff={hoursTarget.staff}
+          date={hoursTarget.date}
+          assignments={assignments}
+          onClose={() => setHoursTarget(null)}
+          onEditToday={openEditFromHours}
+        />
+      )}
     </div>
   );
 }

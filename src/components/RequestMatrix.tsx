@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
+import type { Role, ShiftRequest, Staff } from "@/types";
+import { ROLE_META } from "@/lib/roles";
+import StaffBulkMenu from "@/components/StaffBulkMenu";
 import Icon from "@/components/Icon";
 import { useMounted } from "@/hooks/useMounted";
 import { useDismissable } from "@/hooks/useDismissable";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { businessHoursOf, timeOptionsOf } from "@/lib/coverage";
 import {
   dayLabel,
@@ -21,8 +24,6 @@ import {
   recommendationRequestOf,
 } from "@/lib/staff-pattern";
 import { toMinutes } from "@/lib/time";
-import type { Role, ShiftRequest, Staff } from "@/types";
-import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
 
@@ -52,6 +53,8 @@ function requestLabel(r: ShiftRequest | null): string {
 export default function RequestMatrix() {
   const mounted = useMounted();
   const staff = useAppStore((s) => s.staff);
+  const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
+  const reorderStaff = useAppStore((s) => s.reorderStaff);
   const settings = useAppStore((s) => s.settings);
   const month = useAppStore((s) => s.selectedMonth);
   const selectedDate = useAppStore((s) => s.selectedDate);
@@ -61,7 +64,6 @@ export default function RequestMatrix() {
   );
   const setRequest = useAppStore((s) => s.setRequest);
   const clearRequest = useAppStore((s) => s.clearRequest);
-  const bulkSetRequests = useAppStore((s) => s.bulkSetRequests);
   const adoptRecommendations = useAppStore((s) => s.adoptRecommendations);
 
   const [popover, setPopover] = useState<PopoverState | null>(null);
@@ -70,6 +72,8 @@ export default function RequestMatrix() {
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("13:00");
   const [view, setView] = useState<RequestView>("month");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const lastOverRef = useRef<string | null>(null);
 
   const weeks = useMemo(() => weeksOfMonth(month), [month]);
   const weekIndex = Math.max(
@@ -85,7 +89,10 @@ export default function RequestMatrix() {
   const timeOptions = timeOptionsOf(settings);
   const days = daysOfMonth(month);
   const requestMap = new Map(requests.map((r) => [`${r.staffId}:${r.date}`, r]));
+  const hidden = new Set(hiddenStaffIds);
+  const visibleStaff = staff.filter((s) => !hidden.has(s.id));
   const noStaff = staff.length === 0;
+  const allFilteredOut = !noStaff && visibleStaff.length === 0;
   const dayDate = selectedDate.startsWith(month) ? selectedDate : days[0];
   const dayIndex = Math.max(0, days.indexOf(dayDate));
   const { open: openMin, close: closeMin } = businessHoursOf(dayDate, settings);
@@ -93,14 +100,43 @@ export default function RequestMatrix() {
 
   const requestCounts = new Map<string, number>();
   for (const r of requests) {
+    if (hidden.has(r.staffId)) continue;
     requestCounts.set(r.date, (requestCounts.get(r.date) ?? 0) + 1);
   }
   const requestMarkOf = (date: string): "none" | "partial" | "complete" => {
-    if (staff.length === 0) return "none";
+    if (visibleStaff.length === 0) return "none";
     const n = requestCounts.get(date) ?? 0;
     if (n === 0) return "none";
-    if (n >= staff.length) return "complete";
+    if (n >= visibleStaff.length) return "complete";
     return "partial";
+  };
+
+  const onStaffDragStart = (e: React.DragEvent, id: string) => {
+    setDragId(id);
+    lastOverRef.current = null;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  };
+  const onStaffDragOver = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const id = dragId || e.dataTransfer.getData("text/plain");
+    if (!id || id === targetId) return;
+    if (lastOverRef.current === targetId) return;
+    lastOverRef.current = targetId;
+    // ホバー中にリアルタイムで入れ替え
+    reorderStaff(id, targetId);
+  };
+  const onStaffDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    const id = e.dataTransfer.getData("text/plain") || dragId;
+    if (id && id !== targetId) reorderStaff(id, targetId);
+    setDragId(null);
+    lastOverRef.current = null;
+  };
+  const onStaffDragEnd = () => {
+    setDragId(null);
+    lastOverRef.current = null;
   };
 
   const firstWeekday = weekdayOf(days[0]);
@@ -204,45 +240,31 @@ export default function RequestMatrix() {
   const staffRowHeader = (s: Staff, role: Role) => {
     const hasRec = hasAnyPattern(s) || (s.unavailableWeekdays?.length ?? 0) > 0;
     return (
-      <div className="grid grid-cols-[minmax(0,1fr)_2.5rem_4.75rem] items-center gap-1.5">
-        <span className="truncate text-xs font-medium text-slate-700">{s.name}</span>
+      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_2.5rem_auto] items-center gap-1.5">
+        <span
+          className="inline-flex cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+          title="ドラッグで並べ替え"
+          aria-hidden
+        >
+          <Icon name="drag_indicator" size={16} />
+        </span>
+        <span className="truncate text-left text-xs font-medium text-slate-700">{s.name}</span>
         <span className="flex w-12 items-center gap-0.5 truncate text-[9px] text-slate-400">
           <Icon name={ROLE_META[role].icon} size={11} />
           {ROLE_META[role].label}
         </span>
-        <span className="flex justify-end gap-0.5">
-          <span className="inline-flex w-[1.75rem] justify-center">
-            {hasRec ? (
-              <button
-                onClick={() => adoptRecommendations(s.id)}
-                className="rounded border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-[9px] text-indigo-700 hover:bg-indigo-100"
-                aria-label={`${s.name} の候補をすべて採用`}
-                title="候補をすべて採用"
-              >
-                候補
-              </button>
-            ) : (
-              <span className="invisible text-[9px]" aria-hidden>
-                候補
-              </span>
-            )}
-          </span>
-          <button
-            onClick={() => bulkSetRequests(s.id, "available")}
-            className="rounded border border-slate-200 px-1 py-0.5 text-[9px] text-slate-500 hover:bg-emerald-50"
-            aria-label={`${s.name} を全日出勤可能にする`}
-            title="全日○"
-          >
-            全○
-          </button>
-          <button
-            onClick={() => bulkSetRequests(s.id, "off")}
-            className="rounded border border-slate-200 px-1 py-0.5 text-[9px] text-slate-500 hover:bg-slate-100"
-            aria-label={`${s.name} を全日休みにする`}
-            title="全日休"
-          >
-            全休
-          </button>
+        <span className="flex items-center justify-end gap-0.5">
+          {hasRec ? (
+            <button
+              onClick={() => adoptRecommendations(s.id)}
+              className="rounded border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-[9px] text-indigo-700 hover:bg-indigo-100"
+              aria-label={`${s.name} の候補をすべて採用`}
+              title="候補をすべて採用"
+            >
+              候補
+            </button>
+          ) : null}
+          <StaffBulkMenu staffId={s.id} staffName={s.name} />
         </span>
       </div>
     );
@@ -284,47 +306,53 @@ export default function RequestMatrix() {
           </tr>
         </thead>
         <tbody>
-          {ROLE_ORDER.map((role) =>
-            staff
-              .filter((s) => s.role === role)
-              .map((s) => (
-                <tr key={s.id} className="border-b border-slate-100">
-                  <th
-                    scope="row"
-                    className="sticky left-0 z-10 bg-white px-3 py-1.5 text-left font-normal"
+          {visibleStaff.map((s) => (
+            <tr
+              key={s.id}
+              draggable
+              onDragStart={(e) => onStaffDragStart(e, s.id)}
+              onDragOver={(e) => onStaffDragOver(e, s.id)}
+              onDrop={(e) => onStaffDrop(e, s.id)}
+              onDragEnd={onStaffDragEnd}
+              className={`border-b border-slate-100 transition-transform ${
+                dragId === s.id ? "opacity-60 ring-2 ring-inset ring-indigo-300" : ""
+              }`}
+            >
+              <th
+                scope="row"
+                className="sticky left-0 z-10 bg-white px-3 py-1.5 text-left font-normal"
+              >
+                {staffRowHeader(s, s.role)}
+              </th>
+              {dateCols.map((date) => {
+                const r = requestMap.get(`${s.id}:${date}`) ?? null;
+                const rec = r ? null : recommendationRequestOf(s, date);
+                const label = `${s.name} ${Number(date.slice(8))}日(${weekdayLabel(date)}): ${
+                  r
+                    ? requestLabel(r)
+                    : rec
+                      ? `候補 ${requestLabel(rec)}（タップで確定）`
+                      : "未入力"
+                }`;
+                return (
+                  <td
+                    key={date}
+                    className={`p-0 ${isWeekendOrFri(date) ? "bg-sky-50/40" : ""} ${
+                      date === selectedDate ? "bg-indigo-50/60" : ""
+                    }`}
                   >
-                    {staffRowHeader(s, role)}
-                  </th>
-                  {dateCols.map((date) => {
-                    const r = requestMap.get(`${s.id}:${date}`) ?? null;
-                    const rec = r ? null : recommendationRequestOf(s, date);
-                    const label = `${s.name} ${Number(date.slice(8))}日(${weekdayLabel(date)}): ${
-                      r
-                        ? requestLabel(r)
-                        : rec
-                          ? `候補 ${requestLabel(rec)}（タップで確定）`
-                          : "未入力"
-                    }`;
-                    return (
-                      <td
-                        key={date}
-                        className={`p-0 ${isWeekendOrFri(date) ? "bg-sky-50/40" : ""} ${
-                          date === selectedDate ? "bg-indigo-50/60" : ""
-                        }`}
-                      >
-                        <button
-                          onClick={(e) => onCellClick(e, s, date)}
-                          aria-label={label}
-                          className="block w-full px-0.5 py-1 hover:bg-indigo-50"
-                        >
-                          {cellOf(s, date)}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              )),
-          )}
+                    <button
+                      onClick={(e) => onCellClick(e, s, date)}
+                      aria-label={label}
+                      className="block w-full px-0.5 py-1 hover:bg-indigo-50"
+                    >
+                      {cellOf(s, date)}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
         </tbody>
       </table>
     </div>
@@ -340,7 +368,7 @@ export default function RequestMatrix() {
     setSelectedDate(prefer);
   };
 
-  const hasAnyRecommendation = staff.some(
+  const hasAnyRecommendation = visibleStaff.some(
     (s) => hasAnyPattern(s) || (s.unavailableWeekdays?.length ?? 0) > 0,
   );
 
@@ -406,8 +434,8 @@ export default function RequestMatrix() {
             候補（未確定）
           </li>
         </ul>
-        {hasAnyRecommendation && (
-          <div className="ml-auto">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {hasAnyRecommendation && (
             <button
               onClick={() => adoptRecommendations()}
               disabled={noStaff}
@@ -416,8 +444,8 @@ export default function RequestMatrix() {
               <Icon name="done_all" size={14} />
               全員の候補を採用
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {noStaff ? (
@@ -428,6 +456,16 @@ export default function RequestMatrix() {
           <p className="text-sm font-medium text-slate-600">スタッフが登録されていません</p>
           <p className="max-w-xs text-xs leading-relaxed text-slate-400">
             ステップ2でスタッフを登録すると、ここに希望入力表が表示されます。
+          </p>
+        </div>
+      ) : allFilteredOut ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-14 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 ring-1 ring-slate-200">
+            <Icon name="filter_list_off" size={28} />
+          </span>
+          <p className="text-sm font-medium text-slate-600">表示するスタッフがいません</p>
+          <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+            サイドバーのスタッフ絞り込みを確認してください。
           </p>
         </div>
       ) : view === "time" ? (
@@ -467,7 +505,7 @@ export default function RequestMatrix() {
             ))}
           </div>
           <ul className="space-y-1">
-            {staff.map((s) => {
+            {visibleStaff.map((s) => {
               const r = requestMap.get(`${s.id}:${dayDate}`) ?? null;
               const rec = r ? null : recommendationRequestOf(s, dayDate);
               const show = r ?? rec;
@@ -488,9 +526,23 @@ export default function RequestMatrix() {
               return (
                 <li
                   key={s.id}
-                  className="grid grid-cols-[7.5rem_4rem_minmax(0,1fr)] items-center gap-2 py-0.5"
+                  draggable
+                  onDragStart={(e) => onStaffDragStart(e, s.id)}
+                  onDragOver={(e) => onStaffDragOver(e, s.id)}
+                  onDrop={(e) => onStaffDrop(e, s.id)}
+                  onDragEnd={onStaffDragEnd}
+                  className={`grid grid-cols-[1.25rem_7.5rem_4rem_minmax(0,1fr)] items-center gap-2 py-0.5 transition-opacity ${
+                    dragId === s.id ? "opacity-60" : ""
+                  }`}
                 >
-                  <span className="truncate text-right text-xs font-medium text-slate-700">
+                  <span
+                    className="inline-flex cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+                    title="ドラッグで並べ替え"
+                    aria-hidden
+                  >
+                    <Icon name="drag_indicator" size={16} />
+                  </span>
+                  <span className="truncate text-left text-xs font-medium text-slate-700">
                     {s.name}
                   </span>
                   <span className="flex items-center gap-0.5 truncate text-[9px] text-slate-400">
@@ -642,14 +694,14 @@ export default function RequestMatrix() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <div className="mb-5 flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-slate-700">
                 {dayLabel(dayDate)}（{weekdayLabel(dayDate)}）の希望
               </p>
             </div>
-            <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto">
-              {staff.map((s) => {
+            <ul className="max-h-[28rem] space-y-2 overflow-y-auto">
+              {visibleStaff.map((s) => {
                 const r = requestMap.get(`${s.id}:${dayDate}`) ?? null;
                 const rec = r ? null : recommendationRequestOf(s, dayDate);
                 const hasRec =
@@ -657,9 +709,23 @@ export default function RequestMatrix() {
                 return (
                   <li
                     key={s.id}
-                    className="rounded-lg border border-slate-100 px-2 py-2"
+                    draggable
+                    onDragStart={(e) => onStaffDragStart(e, s.id)}
+                    onDragOver={(e) => onStaffDragOver(e, s.id)}
+                    onDrop={(e) => onStaffDrop(e, s.id)}
+                    onDragEnd={onStaffDragEnd}
+                    className={`rounded-lg border border-slate-100 px-2 py-2 transition-opacity ${
+                      dragId === s.id ? "opacity-60" : ""
+                    }`}
                   >
                     <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <span
+                        className="inline-flex shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
+                        title="ドラッグで並べ替え"
+                        aria-hidden
+                      >
+                        <Icon name="drag_indicator" size={16} />
+                      </span>
                       <button
                         type="button"
                         onClick={(e) => onCellClick(e, s, dayDate)}
@@ -682,7 +748,7 @@ export default function RequestMatrix() {
                         <span className="mt-0.5 block">{cellOf(s, dayDate)}</span>
                       </button>
                     </div>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap items-center gap-1">
                       {hasRec && (
                         <button
                           type="button"
@@ -693,22 +759,7 @@ export default function RequestMatrix() {
                           候補
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => bulkSetRequests(s.id, "available")}
-                        className="rounded border border-slate-200 px-1.5 py-0.5 text-[9px] text-slate-500 hover:bg-emerald-50"
-                        aria-label={`${s.name} を全日出勤可能にする`}
-                      >
-                        全○
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => bulkSetRequests(s.id, "off")}
-                        className="rounded border border-slate-200 px-1.5 py-0.5 text-[9px] text-slate-500 hover:bg-slate-100"
-                        aria-label={`${s.name} を全日休みにする`}
-                      >
-                        全休
-                      </button>
+                      <StaffBulkMenu staffId={s.id} staffName={s.name} />
                     </div>
                   </li>
                 );

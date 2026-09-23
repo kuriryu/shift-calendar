@@ -20,6 +20,7 @@ import {
   recommendationRequestOf,
   requestsMatch,
 } from "@/lib/staff-pattern";
+import { ROLE_ORDER } from "@/lib/roles";
 import { generateMonth } from "@/lib/generator";
 import { validateMonth } from "@/lib/validator";
 import { computeBreak, placeBreakStart } from "@/lib/generator";
@@ -162,6 +163,13 @@ type AppState = {
   toggleStaffFilter: (staffId: string) => void;
   toggleRoleFilter: (role: Role) => void;
   addStaff: (staff: Omit<Staff, "id">) => void;
+  /** スタッフ一覧の並び替え（ドラッグ移動） */
+  reorderStaff: (draggedId: string, targetId: string) => void;
+  /** スタッフを名前順（日本語ロケール）に並べ替え */
+  /** スタッフを名前順（日本語ロケール）に並べ替え */
+  sortStaffByName: () => void;
+  /** スタッフを属性順（社員→パート→学生）、同属性内は名前順 */
+  sortStaffByRole: () => void;
   setRequest: (req: ShiftRequest) => void;
   clearRequest: (staffId: string, date: string) => void;
   bulkSetRequests: (staffId: string, type: "available" | "off") => void;
@@ -195,6 +203,7 @@ type AppState = {
   applyAiCommand: (text: string) => string;
   updateSettings: (s: Partial<ShopSettings>) => void;
   updateStaff: (staff: Staff) => void;
+  removeStaff: (staffId: string) => void;
   recordLogin: (email: string) => void;
   clearLoginHistory: () => void;
 };
@@ -330,6 +339,35 @@ export const useAppStore = create<AppState>()(
               ...revalidate({ ...s, requests }),
             };
           }),
+
+        reorderStaff: (draggedId, targetId) =>
+          set((s) => {
+            if (draggedId === targetId) return {};
+            const from = s.staff.findIndex((x) => x.id === draggedId);
+            const to = s.staff.findIndex((x) => x.id === targetId);
+            if (from < 0 || to < 0) return {};
+            const next = [...s.staff];
+            const [item] = next.splice(from, 1);
+            next.splice(to, 0, item);
+            return { staff: next };
+          }),
+
+        sortStaffByName: () =>
+          set((s) => ({
+            staff: [...s.staff].sort((a, b) =>
+              a.name.localeCompare(b.name, "ja", { sensitivity: "base" }),
+            ),
+          })),
+
+        sortStaffByRole: () =>
+          set((s) => ({
+            staff: [...s.staff].sort((a, b) => {
+              const ra = ROLE_ORDER.indexOf(a.role);
+              const rb = ROLE_ORDER.indexOf(b.role);
+              if (ra !== rb) return ra - rb;
+              return a.name.localeCompare(b.name, "ja", { sensitivity: "base" });
+            }),
+          })),
 
         setRequest: (req) =>
           set((s) => {
@@ -752,6 +790,40 @@ export const useAppStore = create<AppState>()(
                 ...s.activities,
               ].slice(0, MAX_ACTIVITIES),
               ...revalidate({ ...s, requests }),
+            };
+          }),
+
+        removeStaff: (staffId) =>
+          set((s) => {
+            const target = s.staff.find((x) => x.id === staffId);
+            if (!target) return {};
+            const staff = s.staff.filter((x) => x.id !== staffId);
+            const requests: Record<string, ShiftRequest[]> = {};
+            for (const [month, list] of Object.entries(s.requests)) {
+              requests[month] = list.filter((r) => r.staffId !== staffId);
+            }
+            const assignments: Record<string, ShiftAssignment[]> = {};
+            for (const [month, list] of Object.entries(s.assignments)) {
+              assignments[month] = list.filter((a) => a.staffId !== staffId);
+            }
+            const draft =
+              s.draft == null
+                ? null
+                : {
+                    ...s.draft,
+                    assignments: s.draft.assignments.filter((a) => a.staffId !== staffId),
+                  };
+            return {
+              staff,
+              requests,
+              assignments,
+              draft,
+              hiddenStaffIds: s.hiddenStaffIds.filter((id) => id !== staffId),
+              activities: [
+                makeActivity("staff", `${target.name} を削除`),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, requests, assignments }),
             };
           }),
 

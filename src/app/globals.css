@@ -51,6 +51,19 @@ body {
   border-top-width: 0;
 }
 
+/* スタッフ編集モーダルの見出しは非表示（a11y 用の heading は残す） */
+.staff-edit-dialog .smarthr-ui-Dialog-titleArea {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* smarthr 主ボタンをアプリの indigo-600 に揃える */
 .staff-edit-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
 .settings-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,

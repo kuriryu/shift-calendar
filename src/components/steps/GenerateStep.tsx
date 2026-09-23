@@ -182,7 +182,7 @@ export default function GenerateStep() {
                 >
                   <span className="justify-self-start pt-0.5">
                     <span
-                      className={`inline-flex min-w-[2.75rem] justify-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ${chip.className}`}
+                      className={`inline-flex min-w-[2.75rem] justify-center rounded-md px-2 py-0.5 text-[10px] font-semibold ring-1 ${chip.className}`}
                     >
                       {chip.label}
                     </span>

@@ -26,17 +26,17 @@ export default function StaffStep() {
                 className={`rounded-xl border px-4 py-5 sm:px-5 ${
                   active
                     ? `${meta.soft} border-transparent`
-                    : "border-slate-200 bg-slate-50"
+                    : "border-slate-200 bg-slate-100"
                 }`}
               >
                 <dt
                   className={`flex items-center gap-1.5 text-xs font-medium sm:text-sm ${
-                    active ? "opacity-90" : "text-slate-500"
+                    active ? "opacity-90" : "text-slate-400"
                   }`}
                 >
                   <span
                     className={`flex h-6 w-6 items-center justify-center rounded-md ${
-                      active ? "bg-white/70" : meta.soft
+                      active ? "bg-white/70" : "bg-slate-200 text-slate-400"
                     }`}
                     aria-hidden
                   >
@@ -46,7 +46,7 @@ export default function StaffStep() {
                 </dt>
                 <dd
                   className={`mt-2 text-2xl font-bold tabular-nums sm:text-3xl ${
-                    active ? "" : "text-slate-800"
+                    active ? "" : "text-slate-400"
                   }`}
                 >
                   <span className="sr-only">{meta.label} </span>

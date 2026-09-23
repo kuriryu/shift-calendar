@@ -35,7 +35,8 @@ export default function StaffFilter() {
   };
   const firstPending = ([1, 2, 3, 4, 5, 6] as StepId[]).find((id) => !done[id]);
   const active: StepId = currentStep ?? (confirmed ? 6 : (firstPending ?? 6));
-  const locked = active < 6;
+  /** 希望入力（ステップ3）以降で絞り込み可能 */
+  const locked = active < 3;
 
   const hidden = new Set(hiddenStaffIds);
 
@@ -46,7 +47,7 @@ export default function StaffFilter() {
       </p>
       {locked && (
         <p className="mb-3 rounded-lg bg-slate-50 px-2.5 py-2 text-[10px] leading-relaxed text-slate-500">
-          調整（ステップ6）で使えるようになります
+          希望入力（ステップ3）以降で使えるようになります
         </p>
       )}
       <fieldset disabled={locked} className="space-y-4 border-0 p-0">
