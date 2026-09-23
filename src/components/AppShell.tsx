@@ -23,7 +23,7 @@ function formatAt(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function ProfileMenu({ email }: { email: string }) {
+function ProfileMenu({ email }: { email: string | null }) {
   const [open, setOpen] = useState(false);
   const activities = useAppStore((s) => s.activities);
   const clearLoginHistory = useAppStore((s) => s.clearLoginHistory);
@@ -50,9 +50,11 @@ function ProfileMenu({ email }: { email: string }) {
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-700">
-                  {email}
+                  {email ?? "ゲスト"}
                 </p>
-                <p className="text-[10px] text-slate-400">ログイン中</p>
+                <p className="text-[10px] text-slate-400">
+                  {email ? "ログイン中" : "ゲストモード（認証オフ）"}
+                </p>
               </div>
             </div>
 
@@ -120,9 +122,11 @@ function ProfileMenu({ email }: { email: string }) {
               )}
             </div>
 
-            <div className="border-t border-slate-100 pt-3">
-              <SignOutButton />
-            </div>
+            {email && (
+              <div className="border-t border-slate-100 pt-3">
+                <SignOutButton />
+              </div>
+            )}
           </div>
         </>
       )}
@@ -134,7 +138,7 @@ export default function AppShell({
   email,
   children,
 }: {
-  email: string;
+  email: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();

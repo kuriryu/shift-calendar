@@ -1,15 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
 import AppShell from "@/components/AppShell";
 
-export default async function AppLayout({
+export default function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  return <AppShell email={user?.email ?? ""}>{children}</AppShell>;
+  // 認証は一旦無効化（ログイン画面なしで誰でもアクセス可能）
+  // 復活させる場合は Supabase のユーザーを取得して email を渡す
+  return <AppShell email={null}>{children}</AppShell>;
 }
