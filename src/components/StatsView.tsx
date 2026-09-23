@@ -5,9 +5,8 @@ import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, weeksOfMonth } from "@/lib/dates";
 import { workMinutesOf, minutesToHoursLabel } from "@/lib/time";
 import type { Role } from "@/types";
-import { ROLE_LABELS } from "@/types";
-
-const ROLE_ORDER: Role[] = ["employee", "part_time", "student"];
+import RoleBadge from "@/components/RoleBadge";
+import { ROLE_ORDER } from "@/lib/roles";
 
 const ROLE_BAR: Record<Role, string> = {
   employee: "bg-indigo-400",
@@ -67,17 +66,17 @@ export default function StatsView() {
                 const workDays = new Set(mine.map((a) => a.date)).size;
                 return (
                   <tr key={s.id} className="border-b border-slate-100 text-xs">
-                    <td className="px-4 py-2">
+                    <td className="px-4 py-3">
                       <div className="font-medium text-slate-700">{s.name}</div>
-                      <div className="text-[10px] text-slate-400">
-                        {ROLE_LABELS[s.role]}
+                      <div className="mt-1">
+                        <RoleBadge role={s.role} size="sm" />
                       </div>
                     </td>
-                    <td className="px-4 py-2 font-semibold text-slate-700">
+                    <td className="px-4 py-3 font-semibold text-slate-700">
                       {minutesToHoursLabel(totalMin)}
                     </td>
-                    <td className="px-4 py-2 text-slate-600">{workDays}日</td>
-                    <td className="px-4 py-2 text-slate-600">
+                    <td className="px-4 py-3 text-slate-600">{workDays}日</td>
+                    <td className="px-4 py-3 text-slate-600">
                       {days.length - workDays}日
                     </td>
                     {weeks.map((w) => {

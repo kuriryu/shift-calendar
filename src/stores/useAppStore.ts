@@ -15,8 +15,11 @@ import type {
 } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { INITIAL_STAFF } from "@/lib/staff-data";
-import { daysOfMonth, nextMonthOf, weekdayOf } from "@/lib/dates";
-import { patternOf } from "@/lib/staff-pattern";
+import { daysOfMonth, nextMonthOf } from "@/lib/dates";
+import {
+  recommendationRequestOf,
+  requestsMatch,
+} from "@/lib/staff-pattern";
 import { generateMonth } from "@/lib/generator";
 import { validateMonth } from "@/lib/validator";
 import { computeBreak, placeBreakStart } from "@/lib/generator";
@@ -40,6 +43,61 @@ function makeActivity(
   message: string,
 ): ActivityEntry {
   return { id: uid(), at: new Date().toISOString(), kind, message };
+}
+
+/**
+ * 未入力の日付にだけ基本パターン／固定休を入れる。
+ * 既にユーザーが入れた希望は上書きしない。
+ */
+function fillEmptyFromPatterns(
+  existing: ShiftRequest[],
+  staffList: Staff[],
+  month: string,
+  staffId?: string,
+): { next: ShiftRequest[]; added: number } {
+  const days = daysOfMonth(month);
+  const has = new Set(existing.map((r) => `${r.staffId}:${r.date}`));
+  const targets = staffId
+    ? staffList.filter((x) => x.id === staffId)
+    : staffList;
+  const added: ShiftRequest[] = [];
+  for (const st of targets) {
+    for (const date of days) {
+      if (has.has(`${st.id}:${date}`)) continue;
+      const rec = recommendationRequestOf(st, date);
+      if (rec) added.push(rec);
+    }
+  }
+  if (added.length === 0) return { next: existing, added: 0 };
+  return { next: [...existing, ...added], added: added.length };
+}
+
+/**
+ * スタッフのパターン変更に追従。
+ * 「未入力」または「変更前パターンと一致」するセルだけ新パターンへ更新する。
+ */
+function syncStaffPatternRequests(
+  existing: ShiftRequest[],
+  prev: Staff | undefined,
+  nextStaff: Staff,
+  month: string,
+): ShiftRequest[] {
+  const days = daysOfMonth(month);
+  const byKey = new Map<string, ShiftRequest>(
+    existing.map((r) => [`${r.staffId}:${r.date}`, r]),
+  );
+  for (const date of days) {
+    const key = `${nextStaff.id}:${date}`;
+    const current = byKey.get(key);
+    const oldRec = prev ? recommendationRequestOf(prev, date) : null;
+    const newRec = recommendationRequestOf(nextStaff, date);
+    const isBlank = !current;
+    const wasPattern = requestsMatch(current, oldRec);
+    if (!isBlank && !wasPattern) continue;
+    if (newRec) byKey.set(key, newRec);
+    else byKey.delete(key);
+  }
+  return [...byKey.values()];
 }
 
 /** デモ用の希望休を生成（決定的: 再実行しても同じ結果） */
@@ -87,7 +145,7 @@ type AppState = {
   // ── 以下は永続化しない一時状態 ──
   /** シフト作成フローの現在ステップ（null は自動判定） */
   currentStep: StepId | null;
-  /** ステップ6（微調整）の表示モード */
+  /** ステップ6（調整）の表示モード */
   adjustView: "day" | "week" | "month";
   /** 確定前の仮生成結果 */
   draft: {
@@ -108,7 +166,7 @@ type AppState = {
   clearRequest: (staffId: string, date: string) => void;
   bulkSetRequests: (staffId: string, type: "available" | "off") => void;
   /** 基本パターン・固定休から作ったリコメンドを希望として一括採用（staffId 省略で全員） */
-  adoptRecommendations: (staffId?: string) => void;
+  adoptRecommendations: (staffId?: string, opts?: { silent?: boolean }) => void;
   clearAllRequests: () => void;
   fillTestRequests: () => void;
   generate: () => void;
@@ -190,10 +248,17 @@ export const useAppStore = create<AppState>()(
               daysOfMonth(month).length,
             );
             const selectedDate = `${month}-${String(day).padStart(2, "0")}`;
+            const { next } = fillEmptyFromPatterns(
+              s.requests[month] ?? [],
+              s.staff,
+              month,
+            );
+            const requests = { ...s.requests, [month]: next };
             return {
               selectedMonth: month,
               selectedDate,
-              ...revalidate({ ...s, selectedMonth: month }),
+              requests,
+              ...revalidate({ ...s, selectedMonth: month, requests }),
             };
           }),
 
@@ -201,10 +266,17 @@ export const useAppStore = create<AppState>()(
           set((s) => {
             const month = date.slice(0, 7);
             if (month === s.selectedMonth) return { selectedDate: date };
+            const { next } = fillEmptyFromPatterns(
+              s.requests[month] ?? [],
+              s.staff,
+              month,
+            );
+            const requests = { ...s.requests, [month]: next };
             return {
               selectedDate: date,
               selectedMonth: month,
-              ...revalidate({ ...s, selectedMonth: month }),
+              requests,
+              ...revalidate({ ...s, selectedMonth: month, requests }),
             };
           }),
 
@@ -234,16 +306,30 @@ export const useAppStore = create<AppState>()(
           }),
 
         addStaff: (partial) =>
-          set((s) => ({
-            staff: [
-              ...s.staff,
-              { ...partial, id: `staff-${Date.now().toString(36)}` },
-            ],
-            activities: [
-              makeActivity("staff", `${partial.name} を新規登録`),
-              ...s.activities,
-            ].slice(0, MAX_ACTIVITIES),
-          })),
+          set((s) => {
+            const created: Staff = {
+              ...partial,
+              id: `staff-${Date.now().toString(36)}`,
+            };
+            const staff = [...s.staff, created];
+            const month = s.selectedMonth;
+            const { next } = fillEmptyFromPatterns(
+              s.requests[month] ?? [],
+              [created],
+              month,
+              created.id,
+            );
+            const requests = { ...s.requests, [month]: next };
+            return {
+              staff,
+              requests,
+              activities: [
+                makeActivity("staff", `${partial.name} を新規登録`),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, requests }),
+            };
+          }),
 
         setRequest: (req) =>
           set((s) => {
@@ -283,45 +369,29 @@ export const useAppStore = create<AppState>()(
             return { requests, ...revalidate({ ...s, requests }) };
           }),
 
-        adoptRecommendations: (staffId) =>
+        adoptRecommendations: (staffId, opts) =>
           set((s) => {
             const month = s.selectedMonth;
-            const days = daysOfMonth(month);
             const existing = s.requests[month] ?? [];
-            const has = new Set(existing.map((r) => `${r.staffId}:${r.date}`));
-            const targets = staffId
-              ? s.staff.filter((x) => x.id === staffId)
-              : s.staff;
-            const added: ShiftRequest[] = [];
-            for (const st of targets) {
-              for (const date of days) {
-                if (has.has(`${st.id}:${date}`)) continue;
-                if (st.unavailableWeekdays?.includes(weekdayOf(date))) {
-                  added.push({ staffId: st.id, date, type: "off" });
-                } else {
-                  const pat = patternOf(st, date);
-                  if (pat) {
-                    added.push({
-                      staffId: st.id,
-                      date,
-                      type: "time_limited",
-                      timeRange: { ...pat },
-                    });
-                  }
-                }
-              }
-            }
-            if (added.length === 0) return {};
-            const requests = { ...s.requests, [month]: [...existing, ...added] };
+            const { next, added } = fillEmptyFromPatterns(
+              existing,
+              s.staff,
+              month,
+              staffId,
+            );
+            if (added === 0) return {};
+            const requests = { ...s.requests, [month]: next };
             return {
               requests,
-              activities: [
-                makeActivity(
-                  "request",
-                  `${month} の希望候補を${added.length}件採用${staffId ? "" : "（全員）"}`,
-                ),
-                ...s.activities,
-              ].slice(0, MAX_ACTIVITIES),
+              activities: opts?.silent
+                ? s.activities
+                : [
+                    makeActivity(
+                      "request",
+                      `${month} の希望候補を${added}件採用${staffId ? "" : "（全員）"}`,
+                    ),
+                    ...s.activities,
+                  ].slice(0, MAX_ACTIVITIES),
               ...revalidate({ ...s, requests }),
             };
           }),
@@ -403,7 +473,22 @@ export const useAppStore = create<AppState>()(
 
         discardDraft: () => set({ draft: null }),
 
-        setStep: (step) => set({ currentStep: step }),
+        setStep: (step) =>
+          set((s) => {
+            if (step !== 3) return { currentStep: step };
+            const month = s.selectedMonth;
+            const { next } = fillEmptyFromPatterns(
+              s.requests[month] ?? [],
+              s.staff,
+              month,
+            );
+            const requests = { ...s.requests, [month]: next };
+            return {
+              currentStep: step,
+              requests,
+              ...revalidate({ ...s, requests }),
+            };
+          }),
 
         setAdjustView: (view) => set({ adjustView: view }),
 
@@ -648,13 +733,27 @@ export const useAppStore = create<AppState>()(
           }),
 
         updateStaff: (staff) =>
-          set((s) => ({
-            staff: s.staff.map((x) => (x.id === staff.id ? staff : x)),
-            activities: [
-              makeActivity("staff", `${staff.name} のスタッフ情報を更新`),
-              ...s.activities,
-            ].slice(0, MAX_ACTIVITIES),
-          })),
+          set((s) => {
+            const prev = s.staff.find((x) => x.id === staff.id);
+            const nextStaff = s.staff.map((x) => (x.id === staff.id ? staff : x));
+            const month = s.selectedMonth;
+            const synced = syncStaffPatternRequests(
+              s.requests[month] ?? [],
+              prev,
+              staff,
+              month,
+            );
+            const requests = { ...s.requests, [month]: synced };
+            return {
+              staff: nextStaff,
+              requests,
+              activities: [
+                makeActivity("staff", `${staff.name} のスタッフ情報を更新`),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, requests }),
+            };
+          }),
 
         recordLogin: (email) =>
           set((s) => {

@@ -12,6 +12,7 @@ import {
 } from "smarthr-ui";
 import type { Role, Staff, TimeRange } from "@/types";
 import { ROLE_LABELS } from "@/types";
+import { ROLE_META } from "@/lib/roles";
 import { parseSpecialNote } from "@/lib/notes";
 import { timeOptionsOf } from "@/lib/coverage";
 import { migrateStaffPatterns } from "@/lib/staff-pattern";
@@ -213,7 +214,7 @@ export default function StaffEditModal({
               { value: "", label: "選択してください" },
               ...(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({
                 value: r,
-                label: ROLE_LABELS[r],
+                label: ROLE_META[r].label,
               })),
             ]}
           />

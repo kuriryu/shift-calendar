@@ -39,18 +39,26 @@ body {
   border-radius: 8px;
 }
 
-/* スタッフ登録・編集モーダルの見出し／フッター区切り線を非表示 */
-.staff-edit-dialog .smarthr-ui-Dialog-titleArea {
+/* モーダルの見出し／フッター区切り線を非表示 */
+.staff-edit-dialog .smarthr-ui-Dialog-titleArea,
+.settings-dialog .smarthr-ui-Dialog-titleArea,
+.generate-confirm-dialog .smarthr-ui-Dialog-titleArea {
   border-bottom-width: 0;
 }
-.staff-edit-dialog .smarthr-ui-Dialog-actionArea {
+.staff-edit-dialog .smarthr-ui-Dialog-actionArea,
+.settings-dialog .smarthr-ui-Dialog-actionArea,
+.generate-confirm-dialog .smarthr-ui-Dialog-actionArea {
   border-top-width: 0;
 }
 
-/* 条件設定モーダルの見出し／フッター区切り線を非表示 */
-.settings-dialog .smarthr-ui-Dialog-titleArea {
-  border-bottom-width: 0;
+/* smarthr 主ボタンをアプリの indigo-600 に揃える */
+.staff-edit-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
+.settings-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
+.generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main {
+  background-color: #4f46e5 !important;
 }
-.settings-dialog .smarthr-ui-Dialog-actionArea {
-  border-top-width: 0;
+.staff-edit-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
+.settings-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
+.generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover {
+  background-color: #4338ca !important;
 }

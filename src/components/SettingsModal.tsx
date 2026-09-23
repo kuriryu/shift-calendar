@@ -26,14 +26,14 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
-      <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800">
+    <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-5">
+      <h3 className="mb-4 flex items-center gap-2 px-0.5 py-1 text-sm font-semibold text-slate-800">
         <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
           <Icon name={icon} size={16} />
         </span>
         {title}
       </h3>
-      <div className="space-y-2.5">{children}</div>
+      <div className="space-y-3">{children}</div>
     </section>
   );
 }
@@ -49,10 +49,10 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-3">
-      <div className="min-w-0">
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-3 px-0.5 py-1">
+      <div className="min-w-0 py-0.5">
         <p className="truncate text-xs font-medium text-slate-600">{label}</p>
-        {hint && <p className="truncate text-[10px] text-slate-400">{hint}</p>}
+        {hint && <p className="mt-0.5 truncate text-[10px] text-slate-400">{hint}</p>}
       </div>
       <div className="min-w-0">{children}</div>
     </div>

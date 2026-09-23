@@ -3,20 +3,14 @@
 import { useState } from "react";
 import { useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
-import type { Role, Staff } from "@/types";
-import { ROLE_LABELS } from "@/types";
+import type { Staff } from "@/types";
 import Icon from "@/components/Icon";
+import RoleBadge from "@/components/RoleBadge";
 import StaffEditModal from "@/components/StaffEditModal";
 import { parseSpecialNote } from "@/lib/notes";
+import { ROLE_ORDER } from "@/lib/roles";
 
-const ROLE_ORDER: Role[] = ["employee", "part_time", "student"];
 const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
-
-const ROLE_TAG: Record<Role, { icon: string; cls: string }> = {
-  employee: { icon: "badge", cls: "bg-indigo-100 text-indigo-700" },
-  part_time: { icon: "schedule", cls: "bg-emerald-100 text-emerald-700" },
-  student: { icon: "school", cls: "bg-amber-100 text-amber-700" },
-};
 
 export default function StaffManager() {
   const mounted = useMounted();
@@ -27,9 +21,23 @@ export default function StaffManager() {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
   }
 
+  if (staff.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-14 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 ring-1 ring-slate-200">
+          <Icon name="group_off" size={28} />
+        </span>
+        <p className="text-sm font-medium text-slate-600">スタッフがまだいません</p>
+        <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+          「スタッフを新規登録」から名前と属性を追加すると、ここに一覧が表示されます。
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-5">
-      <p className="mb-1 flex items-center gap-1.5 text-xs text-slate-500">
+    <div className="space-y-4">
+      <p className="flex items-center gap-1.5 px-0.5 py-1.5 text-xs leading-relaxed text-slate-500">
         <Icon name="info" size={14} />
         名前をクリックすると属性・基本パターン・特別な要望を編集できます。
       </p>
@@ -37,12 +45,12 @@ export default function StaffManager() {
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
-              <th className="px-4 py-2 font-semibold">名前</th>
-              <th className="px-4 py-2 font-semibold">属性</th>
-              <th className="px-4 py-2 font-semibold">週の上限</th>
-              <th className="px-4 py-2 font-semibold">基本パターン</th>
-              <th className="px-4 py-2 font-semibold">固定休</th>
-              <th className="px-4 py-2 font-semibold">特別な要望</th>
+              <th className="px-4 py-3 font-semibold">名前</th>
+              <th className="px-4 py-3 font-semibold">属性</th>
+              <th className="px-4 py-3 font-semibold">週の上限</th>
+              <th className="px-4 py-3 font-semibold">基本パターン</th>
+              <th className="px-4 py-3 font-semibold">固定休</th>
+              <th className="px-4 py-3 font-semibold">特別な要望</th>
             </tr>
           </thead>
           <tbody>
@@ -55,10 +63,10 @@ export default function StaffManager() {
                     : [];
                   return (
                     <tr key={s.id} className="border-b border-slate-100 text-xs">
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-3">
                         <button
                           onClick={() => setEditing(s)}
-                          className="group flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
+                          className="group flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                         >
                           {s.name}
                           <Icon
@@ -68,18 +76,13 @@ export default function StaffManager() {
                           />
                         </button>
                       </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${ROLE_TAG[s.role].cls}`}
-                        >
-                          <Icon name={ROLE_TAG[s.role].icon} size={12} />
-                          {ROLE_LABELS[s.role]}
-                        </span>
+                      <td className="px-4 py-3">
+                        <RoleBadge role={s.role} size="sm" />
                       </td>
-                      <td className="px-4 py-2 text-slate-600">
+                      <td className="px-4 py-3 text-slate-600">
                         {s.maxHoursPerWeek > 0 ? `${s.maxHoursPerWeek}h` : "—"}
                       </td>
-                      <td className="px-4 py-2 text-slate-600">
+                      <td className="px-4 py-3 text-slate-600">
                         {[
                           s.weekdayPattern
                             ? `平 ${s.weekdayPattern.start}–${s.weekdayPattern.end}`
@@ -96,14 +99,14 @@ export default function StaffManager() {
                           .filter(Boolean)
                           .join(" / ") || "—"}
                       </td>
-                      <td className="px-4 py-2 text-slate-600">
+                      <td className="px-4 py-3 text-slate-600">
                         {s.unavailableWeekdays && s.unavailableWeekdays.length > 0
                           ? s.unavailableWeekdays
                               .map((d) => WEEKDAY_NAMES[d])
                               .join("・")
                           : "—"}
                       </td>
-                      <td className="max-w-48 px-4 py-2">
+                      <td className="max-w-48 px-4 py-3">
                         {s.specialNote ? (
                           <div>
                             <p className="truncate text-slate-600" title={s.specialNote}>

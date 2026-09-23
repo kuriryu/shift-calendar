@@ -1,6 +1,6 @@
 import RedirectToStep from "@/components/RedirectToStep";
 
-/** 旧URL (/day/YYYY-MM-DD) はトップの微調整ステップ（時間ビュー）に統合されたためリダイレクト */
+/** 旧URL (/day/YYYY-MM-DD) はトップの調整ステップ（時間ビュー）に統合されたためリダイレクト */
 export default async function DayPage({
   params,
 }: {

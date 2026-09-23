@@ -1,4 +1,4 @@
-import type { Staff, TimeRange } from "@/types";
+import type { ShiftRequest, Staff, TimeRange } from "@/types";
 import { weekdayOf } from "@/lib/dates";
 
 /** 土・日なら true（金曜は平日） */
@@ -22,6 +22,42 @@ export function patternOf(staff: Staff, date: string): TimeRange | undefined {
 /** いずれかの基本パターンがあるか */
 export function hasAnyPattern(staff: Staff): boolean {
   return !!(staff.weekdayPattern || staff.weekendPattern || staff.defaultPattern);
+}
+
+/** スタッフ情報から、その日の希望候補（固定休 or 基本パターン）を返す */
+export function recommendationRequestOf(
+  staff: Staff,
+  date: string,
+): ShiftRequest | null {
+  if (staff.unavailableWeekdays?.includes(weekdayOf(date))) {
+    return { staffId: staff.id, date, type: "off" };
+  }
+  const pat = patternOf(staff, date);
+  if (pat) {
+    return {
+      staffId: staff.id,
+      date,
+      type: "time_limited",
+      timeRange: { ...pat },
+    };
+  }
+  return null;
+}
+
+export function requestsMatch(
+  a: ShiftRequest | null | undefined,
+  b: ShiftRequest | null | undefined,
+): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  if (a.type !== b.type) return false;
+  if (a.type === "time_limited") {
+    return (
+      a.timeRange?.start === b.timeRange?.start &&
+      a.timeRange?.end === b.timeRange?.end
+    );
+  }
+  return true;
 }
 
 /** 旧 defaultPattern を平日・休日の両方にコピー（既にあれば触らない） */

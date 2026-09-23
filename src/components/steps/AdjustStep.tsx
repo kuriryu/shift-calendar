@@ -37,7 +37,7 @@ export default function AdjustStep() {
               key={v.id}
               onClick={() => setView(v.id)}
               aria-pressed={view === v.id}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
                 view === v.id
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -51,16 +51,26 @@ export default function AdjustStep() {
       }
     >
       {assignments.length === 0 && (
-        <p className="flex flex-wrap items-center gap-2 rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          <Icon name="info" size={18} />
-          この月のシフトはまだ作成されていません。
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-sky-200 bg-sky-50/70 px-6 py-10 text-center sm:flex-row sm:text-left">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-sky-600 ring-1 ring-sky-100">
+            <Icon name="event_busy" size={28} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-sky-900">
+              この月のシフトはまだ作成されていません
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-sky-800/70">
+              自動生成で案を作るか、日・週・月表示で手動追加できます。
+            </p>
+          </div>
           <button
             onClick={() => setStep(4)}
-            className="ml-auto rounded-md bg-white px-3 py-1 text-xs font-semibold text-sky-700 ring-1 ring-sky-200 hover:bg-sky-100"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-3.5 py-2 text-xs font-semibold text-sky-800 ring-1 ring-sky-200 hover:bg-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
           >
+            <Icon name="auto_awesome" size={16} />
             自動生成へ
           </button>
-        </p>
+        </div>
       )}
 
       {view === "day" && <DayTimeline key={selectedDate} date={selectedDate} />}

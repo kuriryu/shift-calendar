@@ -27,98 +27,191 @@ export default function GenerateStep() {
     setStep(5);
   };
 
-  const conditions = [
+  const conditions: {
+    icon: string;
+    text: string;
+    severity: "error" | "warning" | "check";
+  }[] = [
     {
       icon: "storefront",
       text: `営業時間 ${settings.openTime}〜${settings.closeTimeWeekday}（日〜木）/ 〜${settings.closeTimeWeekend}（金・土）`,
+      severity: "check",
     },
     {
       icon: "groups",
-      text: `開店・閉店（締め作業）時は ${settings.edgeRequired}人以上 — 下回るとエラー`,
+      text: `開店・閉店（締め作業）時は ${settings.edgeRequired}人以上`,
+      severity: "error",
     },
     {
       icon: "group",
       text: `原則 ${settings.normalRequired}人体制、ピーク時（${settings.peakHours
         .map((p) => `${p.start}〜${p.end}`)
-        .join("・") || "なし"}）は ${settings.peakRequired}人 — 下回ると警告`,
+        .join("・") || "なし"}）は ${settings.peakRequired}人`,
+      severity: "warning",
     },
-    { icon: "badge", text: "社員は毎日1人以上配置 — 不在はエラー" },
+    {
+      icon: "badge",
+      text: "社員は毎日1人以上配置",
+      severity: "error",
+    },
     {
       icon: "bedtime",
-      text: `社員の月間休日は ${settings.employeeDaysOffTarget}日を目標 — 下回ると警告`,
+      text: `社員の月間休日は ${settings.employeeDaysOffTarget}日を目標`,
+      severity: "warning",
     },
-    { icon: "rule", text: "連勤上限・週の上限時間・希望休との矛盾もチェック" },
+    {
+      icon: "rule",
+      text: "連勤上限・週の上限時間・希望休との矛盾もチェック",
+      severity: "check",
+    },
   ];
+
+  const severityChip = {
+    error: { label: "エラー", className: "bg-red-50 text-red-700 ring-red-100" },
+    warning: { label: "警告", className: "bg-amber-50 text-amber-800 ring-amber-100" },
+    check: { label: "確認", className: "bg-slate-100 text-slate-600 ring-slate-200/80" },
+  } as const;
 
   return (
     <StepPanel step={4} hideNext>
       <div className="grid gap-6 lg:grid-cols-2">
         <section aria-labelledby="gen-inputs" className="rounded-xl bg-slate-50 p-5">
-          <h4 id="gen-inputs" className="mb-3 text-sm font-semibold text-slate-700">
+          <h4 id="gen-inputs" className="mb-4 text-sm font-semibold text-slate-700">
             {monthLabel(month)} の入力状況
           </h4>
-          <ul className="space-y-2 text-sm text-slate-700">
-            <li className="flex items-center gap-2">
-              <Icon
-                name={staff.length > 0 ? "check_circle" : "cancel"}
-                size={18}
-                className={staff.length > 0 ? "text-emerald-600" : "text-red-500"}
-              />
-              スタッフ {staff.length}名（社員 {employees}名）
+          <ul className="space-y-3">
+            <li
+              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ring-1 ${
+                staff.length > 0
+                  ? "bg-emerald-50/80 ring-emerald-100"
+                  : "bg-red-50/80 ring-red-100"
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  staff.length > 0
+                    ? "bg-white text-emerald-600"
+                    : "bg-white text-red-500"
+                }`}
+                aria-hidden
+              >
+                <Icon name={staff.length > 0 ? "check_circle" : "cancel"} size={20} />
+              </span>
+              <div className="min-w-0">
+                <p
+                  className={`text-sm font-semibold ${
+                    staff.length > 0 ? "text-emerald-800" : "text-red-800"
+                  }`}
+                >
+                  スタッフ {staff.length}名
+                </p>
+                <p className="text-xs text-slate-500">社員 {employees}名を含む</p>
+              </div>
             </li>
-            <li className="flex items-center gap-2">
-              <Icon
-                name={requests.length > 0 ? "check_circle" : "info"}
-                size={18}
-                className={requests.length > 0 ? "text-emerald-600" : "text-slate-400"}
-              />
-              希望入力 {requests.length}件
-              {requests.length === 0 && (
-                <span className="text-xs text-slate-400">
-                  （未入力＝全日出勤可能として扱います）
-                </span>
-              )}
+            <li
+              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ring-1 ${
+                requests.length > 0
+                  ? "bg-emerald-50/80 ring-emerald-100"
+                  : "bg-white ring-slate-200"
+              }`}
+            >
+              <span
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+                  requests.length > 0
+                    ? "bg-white text-emerald-600"
+                    : "bg-slate-50 text-slate-400"
+                }`}
+                aria-hidden
+              >
+                <Icon
+                  name={requests.length > 0 ? "check_circle" : "info"}
+                  size={20}
+                />
+              </span>
+              <div className="min-w-0">
+                <p
+                  className={`text-sm font-semibold ${
+                    requests.length > 0 ? "text-emerald-800" : "text-slate-700"
+                  }`}
+                >
+                  希望入力 {requests.length}件
+                </p>
+                {requests.length === 0 && (
+                  <p className="text-xs text-slate-400">
+                    未入力＝全日出勤可能として扱います
+                  </p>
+                )}
+              </div>
             </li>
             {assignments.length > 0 && (
-              <li className="flex items-start gap-2 text-amber-800">
-                <Icon name="warning" size={18} className="mt-0.5 shrink-0 text-amber-600" />
-                <span>
-                  この月は既に {assignments.length}
-                  件のシフトが作成済みです。再生成しても、次のステップで「確定」するまで既存のシフトは変わりません。
+              <li className="flex items-start gap-3 rounded-xl bg-amber-50/80 px-3.5 py-3 ring-1 ring-amber-100">
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600"
+                  aria-hidden
+                >
+                  <Icon name="warning" size={20} />
                 </span>
+                <div className="min-w-0 text-sm text-amber-900">
+                  <p className="font-semibold">既存シフト {assignments.length}件</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-amber-800/80">
+                    再生成しても、次のステップで「確定」するまで既存のシフトは変わりません。
+                  </p>
+                </div>
               </li>
             )}
           </ul>
         </section>
 
         <section aria-labelledby="gen-conditions" className="rounded-xl border border-slate-200 p-5">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h4 id="gen-conditions" className="text-sm font-semibold text-slate-700">
               作成時に確認する条件
             </h4>
-            <span className="text-[11px] text-slate-400">サイドバー左下の⚙で変更できます</span>
+            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+              <Icon name="settings" size={12} />
+              サイドバー左下で変更
+            </span>
           </div>
-          <ul className="space-y-2 text-sm text-slate-700">
-            {conditions.map((c) => (
-              <li key={c.text} className="flex items-start gap-2">
-                <Icon name={c.icon} size={18} className="mt-0.5 shrink-0 text-indigo-500" />
-                <span>{c.text}</span>
-              </li>
-            ))}
+          <ul className="space-y-2">
+            {conditions.map((c) => {
+              const chip = severityChip[c.severity];
+              return (
+                <li
+                  key={c.text}
+                  className="grid grid-cols-[3.5rem_minmax(0,1fr)] items-start gap-x-3 rounded-lg px-1 py-1.5 text-sm text-slate-700"
+                >
+                  <span className="justify-self-start pt-0.5">
+                    <span
+                      className={`inline-flex min-w-[2.75rem] justify-start rounded-md px-1.5 py-0.5 text-[10px] font-semibold ring-1 ${chip.className}`}
+                    >
+                      {chip.label}
+                    </span>
+                  </span>
+                  <span className="flex min-w-0 items-start gap-2.5">
+                    <Icon
+                      name={c.icon}
+                      size={18}
+                      className="mt-0.5 shrink-0 text-indigo-500"
+                    />
+                    <span className="leading-snug">{c.text}</span>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       </div>
 
-      <div className="flex flex-col items-center gap-3 py-4">
+      <div className="flex flex-col items-center gap-2 py-4">
         <button
           onClick={() => setConfirmOpen(true)}
           disabled={!canGenerate}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
         >
           <Icon name="auto_awesome" size={22} />
           シフトを自動生成する
         </button>
-        <p className="text-xs text-slate-400">
+        <p className="px-0.5 py-1.5 text-center text-xs leading-relaxed text-slate-400">
           生成後、確認画面で内容と懸念事項をチェックしてから確定します
         </p>
         {!canGenerate && (

@@ -1,5 +1,6 @@
 "use client";
 
+import Icon from "@/components/Icon";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import {
@@ -51,35 +52,57 @@ export default function WeekCalendarView({
   const staffMap = new Map(staff.map((s) => [s.id, s]));
   const weekDates = weekDatesAround(selectedDate);
   const weeks = weeksOfMonth(month);
-  const currentKey = weekKeyOf(selectedDate);
+  const weekIndex = Math.max(
+    0,
+    weeks.findIndex(
+      (w) => w.key === weekKeyOf(selectedDate) || w.dates.includes(selectedDate),
+    ),
+  );
+  const currentWeek = weeks[weekIndex] ?? weeks[0];
 
   const select = (date: string) => {
     setSelectedDate(date);
     onSelectDate?.(date);
   };
 
+  const goWeek = (delta: number) => {
+    const next = weeks[weekIndex + delta];
+    if (!next) return;
+    const prefer =
+      next.dates.find((d) => d === selectedDate) ??
+      next.dates.find((d) => Number(d.slice(8)) === Number(selectedDate.slice(8))) ??
+      next.dates[0];
+    select(prefer);
+  };
+
   return (
     <div className="space-y-3">
-      <div
-        className="flex flex-wrap items-center gap-2"
-        role="group"
-        aria-label="週の選択"
-      >
-        {weeks.map((w) => (
+      {currentWeek && (
+        <div className="flex items-center justify-center gap-3">
           <button
-            key={w.key}
-            onClick={() => select(w.dates[0])}
-            aria-pressed={w.key === currentKey}
-            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              w.key === currentKey
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-            }`}
+            onClick={() => goWeek(-1)}
+            disabled={weekIndex <= 0}
+            aria-label="前の週"
+            className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {w.label}
+            <Icon name="chevron_left" size={20} />
           </button>
-        ))}
-      </div>
+          <p
+            className="min-w-[8rem] text-center text-sm font-semibold text-slate-800"
+            aria-live="polite"
+          >
+            {currentWeek.label}
+          </p>
+          <button
+            onClick={() => goWeek(1)}
+            disabled={weekIndex >= weeks.length - 1}
+            aria-label="次の週"
+            className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Icon name="chevron_right" size={20} />
+          </button>
+        </div>
+      )}
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <div className="grid min-w-[42rem] grid-cols-7 divide-x divide-slate-100">

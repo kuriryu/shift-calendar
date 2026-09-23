@@ -4,11 +4,10 @@ import { useEffect, useRef } from "react";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
-import type { Role, ShiftAssignment, Staff, Violation } from "@/types";
-import { ROLE_LABELS } from "@/types";
+import type { ShiftAssignment, Staff, Violation } from "@/types";
+import RoleBadge from "@/components/RoleBadge";
+import { ROLE_ORDER } from "@/lib/roles";
 import { staffColorOf } from "@/lib/staff-color";
-
-const ROLE_ORDER: Role[] = ["employee", "part_time", "student"];
 
 /** "09:00" → "9", "13:30" → "13.5" */
 function shortTime(t: string): string {
@@ -107,7 +106,11 @@ export default function MonthMatrix({
       );
     }
     if (requestOffSet.has(`${s.id}:${date}`)) {
-      return <span className="text-[10px] text-slate-400">休</span>;
+      return (
+        <span className="inline-flex w-full items-center justify-center rounded bg-slate-100 px-0.5 py-1 text-[10px] font-medium text-slate-500">
+          休
+        </span>
+      );
     }
     return (
       <span className="text-[10px] text-slate-200" aria-hidden>
@@ -126,9 +129,12 @@ export default function MonthMatrix({
           <tr className="border-b border-slate-200 bg-slate-50">
             <th
               scope="col"
-              className="sticky left-0 z-10 min-w-32 bg-slate-50 px-4 py-2.5 text-left text-xs font-semibold text-slate-600"
+              className="sticky left-0 z-10 min-w-44 bg-slate-50 px-3 py-2.5 text-left text-xs font-semibold text-slate-600"
             >
-              スタッフ
+              <span className="grid grid-cols-[minmax(0,1fr)_4.75rem] items-center gap-2">
+                <span>スタッフ</span>
+                <span className="text-[10px] font-medium text-slate-400">属性</span>
+              </span>
             </th>
             {days.map((date) => {
               const dayNum = Number(date.slice(8));
@@ -177,7 +183,7 @@ export default function MonthMatrix({
         </thead>
         <tbody>
           {grouped.map(({ role, members }) =>
-            members.map((s, i) => (
+            members.map((s) => (
               <tr
                 key={s.id}
                 data-staff-id={s.id}
@@ -187,13 +193,17 @@ export default function MonthMatrix({
               >
                 <th
                   scope="row"
-                  className="sticky left-0 z-10 bg-white px-4 py-1.5 text-left font-normal"
+                  className="sticky left-0 z-10 bg-white px-3 py-1.5 text-left font-normal"
                 >
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xs font-medium text-slate-700">{s.name}</span>
-                    {i === 0 && (
-                      <span className="text-[9px] text-slate-400">{ROLE_LABELS[role]}</span>
-                    )}
+                  <div className="grid grid-cols-[minmax(0,1fr)_4.75rem] items-center gap-2 py-0.5">
+                    <span className="truncate text-xs font-medium text-slate-700">
+                      {s.name}
+                    </span>
+                    <RoleBadge
+                      role={role}
+                      size="sm"
+                      className="w-full justify-center"
+                    />
                   </div>
                 </th>
                 {days.map((date) => {

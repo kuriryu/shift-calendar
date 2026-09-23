@@ -53,26 +53,30 @@ export default function Dashboard() {
   }[active];
 
   return (
-    <div className="space-y-14">
-      <StepProgress current={active} />
+    <div className="space-y-12">
+      <div>
+        <header className="flex flex-wrap items-start justify-between gap-4 px-0.5 py-2">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-wide text-indigo-600">
+              STEP {active}
+            </p>
+            <h1
+              id={`step-${active}-title`}
+              className="mt-4 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
+            >
+              {def.label}
+            </h1>
+            <p className="mt-5 text-base leading-relaxed text-slate-500">{def.desc}</p>
+          </div>
+          <ViolationBadge />
+        </header>
 
-      <header className="flex flex-wrap items-start justify-between gap-4 pt-3 pb-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-wide text-indigo-600">
-            STEP {active}
-          </p>
-          <h1
-            id={`step-${active}-title`}
-            className="mt-5 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
-          >
-            {def.label}
-          </h1>
-          <p className="mt-2 text-base leading-relaxed text-slate-500">{def.desc}</p>
+        <div className="mt-5">
+          <StepProgress current={active} />
         </div>
-        <ViolationBadge />
-      </header>
+      </div>
 
-      <div aria-live="polite" className="pt-2">
+      <div aria-live="polite" className="pt-1">
         {panel}
       </div>
     </div>

@@ -15,19 +15,16 @@ import {
   weekKeyOf,
   weeksOfMonth,
 } from "@/lib/dates";
-import { hasAnyPattern, patternOf } from "@/lib/staff-pattern";
+import {
+  hasAnyPattern,
+  patternOf,
+  recommendationRequestOf,
+} from "@/lib/staff-pattern";
 import { toMinutes } from "@/lib/time";
 import type { Role, ShiftRequest, Staff } from "@/types";
-import { ROLE_LABELS } from "@/types";
-
-const ROLE_ORDER: Role[] = ["employee", "part_time", "student"];
+import { ROLE_META, ROLE_ORDER } from "@/lib/roles";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
-
-const PRESETS = [
-  { label: "午前 9–13", start: "09:00", end: "13:00" },
-  { label: "午後 17–21", start: "17:00", end: "21:00" },
-] as const;
 
 type RequestView = "time" | "week" | "month";
 
@@ -42,22 +39,6 @@ type PopoverState = {
   x: number;
   y: number;
 };
-
-function recommendationOf(s: Staff, date: string): ShiftRequest | null {
-  if (s.unavailableWeekdays?.includes(weekdayOf(date))) {
-    return { staffId: s.id, date, type: "off" };
-  }
-  const pat = patternOf(s, date);
-  if (pat) {
-    return {
-      staffId: s.id,
-      date,
-      type: "time_limited",
-      timeRange: { ...pat },
-    };
-  }
-  return null;
-}
 
 function requestLabel(r: ShiftRequest | null): string {
   if (!r) return "未入力";
@@ -82,8 +63,6 @@ export default function RequestMatrix() {
   const clearRequest = useAppStore((s) => s.clearRequest);
   const bulkSetRequests = useAppStore((s) => s.bulkSetRequests);
   const adoptRecommendations = useAppStore((s) => s.adoptRecommendations);
-  const clearAllRequests = useAppStore((s) => s.clearAllRequests);
-  const fillTestRequests = useAppStore((s) => s.fillTestRequests);
 
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const closePopover = useCallback(() => setPopover(null), []);
@@ -159,7 +138,7 @@ export default function RequestMatrix() {
     setSelectedDate(date);
     const existing = requestMap.get(`${s.id}:${date}`);
     if (!existing) {
-      const rec = recommendationOf(s, date);
+      const rec = recommendationRequestOf(s, date);
       if (rec) {
         setRequest(rec);
         return;
@@ -176,7 +155,7 @@ export default function RequestMatrix() {
   };
 
   const ghostCell = (s: Staff, date: string) => {
-    const rec = recommendationOf(s, date);
+    const rec = recommendationRequestOf(s, date);
     if (rec?.type === "off") {
       return (
         <span className="inline-flex h-6 w-full items-center justify-center rounded border border-dashed border-slate-300 text-[10px] text-slate-400">
@@ -227,7 +206,10 @@ export default function RequestMatrix() {
     return (
       <div className="grid grid-cols-[minmax(0,1fr)_2.5rem_4.75rem] items-center gap-1.5">
         <span className="truncate text-xs font-medium text-slate-700">{s.name}</span>
-        <span className="w-10 truncate text-[9px] text-slate-400">{ROLE_LABELS[role]}</span>
+        <span className="flex w-12 items-center gap-0.5 truncate text-[9px] text-slate-400">
+          <Icon name={ROLE_META[role].icon} size={11} />
+          {ROLE_META[role].label}
+        </span>
         <span className="flex justify-end gap-0.5">
           <span className="inline-flex w-[1.75rem] justify-center">
             {hasRec ? (
@@ -315,7 +297,7 @@ export default function RequestMatrix() {
                   </th>
                   {dateCols.map((date) => {
                     const r = requestMap.get(`${s.id}:${date}`) ?? null;
-                    const rec = r ? null : recommendationOf(s, date);
+                    const rec = r ? null : recommendationRequestOf(s, date);
                     const label = `${s.name} ${Number(date.slice(8))}日(${weekdayLabel(date)}): ${
                       r
                         ? requestLabel(r)
@@ -366,10 +348,10 @@ export default function RequestMatrix() {
   for (let m = openMin; m <= closeMin; m += 60) hourMarks.push(m);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <div
-          className="flex items-center gap-1 rounded-lg bg-slate-100 p-1"
+          className="flex items-center gap-1 rounded-lg bg-slate-100 p-1.5"
           role="group"
           aria-label="希望入力の表示切替"
         >
@@ -384,7 +366,7 @@ export default function RequestMatrix() {
               key={v.id}
               onClick={() => setView(v.id)}
               aria-pressed={view === v.id}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
                 view === v.id
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -395,48 +377,59 @@ export default function RequestMatrix() {
             </button>
           ))}
         </div>
-        <p className="text-sm text-slate-500">
-          セルをタップして希望を入力します。薄い破線はスタッフ情報からの候補です。
-        </p>
-        <div className="ml-auto flex flex-wrap gap-2">
-          {hasAnyRecommendation && (
+        <ul
+          className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500"
+          aria-label="セルの凡例"
+        >
+          <li className="flex items-center gap-1.5">
+            <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded bg-slate-200 px-1 text-[10px] font-semibold text-slate-700">
+              休
+            </span>
+            休み
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700">
+              ○
+            </span>
+            出勤可能
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="inline-flex h-5 items-center justify-center rounded bg-sky-100 px-1.5 text-[10px] font-medium text-sky-800">
+              9-13
+            </span>
+            時間帯
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded border border-dashed border-slate-300 px-1 text-[10px] text-slate-400">
+              休
+            </span>
+            候補（未確定）
+          </li>
+        </ul>
+        {hasAnyRecommendation && (
+          <div className="ml-auto">
             <button
               onClick={() => adoptRecommendations()}
               disabled={noStaff}
-              className="flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
               <Icon name="done_all" size={14} />
               全員の候補を採用
             </button>
-          )}
-          <button
-            onClick={fillTestRequests}
-            disabled={noStaff}
-            title={noStaff ? "先にスタッフを登録してください" : undefined}
-            className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Icon name="science" size={14} />
-            {noStaff ? "先にスタッフを登録" : "テストデータ投入"}
-          </button>
-          <button
-            onClick={() => {
-              if (requests.length === 0) return;
-              if (window.confirm(`${month} の希望入力をすべてクリアしますか？`)) {
-                clearAllRequests();
-              }
-            }}
-            className="flex items-center gap-1 rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-          >
-            <Icon name="delete_sweep" size={14} />
-            全クリア
-          </button>
-        </div>
+          </div>
+        )}
       </div>
 
       {noStaff ? (
-        <p className="rounded-xl border border-dashed border-slate-200 py-12 text-center text-sm text-slate-400">
-          スタッフが登録されていません。ステップ2で登録してください。
-        </p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-14 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 ring-1 ring-slate-200">
+            <Icon name="person_off" size={28} />
+          </span>
+          <p className="text-sm font-medium text-slate-600">スタッフが登録されていません</p>
+          <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+            ステップ2でスタッフを登録すると、ここに希望入力表が表示されます。
+          </p>
+        </div>
       ) : view === "time" ? (
         <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
           <div className="flex items-center justify-center gap-3">
@@ -476,7 +469,7 @@ export default function RequestMatrix() {
           <ul className="space-y-1">
             {staff.map((s) => {
               const r = requestMap.get(`${s.id}:${dayDate}`) ?? null;
-              const rec = r ? null : recommendationOf(s, dayDate);
+              const rec = r ? null : recommendationRequestOf(s, dayDate);
               const show = r ?? rec;
               const isGhost = !r && !!rec;
               const range =
@@ -495,13 +488,14 @@ export default function RequestMatrix() {
               return (
                 <li
                   key={s.id}
-                  className="grid grid-cols-[7.5rem_3.5rem_minmax(0,1fr)] items-center gap-2"
+                  className="grid grid-cols-[7.5rem_4rem_minmax(0,1fr)] items-center gap-2 py-0.5"
                 >
                   <span className="truncate text-right text-xs font-medium text-slate-700">
                     {s.name}
                   </span>
-                  <span className="truncate text-[9px] text-slate-400">
-                    {ROLE_LABELS[s.role]}
+                  <span className="flex items-center gap-0.5 truncate text-[9px] text-slate-400">
+                    <Icon name={ROLE_META[s.role].icon} size={11} />
+                    {ROLE_META[s.role].label}
                   </span>
                   <button
                     onClick={(e) => onCellClick(e, s, dayDate)}
@@ -657,7 +651,7 @@ export default function RequestMatrix() {
             <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto">
               {staff.map((s) => {
                 const r = requestMap.get(`${s.id}:${dayDate}`) ?? null;
-                const rec = r ? null : recommendationOf(s, dayDate);
+                const rec = r ? null : recommendationRequestOf(s, dayDate);
                 const hasRec =
                   hasAnyPattern(s) || (s.unavailableWeekdays?.length ?? 0) > 0;
                 return (
@@ -678,10 +672,11 @@ export default function RequestMatrix() {
                               : "未入力"
                         }`}
                       >
-                        <span className="block truncate text-xs font-medium text-slate-800">
+                        <span className="flex items-center gap-1 truncate text-xs font-medium text-slate-800">
                           {s.name}
-                          <span className="ml-1 text-[9px] font-normal text-slate-400">
-                            {ROLE_LABELS[s.role]}
+                          <span className="inline-flex items-center gap-0.5 text-[9px] font-normal text-slate-400">
+                            <Icon name={ROLE_META[s.role].icon} size={11} />
+                            {ROLE_META[s.role].label}
                           </span>
                         </span>
                         <span className="mt-0.5 block">{cellOf(s, dayDate)}</span>
@@ -730,15 +725,21 @@ export default function RequestMatrix() {
             ref={popoverRef}
             role="dialog"
             aria-label={`${popover.staff.name} ${Number(popover.date.slice(8))}日の希望`}
-            className="fixed z-50 w-60 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"
+            className="fixed z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
             style={{ left: popover.x, top: popover.y }}
           >
-            <p className="mb-2 text-xs font-semibold text-slate-700">
-              {popover.staff.name} · {Number(popover.date.slice(8))}日(
-              {weekdayLabel(popover.date)})
-            </p>
-            <div className="grid grid-cols-2 gap-1.5">
+            <header className="space-y-1">
+              <p className="text-base font-bold tracking-tight text-slate-900">
+                {popover.staff.name}
+              </p>
+              <p className="text-sm text-slate-500">
+                {Number(popover.date.slice(8))}日（{weekdayLabel(popover.date)}）
+              </p>
+            </header>
+
+            <div className="mt-5 grid grid-cols-2 gap-3" role="group" aria-label="希望の種類">
               <button
+                type="button"
                 onClick={() =>
                   apply({
                     staffId: popover.staff.id,
@@ -746,90 +747,97 @@ export default function RequestMatrix() {
                     type: "available",
                   })
                 }
-                className="rounded-md bg-emerald-100 py-2 text-xs font-medium text-emerald-700 hover:bg-emerald-200"
+                className="flex flex-col items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-4 text-emerald-800 ring-1 ring-emerald-100 transition-colors hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
               >
-                ○ 出勤可能
+                <Icon name="check_circle" size={22} className="text-emerald-600" />
+                <span className="text-xs font-semibold">出勤可能</span>
               </button>
               <button
+                type="button"
                 onClick={() =>
                   apply({ staffId: popover.staff.id, date: popover.date, type: "off" })
                 }
-                className="rounded-md bg-slate-200 py-2 text-xs font-medium text-slate-700 hover:bg-slate-300"
+                className="flex flex-col items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-4 text-slate-700 ring-1 ring-slate-200/80 transition-colors hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
               >
-                休み
+                <Icon name="event_busy" size={22} className="text-slate-500" />
+                <span className="text-xs font-semibold">休み</span>
               </button>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-1.5">
-              {PRESETS.map((p) => (
+
+            <section className="mt-6 rounded-xl bg-indigo-50/70 px-4 pb-5 pt-4" aria-label="時間帯を指定">
+              <div className="mb-4 flex items-center gap-2">
+                <Icon name="schedule" size={18} className="text-indigo-700" />
+                <h3 className="text-sm font-semibold text-indigo-900">時間帯を指定</h3>
+              </div>
+
+              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-x-2.5 gap-y-0">
+                <div className="space-y-2">
+                  <label htmlFor="req-start" className="block text-xs font-medium text-indigo-800/80">
+                    開始時刻
+                  </label>
+                  <select
+                    id="req-start"
+                    value={start}
+                    onChange={(e) => setStart(e.target.value)}
+                    className="w-full rounded-lg border border-indigo-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
+                  >
+                    {timeOptions.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <span
+                  className="pb-3 text-lg font-medium text-indigo-300"
+                  aria-hidden
+                >
+                  〜
+                </span>
+                <div className="space-y-2">
+                  <label htmlFor="req-end" className="block text-xs font-medium text-indigo-800/80">
+                    終了時刻
+                  </label>
+                  <select
+                    id="req-end"
+                    value={end}
+                    onChange={(e) => setEnd(e.target.value)}
+                    className="w-full rounded-lg border border-indigo-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
+                  >
+                    {timeOptions.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-2">
                 <button
-                  key={p.label}
+                  type="button"
                   onClick={() =>
+                    start < end &&
                     apply({
                       staffId: popover.staff.id,
                       date: popover.date,
                       type: "time_limited",
-                      timeRange: { start: p.start, end: p.end },
+                      timeRange: { start, end },
                     })
                   }
-                  className="rounded-md bg-sky-50 py-1.5 text-[11px] font-medium text-sky-700 hover:bg-sky-100"
+                  disabled={start >= end}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
                 >
-                  {p.label}
+                  <Icon name="done" size={18} />
+                  この時間帯で指定
                 </button>
-              ))}
-            </div>
-            <div className="mt-2 flex items-center gap-1">
-              <label className="sr-only" htmlFor="req-start">
-                開始時刻
-              </label>
-              <select
-                id="req-start"
-                value={start}
-                onChange={(e) => setStart(e.target.value)}
-                className="w-full rounded border border-slate-200 px-1 py-1.5 text-xs"
-              >
-                {timeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-slate-400" aria-hidden>
-                -
-              </span>
-              <label className="sr-only" htmlFor="req-end">
-                終了時刻
-              </label>
-              <select
-                id="req-end"
-                value={end}
-                onChange={(e) => setEnd(e.target.value)}
-                className="w-full rounded border border-slate-200 px-1 py-1.5 text-xs"
-              >
-                {timeOptions.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
+              </div>
+            </section>
+
             <button
-              onClick={() =>
-                start < end &&
-                apply({
-                  staffId: popover.staff.id,
-                  date: popover.date,
-                  type: "time_limited",
-                  timeRange: { start, end },
-                })
-              }
-              disabled={start >= end}
-              className="mt-1.5 w-full rounded-md bg-sky-100 py-2 text-xs font-medium text-sky-700 hover:bg-sky-200 disabled:opacity-50"
-            >
-              この時間帯で指定
-            </button>
-            <button
+              type="button"
               onClick={() => apply(null)}
-              className="mt-1.5 w-full rounded-md py-1.5 text-[11px] text-slate-500 hover:bg-slate-50"
+              className="mt-6 w-full rounded-lg py-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
             >
               クリア（未入力に戻す）
             </button>
