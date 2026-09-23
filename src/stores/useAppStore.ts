@@ -19,6 +19,10 @@ import { parseCommand } from "@/lib/ai";
 
 const DEFAULT_MONTH = "2026-10";
 
+/** セレクタ用の安定した空配列（参照が変わらないようにする） */
+export const EMPTY_ASSIGNMENTS: ShiftAssignment[] = [];
+export const EMPTY_REQUESTS: ShiftRequest[] = [];
+
 function uid(): string {
   return `a-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAppStore } from "@/stores/useAppStore";
+import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, weeksOfMonth } from "@/lib/dates";
 import { workMinutesOf, minutesToHoursLabel } from "@/lib/time";
@@ -20,7 +20,7 @@ export default function StatsView() {
   const staff = useAppStore((s) => s.staff);
   const month = useAppStore((s) => s.selectedMonth);
   const assignments = useAppStore(
-    (s) => s.assignments[s.selectedMonth] ?? [],
+    (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
 
   if (!mounted) {

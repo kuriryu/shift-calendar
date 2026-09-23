@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/stores/useAppStore";
+import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
 import type { Role, Staff } from "@/types";
@@ -27,9 +27,11 @@ export default function MonthMatrix() {
   const staff = useAppStore((s) => s.staff);
   const month = useAppStore((s) => s.selectedMonth);
   const assignments = useAppStore(
-    (s) => s.assignments[s.selectedMonth] ?? [],
+    (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
-  const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? []);
+  const requests = useAppStore(
+    (s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS,
+  );
   const violations = useAppStore((s) => s.violations);
 
   if (!mounted) {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAppStore } from "@/stores/useAppStore";
+import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { businessHoursOf } from "@/lib/coverage";
 import { computeBreak } from "@/lib/generator";
@@ -34,12 +34,12 @@ export default function DayTimeline({ date }: { date: string }) {
   const mounted = useMounted();
   const staff = useAppStore((s) => s.staff);
   const settings = useAppStore((s) => s.settings);
-  const assignments = useAppStore(
-    (s) => (s.assignments[s.selectedMonth] ?? []).filter((a) => a.date === date),
+  const monthAssignments = useAppStore(
+    (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
-  const violations = useAppStore((s) =>
-    s.violations.filter((v) => v.date === date),
-  );
+  const allViolations = useAppStore((s) => s.violations);
+  const assignments = monthAssignments.filter((a) => a.date === date);
+  const violations = allViolations.filter((v) => v.date === date);
   const updateAssignment = useAppStore((s) => s.updateAssignment);
   const removeAssignment = useAppStore((s) => s.removeAssignment);
   const addAssignment = useAppStore((s) => s.addAssignment);

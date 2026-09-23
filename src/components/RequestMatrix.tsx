@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAppStore } from "@/stores/useAppStore";
+import { EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
 import type { Role, ShiftRequest, Staff } from "@/types";
@@ -34,7 +34,9 @@ export default function RequestMatrix() {
   const router = useRouter();
   const staff = useAppStore((s) => s.staff);
   const month = useAppStore((s) => s.selectedMonth);
-  const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? []);
+  const requests = useAppStore(
+    (s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS,
+  );
   const setRequest = useAppStore((s) => s.setRequest);
   const clearRequest = useAppStore((s) => s.clearRequest);
   const bulkSetRequests = useAppStore((s) => s.bulkSetRequests);
