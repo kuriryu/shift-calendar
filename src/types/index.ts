@@ -72,29 +72,54 @@ export type Violation = {
   rule: ViolationRule;
   date: string;
   staffId?: string;
+  /** 時間帯に関する違反（人員不足など）の該当時間帯。ハイライト表示に使う */
+  timeRange?: TimeRange;
   message: string;
 };
 
 export type ShopSettings = {
+  openTime: string; // 開店時刻 "HH:MM"
+  closeTimeWeekday: string; // 閉店時刻（日〜木）
+  closeTimeWeekend: string; // 閉店時刻（金・土）
   peakHours: TimeRange[]; // ピーク時間帯（変更可能）
-  normalRequired: number; // 通常の必要人数
+  normalRequired: number; // 原則の必要人数
   peakRequired: number; // ピーク時の必要人数
-  strictBreakMode: boolean; // true なら休憩中の2名割れも error
+  edgeRequired: number; // 開店・閉店（締め作業）時の必須人数
+  employeeDaysOffTarget: number; // 社員の月間休日目標（日）
+  strictBreakMode: boolean; // true なら休憩中の人数割れも error
 };
 
+export const OPEN_TIME = "09:00";
+export const CLOSE_WEEKDAY = "20:30"; // 日〜木
+export const CLOSE_WEEKEND = "21:30"; // 金・土
+
 export const DEFAULT_SETTINGS: ShopSettings = {
+  openTime: OPEN_TIME,
+  closeTimeWeekday: CLOSE_WEEKDAY,
+  closeTimeWeekend: CLOSE_WEEKEND,
   peakHours: [
     { start: "11:00", end: "14:00" },
     { start: "17:00", end: "20:00" },
   ],
   normalRequired: 2,
   peakRequired: 3,
+  edgeRequired: 2,
+  employeeDaysOffTarget: 9,
   strictBreakMode: false,
 };
 
-export const OPEN_TIME = "09:00";
-export const CLOSE_WEEKDAY = "20:30"; // 日〜木
-export const CLOSE_WEEKEND = "21:30"; // 金・土
+/** シフト作成フローのステップ番号 */
+export type StepId = 1 | 2 | 3 | 4 | 5 | 6;
+
+/** 違反箇所のハイライト対象 */
+export type HighlightTarget = {
+  date: string;
+  staffId?: string;
+  timeRange?: TimeRange;
+  rule: ViolationRule;
+  /** 同じ違反を続けてクリックしても再ハイライトされるようにする識別子 */
+  token: number;
+};
 
 export const ROLE_LABELS: Record<Role, string> = {
   employee: "社員",

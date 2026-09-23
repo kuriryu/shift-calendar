@@ -4,16 +4,18 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
   ActivityEntry,
+  HighlightTarget,
   Role,
   ShiftAssignment,
   ShiftRequest,
   ShopSettings,
   Staff,
+  StepId,
   Violation,
 } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
 import { INITIAL_STAFF } from "@/lib/staff-data";
-import { daysOfMonth } from "@/lib/dates";
+import { daysOfMonth, weekdayOf } from "@/lib/dates";
 import { generateMonth } from "@/lib/generator";
 import { validateMonth } from "@/lib/validator";
 import { computeBreak, placeBreakStart } from "@/lib/generator";
@@ -81,6 +83,20 @@ type AppState = {
   violations: Violation[];
   activities: ActivityEntry[];
 
+  // ── 以下は永続化しない一時状態 ──
+  /** シフト作成フローの現在ステップ（null は自動判定） */
+  currentStep: StepId | null;
+  /** ステップ6（微調整）の表示モード */
+  adjustView: "day" | "month";
+  /** 確定前の仮生成結果 */
+  draft: {
+    month: string;
+    assignments: ShiftAssignment[];
+    violations: Violation[];
+  } | null;
+  /** 違反箇所のハイライト */
+  highlight: HighlightTarget | null;
+
   setMonth: (month: string) => void;
   setSelectedDate: (date: string) => void;
   toggleSidebar: () => void;
@@ -90,9 +106,24 @@ type AppState = {
   setRequest: (req: ShiftRequest) => void;
   clearRequest: (staffId: string, date: string) => void;
   bulkSetRequests: (staffId: string, type: "available" | "off") => void;
+  /** 基本パターン・固定休から作ったリコメンドを希望として一括採用（staffId 省略で全員） */
+  adoptRecommendations: (staffId?: string) => void;
   clearAllRequests: () => void;
   fillTestRequests: () => void;
   generate: () => void;
+  /** 仮生成（ストアには反映しない） */
+  generateDraft: () => void;
+  /** 仮生成結果を確定してストアに反映 */
+  confirmDraft: () => void;
+  discardDraft: () => void;
+  setStep: (step: StepId) => void;
+  setAdjustView: (view: "day" | "month") => void;
+  /** 違反をクリックしたときに該当箇所へ移動・ハイライト */
+  focusViolation: (v: Violation) => void;
+  clearHighlight: () => void;
+  resetSettings: () => void;
+  /** 違反リストを再計算（LocalStorage 復元直後などに使う） */
+  recompute: () => void;
   updateAssignment: (a: ShiftAssignment) => void;
   removeAssignment: (id: string) => void;
   addAssignment: (
@@ -117,15 +148,20 @@ export const useAppStore = create<AppState>()(
         assignments: Record<string, ShiftAssignment[]>;
         requests: Record<string, ShiftRequest[]>;
         settings: ShopSettings;
-      }) => ({
-        violations: validateMonth(
-          state.selectedMonth,
-          get().staff,
-          state.requests[state.selectedMonth] ?? [],
-          state.assignments[state.selectedMonth] ?? [],
-          state.settings,
-        ),
-      });
+      }) => {
+        const monthAssignments = state.assignments[state.selectedMonth] ?? [];
+        // シフト未作成の月は「人員不足」で埋まるだけなのでチェックしない
+        if (monthAssignments.length === 0) return { violations: [] };
+        return {
+          violations: validateMonth(
+            state.selectedMonth,
+            get().staff,
+            state.requests[state.selectedMonth] ?? [],
+            monthAssignments,
+            state.settings,
+          ),
+        };
+      };
 
       return {
         staff: INITIAL_STAFF,
@@ -140,6 +176,10 @@ export const useAppStore = create<AppState>()(
         assignments: {},
         violations: [],
         activities: [],
+        currentStep: null,
+        adjustView: "day",
+        draft: null,
+        highlight: null,
 
         setMonth: (month) =>
           set((s) => {
@@ -242,6 +282,46 @@ export const useAppStore = create<AppState>()(
             return { requests, ...revalidate({ ...s, requests }) };
           }),
 
+        adoptRecommendations: (staffId) =>
+          set((s) => {
+            const month = s.selectedMonth;
+            const days = daysOfMonth(month);
+            const existing = s.requests[month] ?? [];
+            const has = new Set(existing.map((r) => `${r.staffId}:${r.date}`));
+            const targets = staffId
+              ? s.staff.filter((x) => x.id === staffId)
+              : s.staff;
+            const added: ShiftRequest[] = [];
+            for (const st of targets) {
+              for (const date of days) {
+                if (has.has(`${st.id}:${date}`)) continue;
+                if (st.unavailableWeekdays?.includes(weekdayOf(date))) {
+                  added.push({ staffId: st.id, date, type: "off" });
+                } else if (st.defaultPattern) {
+                  added.push({
+                    staffId: st.id,
+                    date,
+                    type: "time_limited",
+                    timeRange: { ...st.defaultPattern },
+                  });
+                }
+              }
+            }
+            if (added.length === 0) return {};
+            const requests = { ...s.requests, [month]: [...existing, ...added] };
+            return {
+              requests,
+              activities: [
+                makeActivity(
+                  "request",
+                  `${month} の希望候補を${added.length}件採用${staffId ? "" : "（全員）"}`,
+                ),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, requests }),
+            };
+          }),
+
         clearAllRequests: () =>
           set((s) => {
             const requests = { ...s.requests, [s.selectedMonth]: [] };
@@ -276,6 +356,88 @@ export const useAppStore = create<AppState>()(
               ...revalidate({ ...s, assignments }),
             };
           }),
+
+        generateDraft: () =>
+          set((s) => {
+            const month = s.selectedMonth;
+            const generated = generateMonth(
+              month,
+              s.staff,
+              s.requests[month] ?? [],
+              s.settings,
+            );
+            const violations = validateMonth(
+              month,
+              s.staff,
+              s.requests[month] ?? [],
+              generated,
+              s.settings,
+            );
+            return {
+              draft: { month, assignments: generated, violations },
+            };
+          }),
+
+        confirmDraft: () =>
+          set((s) => {
+            if (!s.draft) return {};
+            const { month, assignments: generated } = s.draft;
+            const assignments = { ...s.assignments, [month]: generated };
+            return {
+              assignments,
+              draft: null,
+              activities: [
+                makeActivity(
+                  "generate",
+                  `${month} のシフトを確定（自動生成 ${generated.length}件）`,
+                ),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, assignments }),
+            };
+          }),
+
+        discardDraft: () => set({ draft: null }),
+
+        setStep: (step) => set({ currentStep: step }),
+
+        setAdjustView: (view) => set({ adjustView: view }),
+
+        focusViolation: (v) =>
+          set((s) => {
+            const month = v.date.slice(0, 7);
+            // 月・週単位の違反は曜日ビュー、日・時間帯の違反は時間ビューで示す
+            const monthLevel =
+              v.rule === "WEEKLY_HOURS" || v.rule === "DAYS_OFF_TARGET";
+            const base = {
+              currentStep: 6 as StepId,
+              adjustView: monthLevel ? ("month" as const) : ("day" as const),
+              selectedDate: v.date,
+              highlight: {
+                date: v.date,
+                staffId: v.staffId,
+                timeRange: v.timeRange,
+                rule: v.rule,
+                token: Date.now(),
+              },
+            };
+            if (month === s.selectedMonth) return base;
+            return {
+              ...base,
+              selectedMonth: month,
+              ...revalidate({ ...s, selectedMonth: month }),
+            };
+          }),
+
+        clearHighlight: () => set({ highlight: null }),
+
+        resetSettings: () =>
+          set((s) => ({
+            settings: DEFAULT_SETTINGS,
+            ...revalidate({ ...s, settings: DEFAULT_SETTINGS }),
+          })),
+
+        recompute: () => set((s) => revalidate(s)),
 
         updateAssignment: (a) =>
           set((s) => {
@@ -471,7 +633,14 @@ export const useAppStore = create<AppState>()(
         updateSettings: (partial) =>
           set((s) => {
             const settings = { ...s.settings, ...partial };
-            return { settings, ...revalidate({ ...s, settings }) };
+            return {
+              settings,
+              activities: [
+                makeActivity("settings", "店舗設定（条件）を変更"),
+                ...s.activities,
+              ].slice(0, MAX_ACTIVITIES),
+              ...revalidate({ ...s, settings }),
+            };
           }),
 
         updateStaff: (staff) =>
@@ -509,11 +678,15 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "shift-app-v1",
-      version: 4,
+      version: 5,
+      // 復元直後に違反リストを再計算（violations は永続化していないため）
+      onRehydrateStorage: () => (state) => {
+        state?.recompute();
+      },
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Partial<{
           staff: Staff[];
-          settings: ShopSettings;
+          settings: Partial<ShopSettings>;
           selectedMonth: string;
           selectedDate: string;
           sidebarCollapsed: boolean;
@@ -525,7 +698,8 @@ export const useAppStore = create<AppState>()(
         const selectedMonth = p.selectedMonth ?? DEFAULT_MONTH;
         return {
           staff: p.staff ?? INITIAL_STAFF,
-          settings: p.settings ?? DEFAULT_SETTINGS,
+          // v5: 営業時間・開閉店必須人数・社員休日目標を追加（不足分は既定値で補完）
+          settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
           selectedMonth,
           selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
           sidebarCollapsed: p.sidebarCollapsed ?? false,

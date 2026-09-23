@@ -13,16 +13,10 @@ import {
 import type { Role, Staff } from "@/types";
 import { ROLE_LABELS } from "@/types";
 import { parseSpecialNote } from "@/lib/notes";
+import { timeOptionsOf } from "@/lib/coverage";
 import { useAppStore } from "@/stores/useAppStore";
 
 const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
-
-const TIME_OPTIONS: string[] = [];
-for (let m = 9 * 60; m <= 21 * 60 + 30; m += 30) {
-  TIME_OPTIONS.push(
-    `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`,
-  );
-}
 
 export default function StaffEditModal({
   staff,
@@ -36,6 +30,8 @@ export default function StaffEditModal({
 }) {
   const updateStaff = useAppStore((s) => s.updateStaff);
   const addStaff = useAppStore((s) => s.addStaff);
+  const settings = useAppStore((s) => s.settings);
+  const TIME_OPTIONS = useMemo(() => timeOptionsOf(settings), [settings]);
 
   const [name, setName] = useState(staff?.name ?? "");
   const [role, setRole] = useState<Role>(staff?.role ?? "part_time");
@@ -78,9 +74,10 @@ export default function StaffEditModal({
       role,
       maxHoursPerWeek: Number(maxHours) || 0,
       maxConsecutiveDays: Number(maxConsec) || 1,
-      // 社員の月間休日目標（新規の社員は8日を既定）
+      // 社員の月間休日目標（判定は店舗設定を参照。新規は設定値を保持）
       monthlyDaysOffTarget:
-        staff?.monthlyDaysOffTarget ?? (role === "employee" ? 8 : 0),
+        staff?.monthlyDaysOffTarget ??
+        (role === "employee" ? settings.employeeDaysOffTarget : 0),
       defaultPattern:
         patternStart && patternEnd && patternStart < patternEnd
           ? { start: patternStart, end: patternEnd }

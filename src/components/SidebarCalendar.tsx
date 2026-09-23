@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import {
@@ -25,18 +24,18 @@ function dotClass(count: number, selected: boolean): string {
 
 export default function SidebarCalendar() {
   const mounted = useMounted();
-  const router = useRouter();
-  const pathname = usePathname();
   const month = useAppStore((s) => s.selectedMonth);
   const selectedDate = useAppStore((s) => s.selectedDate);
   const setMonth = useAppStore((s) => s.setMonth);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
+  const setStep = useAppStore((s) => s.setStep);
+  const setAdjustView = useAppStore((s) => s.setAdjustView);
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
 
   if (!mounted) {
-    return <div className="h-56 px-2" aria-hidden />;
+    return <div className="h-60 px-2" aria-hidden />;
   }
 
   const counts = new Map<string, number>();
@@ -60,12 +59,16 @@ export default function SidebarCalendar() {
 
   const selectDate = (date: string) => {
     setSelectedDate(date);
-    if (pathname !== "/") router.push("/");
+    // シフトが作成済みの月なら、その日のガントチャート（微調整ステップ）へ
+    if (assignments.length > 0) {
+      setAdjustView("day");
+      setStep(6);
+    }
   };
 
   return (
-    <div className="px-2">
-      <div className="mb-1 flex items-center justify-between px-1">
+    <div className="px-1">
+      <div className="mb-2 flex items-center justify-between px-1">
         <button
           onClick={() => setMonth(shiftMonth(month, -1))}
           aria-label="前の月"
@@ -73,7 +76,7 @@ export default function SidebarCalendar() {
         >
           <Icon name="chevron_left" size={16} />
         </button>
-        <span className="text-xs font-semibold text-slate-700">
+        <span className="text-sm font-semibold text-slate-700" aria-live="polite">
           {monthLabel(month)}
         </span>
         <button
@@ -96,16 +99,19 @@ export default function SidebarCalendar() {
         ))}
         {cells.map((d, i) =>
           d === null ? (
-            <span key={`blank-${i}`} className="h-8" />
+            <span key={`blank-${i}`} className="h-9" />
           ) : (
             <button
               key={d}
               onClick={() => selectDate(d)}
-              aria-label={d}
-              className="group flex h-8 flex-col items-center justify-center"
+              aria-label={`${Number(d.slice(5, 7))}月${Number(d.slice(8))}日${
+                counts.get(d) ? `（出勤${counts.get(d)}名）` : ""
+              }${d === selectedDate ? " 選択中" : ""}${d === today ? " 今日" : ""}`}
+              aria-pressed={d === selectedDate}
+              className="group flex h-9 flex-col items-center justify-center"
             >
               <span
-                className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] transition-colors ${
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-[11px] transition-colors ${
                   d === selectedDate
                     ? "bg-indigo-600 font-semibold text-white"
                     : d === today

@@ -59,30 +59,49 @@ export function validateMonth(
     }
 
     // 人員不足（連続スロットをまとめて報告）
+    // - 開店・閉店（締め作業）スロットの不足 → エラー
+    // - それ以外の時間帯の不足 → 警告（原則人数）
+    // - 休憩起因の一時的な不足 → 警告（strictBreakMode ならエラー）
     const plan = slotPlanOf(date, settings);
     let deficitStart: number | null = null;
     let deficitMin = 0;
     let deficitRequired = 0;
     let breakCaused = true;
+    let touchesEdge = false;
 
     const flush = (endSlot: number) => {
       if (deficitStart === null) return;
-      const range = `${toTimeString(deficitStart)}–${toTimeString(endSlot)}`;
-      if (breakCaused && !settings.strictBreakMode) {
+      const timeRange = {
+        start: toTimeString(deficitStart),
+        end: toTimeString(endSlot),
+      };
+      const range = `${timeRange.start}–${timeRange.end}`;
+      if (breakCaused) {
         violations.push({
           id: vid(),
-          severity: "warning",
+          severity: settings.strictBreakMode ? "error" : "warning",
           rule: "BREAK_UNDERSTAFFED",
           date,
+          timeRange,
           message: `${dayLabel(date)} ${range}: 休憩により一時的に必要人数を下回ります`,
         });
-      } else {
+      } else if (touchesEdge) {
         violations.push({
           id: vid(),
           severity: "error",
           rule: "MIN_STAFF",
           date,
-          message: `${dayLabel(date)} ${range}: 人員不足（${deficitMin}/${deficitRequired}名）`,
+          timeRange,
+          message: `${dayLabel(date)} ${range}: 開店・閉店時の人員不足（${deficitMin}/${deficitRequired}名）`,
+        });
+      } else {
+        violations.push({
+          id: vid(),
+          severity: "warning",
+          rule: "MIN_STAFF",
+          date,
+          timeRange,
+          message: `${dayLabel(date)} ${range}: 人員が原則人数を下回ります（${deficitMin}/${deficitRequired}名）`,
         });
       }
       deficitStart = null;
@@ -100,10 +119,12 @@ export function validateMonth(
           deficitMin = covered;
           deficitRequired = slot.required;
           breakCaused = isBreakCaused;
+          touchesEdge = slot.edge;
         } else {
           deficitMin = Math.min(deficitMin, covered);
           deficitRequired = Math.max(deficitRequired, slot.required);
           breakCaused = breakCaused && isBreakCaused;
+          touchesEdge = touchesEdge || slot.edge;
         }
       } else {
         flush(slot.start);
@@ -195,18 +216,19 @@ export function validateMonth(
       }
     }
 
-    // 公休目安（社員のみ・警告）
-    if (staff.role === "employee" && staff.monthlyDaysOffTarget > 0) {
+    // 公休目安（社員のみ・警告）。目標日数は店舗設定を参照する
+    const daysOffTarget = settings.employeeDaysOffTarget;
+    if (staff.role === "employee" && daysOffTarget > 0) {
       const workDates = new Set(mine.map((a) => a.date));
       const offDays = days.length - workDates.size;
-      if (offDays < staff.monthlyDaysOffTarget) {
+      if (offDays < daysOffTarget) {
         violations.push({
           id: vid(),
           severity: "warning",
           rule: "DAYS_OFF_TARGET",
           date: days[days.length - 1],
           staffId: staff.id,
-          message: `${staff.name} の公休が目安より少ない（${offDays}/${staff.monthlyDaysOffTarget}日）`,
+          message: `${staff.name} の公休が目標より少ない（${offDays}/${daysOffTarget}日）`,
         });
       }
     }

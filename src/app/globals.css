@@ -16,3 +16,25 @@ body {
   color: var(--foreground);
   min-height: 100%;
 }
+
+/* キーボード操作時のフォーカスリングを常に視認できるようにする */
+:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* 違反箇所のハイライト（数秒間の点滅） */
+@keyframes highlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.9);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(220, 38, 38, 0.35);
+  }
+}
+.violation-highlight {
+  animation: highlight-pulse 1s ease-in-out 4;
+  border-radius: 8px;
+}

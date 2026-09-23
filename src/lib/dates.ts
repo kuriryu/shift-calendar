@@ -28,7 +28,7 @@ export function weekdayOf(dateStr: string): number {
 
 export function isWeekendOrFri(dateStr: string): boolean {
   const w = weekdayOf(dateStr);
-  return w === 5 || w === 6; // 金・土は閉店が21:30
+  return w === 5 || w === 6; // 金・土は閉店時刻が異なる（設定の closeTimeWeekend）
 }
 
 export function monthLabel(month: string): string {

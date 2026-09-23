@@ -164,7 +164,7 @@ export function generateMonth(
 
   for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
     const date = days[dayIndex];
-    const { open, close } = businessHoursOf(date);
+    const { open, close } = businessHoursOf(date, settings);
     const weekday = weekdayOf(date);
     const weekKey = weekKeyOf(date);
     const yesterday = yesterdayOf(date);
@@ -237,8 +237,8 @@ export function generateMonth(
       const sorted = [...employees].sort((a, b) => {
         const sa = state.get(a.staff.id)!;
         const sb = state.get(b.staff.id)!;
-        const needA = a.staff.monthlyDaysOffTarget - sa.offDays;
-        const needB = b.staff.monthlyDaysOffTarget - sb.offDays;
+        const needA = settings.employeeDaysOffTarget - sa.offDays;
+        const needB = settings.employeeDaysOffTarget - sb.offDays;
         return needB - needA; // 休み必要度が高い人が先頭＝休ませる
       });
       const rester = sorted[0];

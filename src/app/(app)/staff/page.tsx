@@ -1,5 +1,6 @@
-import StaffManager from "@/components/StaffManager";
+import RedirectToStep from "@/components/RedirectToStep";
 
+// スタッフ管理はトップのステップ2に統合したためリダイレクト
 export default function StaffPage() {
-  return <StaffManager />;
+  return <RedirectToStep step={2} />;
 }

@@ -19,11 +19,11 @@ export default function StaffFilter() {
   const hidden = new Set(hiddenStaffIds);
 
   return (
-    <div className="px-2">
-      <p className="mb-1.5 px-1 text-[10px] font-semibold tracking-wide text-slate-400">
+    <div className="px-1">
+      <p className="mb-2 px-1 text-[11px] font-semibold tracking-wide text-slate-500">
         スタッフ絞り込み
       </p>
-      <div className="space-y-2">
+      <div className="space-y-3">
         {ROLE_ORDER.map((role) => {
           const members = staff.filter((s) => s.role === role);
           if (members.length === 0) return null;
