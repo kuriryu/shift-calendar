@@ -15,37 +15,24 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { email?: string; password?: string };
+  let body: { password?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "リクエストが不正です" }, { status: 400 });
   }
 
-  const email = (body.email ?? "").trim().toLowerCase();
   const password = body.password ?? "";
 
-  if (!email || !email.includes("@")) {
-    return NextResponse.json(
-      { error: "メールアドレスを入力してください" },
-      { status: 400 },
-    );
-  }
   if (!password) {
-    return NextResponse.json(
-      { error: "発行されたパスワードを入力してください" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "パスワードを入力してください" }, { status: 400 });
   }
   if (!verifyAccessPassword(password)) {
-    return NextResponse.json(
-      { error: "パスワードが違います。発行されたパスワードを確認してください" },
-      { status: 401 },
-    );
+    return NextResponse.json({ error: "パスワードが違います" }, { status: 401 });
   }
 
-  const token = await createSessionToken(email);
-  const res = NextResponse.json({ ok: true, email });
+  const token = await createSessionToken();
+  const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return res;
 }

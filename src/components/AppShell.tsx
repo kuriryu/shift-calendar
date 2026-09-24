@@ -76,7 +76,7 @@ function ProfileMenu({
                   {email ?? "ゲスト"}
                 </p>
                 <p className="text-[10px] text-slate-400">
-                  {email ? "ログイン中" : "ゲストモード（認証オフ）"}
+                  {email ? "ログイン中" : "未ログイン"}
                 </p>
               </div>
             </div>
@@ -170,29 +170,28 @@ export default function AppShell({
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [sessionEmail, setSessionEmail] = useState<string | null>(email);
+  const [authenticated, setAuthenticated] = useState(!!email);
 
-  // ログイン履歴を記録（セッション中は1回）
   useEffect(() => {
     let cancelled = false;
     fetch("/api/auth/me")
-      .then(async (res) => {
-        if (!res.ok) return;
-        const data = (await res.json()) as { email?: string };
-        if (!cancelled && data.email) setSessionEmail(data.email);
+      .then((res) => {
+        if (!cancelled) setAuthenticated(res.ok);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setAuthenticated(false);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
-    if (!sessionEmail) return;
+    if (!authenticated) return;
     if (sessionStorage.getItem("login-recorded")) return;
     sessionStorage.setItem("login-recorded", "1");
-    recordLogin(sessionEmail);
-  }, [sessionEmail, recordLogin]);
+    recordLogin("ログイン");
+  }, [authenticated, recordLogin]);
 
   // モバイル（sm 未満）ではサイドバーは既定で折りたたみ、展開時はドロワーとして重ねて表示する
   const isMobile = useIsMobile();
@@ -242,7 +241,7 @@ export default function AppShell({
           >
             <Icon name={mobileOpen ? "close" : "menu"} size={22} />
           </button>
-          <ProfileMenu email={sessionEmail} collapsed align="right" />
+          <ProfileMenu email={authenticated ? "ログイン中" : null} collapsed align="right" />
         </header>
       )}
 
@@ -335,7 +334,7 @@ export default function AppShell({
             isMobile ? "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "p-2"
           } ${collapsed ? "flex-col" : "justify-between"}`}
         >
-          <ProfileMenu email={sessionEmail} collapsed={collapsed} />
+          <ProfileMenu email={authenticated ? "ログイン中" : null} collapsed={collapsed} />
           <button
             onClick={() => setSettingsOpen(true)}
             aria-label="シフト作成の条件設定"

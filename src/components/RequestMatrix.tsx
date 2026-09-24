@@ -2,9 +2,8 @@
 
 import type { Role, ShiftRequest, Staff } from "@/types";
 import { ROLE_META } from "@/lib/roles";
-import StaffBulkMenu from "@/components/StaffBulkMenu";
 import Icon from "@/components/Icon";
-import { navCircleButtonClassName } from "@/components/FieldControl";
+import { FieldSelect, navCircleButtonClassName } from "@/components/FieldControl";
 import { useMounted } from "@/hooks/useMounted";
 import { useDismissable } from "@/hooks/useDismissable";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -66,6 +65,8 @@ export default function RequestMatrix() {
   const setRequest = useAppStore((s) => s.setRequest);
   const clearRequest = useAppStore((s) => s.clearRequest);
   const adoptRecommendations = useAppStore((s) => s.adoptRecommendations);
+  const sortStaffByName = useAppStore((s) => s.sortStaffByName);
+  const sortStaffByRole = useAppStore((s) => s.sortStaffByRole);
 
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const closePopover = useCallback(() => setPopover(null), []);
@@ -73,6 +74,7 @@ export default function RequestMatrix() {
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("13:00");
   const [view, setView] = useState<RequestView>("month");
+  const [staffSort, setStaffSort] = useState<"role" | "name">("role");
   const [dragId, setDragId] = useState<string | null>(null);
   const lastOverRef = useRef<string | null>(null);
 
@@ -265,7 +267,6 @@ export default function RequestMatrix() {
               候補
             </button>
           ) : null}
-          <StaffBulkMenu staffId={s.id} staffName={s.name} />
         </span>
       </div>
     );
@@ -436,6 +437,24 @@ export default function RequestMatrix() {
           </li>
         </ul>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            <span className="shrink-0 font-medium">並び順</span>
+            <FieldSelect
+              id="request-staff-sort"
+              value={staffSort}
+              aria-label="スタッフの並び順"
+              className="w-auto min-w-[7.5rem]"
+              onChange={(e) => {
+                const value = e.target.value as "role" | "name";
+                setStaffSort(value);
+                if (value === "name") sortStaffByName();
+                else sortStaffByRole();
+              }}
+            >
+              <option value="role">属性別</option>
+              <option value="name">名前別</option>
+            </FieldSelect>
+          </label>
           {hasAnyRecommendation && (
             <button
               onClick={() => adoptRecommendations()}
@@ -760,7 +779,6 @@ export default function RequestMatrix() {
                           候補
                         </button>
                       )}
-                      <StaffBulkMenu staffId={s.id} staffName={s.name} />
                     </div>
                   </li>
                 );

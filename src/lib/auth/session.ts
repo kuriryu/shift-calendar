@@ -29,7 +29,6 @@ export function verifyAccessPassword(input: string): boolean {
 }
 
 export type SessionPayload = {
-  email: string;
   exp: number;
 };
 
@@ -61,9 +60,9 @@ async function sign(payload: string): Promise<string> {
   return toBase64Url(sig);
 }
 
-export async function createSessionToken(email: string): Promise<string> {
+export async function createSessionToken(): Promise<string> {
   const exp = Math.floor(Date.now() / 1000) + MAX_AGE_SEC;
-  const body = toBase64Url(encoder.encode(JSON.stringify({ email, exp } satisfies SessionPayload)));
+  const body = toBase64Url(encoder.encode(JSON.stringify({ exp } satisfies SessionPayload)));
   const sig = await sign(body);
   return `${body}.${sig}`;
 }
@@ -84,7 +83,7 @@ export async function parseSessionToken(
   try {
     const json = new TextDecoder().decode(fromBase64Url(body));
     const data = JSON.parse(json) as SessionPayload;
-    if (!data.email || typeof data.exp !== "number") return null;
+    if (typeof data.exp !== "number") return null;
     if (data.exp * 1000 < Date.now()) return null;
     return data;
   } catch {

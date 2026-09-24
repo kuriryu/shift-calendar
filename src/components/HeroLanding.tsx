@@ -35,15 +35,12 @@ export default function HeroLanding() {
           <div className="mb-4 flex justify-center md:mb-6 md:justify-start">
             <BrandMark size="lg" />
           </div>
-          <span className="inline-flex items-center rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-medium tracking-wide text-blue-600">
-            シフト管理
-          </span>
           <h1 className="mt-4 text-[1.75rem] font-semibold leading-snug tracking-tight text-slate-800 sm:text-4xl md:mt-6 lg:text-5xl">
             シフトの事務作業を、
             <br />
             スマートに。
           </h1>
-          <p className="hero-fade-delay mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-lg md:mx-0 md:mt-5 md:text-base">
+          <p className="hero-fade-delay mx-auto mt-8 max-w-lg text-sm leading-relaxed text-slate-600 sm:text-lg md:mx-0 md:mt-10 md:text-base">
             希望の収集からシフト作成まで。面倒な作業を減らし、現場の時間を戻します。
           </p>
           <div className="mt-5 flex justify-center md:mt-8 md:justify-start">
