@@ -1,5 +1,6 @@
-import Dashboard from "@/components/Dashboard";
+import { redirect } from "next/navigation";
 
-export default function CreatePage() {
-  return <Dashboard />;
+/** 旧 /create は統合後のトップへ */
+export default function CreateRedirectPage() {
+  redirect("/");
 }

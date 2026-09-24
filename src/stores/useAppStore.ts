@@ -144,6 +144,8 @@ type AppState = {
   activities: ActivityEntry[];
 
   // ── 以下は永続化しない一時状態 ──
+  /** シフト作成フローに入ったか（false のときヒーロー表示） */
+  createStarted: boolean;
   /** シフト作成フローの現在ステップ（null は自動判定） */
   currentStep: StepId | null;
   /** ステップ6（調整）の表示モード */
@@ -159,6 +161,10 @@ type AppState = {
 
   setMonth: (month: string) => void;
   setSelectedDate: (date: string) => void;
+  /** ヒーローから作成フローへ（ステップ1） */
+  startCreate: () => void;
+  /** 作成フローを終了してヒーローへ戻る */
+  showHero: () => void;
   toggleSidebar: () => void;
   toggleStaffFilter: (staffId: string) => void;
   toggleRoleFilter: (role: Role) => void;
@@ -244,6 +250,7 @@ export const useAppStore = create<AppState>()(
         assignments: {},
         violations: [],
         activities: [],
+        createStarted: false,
         currentStep: null,
         adjustView: "day",
         draft: null,
@@ -288,6 +295,9 @@ export const useAppStore = create<AppState>()(
               ...revalidate({ ...s, selectedMonth: month, requests }),
             };
           }),
+
+        startCreate: () => set({ createStarted: true, currentStep: 1 }),
+        showHero: () => set({ createStarted: false, currentStep: null }),
 
         toggleSidebar: () =>
           set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),

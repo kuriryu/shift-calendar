@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import SidebarCalendar from "@/components/SidebarCalendar";
 import StaffFilter from "@/components/StaffFilter";
@@ -188,6 +187,8 @@ export default function AppShell({
   // マウント後までは展開状態として描画する
   const collapsed = !mounted ? false : isMobile ? !mobileOpen : sidebarCollapsed;
   const drawerOpen = mounted && isMobile && mobileOpen;
+  const createStarted = useAppStore((s) => s.createStarted);
+  const showHero = useAppStore((s) => s.showHero);
 
   const handleToggle = useCallback(() => {
     if (isMobile) setMobileOpen((o) => !o);
@@ -203,6 +204,11 @@ export default function AppShell({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [drawerOpen]);
+
+  // ヒーロー表示中（およびマウント前）はシェルを出さず全画面で children のみ
+  if (!mounted || !createStarted) {
+    return <div className="flex min-h-dvh flex-1 flex-col">{children}</div>;
+  }
 
   return (
     <div className="flex h-dvh min-h-0 flex-1 flex-col overflow-hidden md:h-auto md:min-h-full md:overflow-visible md:flex-row">
@@ -242,44 +248,23 @@ export default function AppShell({
             : `sticky top-0 z-30 h-[calc(100dvh-3.5rem)] md:h-screen ${isMobile ? "hidden" : collapsed ? "w-14" : "w-[280px]"}`
         }`}
       >
-        {!collapsed ? (
-          <>
-            <div
-              className={`flex shrink-0 items-center border-b border-slate-200 bg-white px-4 ${
-                isMobile ? "h-12" : "h-16"
-              }`}
-            >
-              <Link href="/" className="min-w-0" aria-label="Shift Kit ヒーロー画面へ">
+        {/* 上部: ロゴ（展開時）＋折りたたみボタン */}
+        {!isMobile && (
+          <div
+            className={`flex h-16 shrink-0 items-center border-b border-slate-200 bg-white ${
+              collapsed ? "justify-center px-0" : "justify-between px-4"
+            }`}
+          >
+            {!collapsed && (
+              <button
+                type="button"
+                onClick={showHero}
+                className="min-w-0 text-left"
+                aria-label="Shift Kit ヒーロー画面へ"
+              >
                 <BrandMark size="md" />
-              </Link>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <section
-                aria-label="カレンダー"
-                className={isMobile ? "px-3 py-3" : "p-4"}
-              >
-                <SidebarCalendar />
-              </section>
-              <section
-                aria-label="スタッフ絞り込み"
-                className={`border-t border-slate-300 ${isMobile ? "px-3 py-3" : "p-4"}`}
-              >
-                <StaffFilter />
-              </section>
-            </div>
-          </>
-        ) : (
-          <div className="min-h-0 flex-1" />
-        )}
-
-        {/* 最下部: 開閉＋プロフィール＋設定（モバイルはヘッダーで開閉するため開閉ボタン非表示） */}
-        <div
-          className={`flex shrink-0 items-center gap-2 border-t border-slate-300 ${
-            isMobile ? "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "p-2"
-          } ${collapsed ? "flex-col" : "justify-between"}`}
-        >
-          {!isMobile && (
-            <button
+              </button>
+            )}            <button
               onClick={handleToggle}
               aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
               aria-expanded={!collapsed}
@@ -294,7 +279,47 @@ export default function AppShell({
                 size={18}
               />
             </button>
-          )}
+          </div>
+        )}
+
+        {isMobile && !collapsed && (
+          <div className="flex h-12 shrink-0 items-center border-b border-slate-200 bg-white px-4">
+            <button
+              type="button"
+              onClick={showHero}
+              className="min-w-0 text-left"
+              aria-label="Shift Kit ヒーロー画面へ"
+            >
+              <BrandMark size="md" />
+            </button>
+          </div>
+        )}
+
+        {!collapsed ? (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <section
+              aria-label="カレンダー"
+              className={isMobile ? "px-3 py-3" : "p-4"}
+            >
+              <SidebarCalendar />
+            </section>
+            <section
+              aria-label="スタッフ絞り込み"
+              className={`border-t border-slate-300 ${isMobile ? "px-3 py-3" : "p-4"}`}
+            >
+              <StaffFilter />
+            </section>
+          </div>
+        ) : (
+          <div className="min-h-0 flex-1" />
+        )}
+
+        {/* 最下部: プロフィール＋設定 */}
+        <div
+          className={`flex shrink-0 items-center gap-2 border-t border-slate-300 ${
+            isMobile ? "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "p-2"
+          } ${collapsed ? "flex-col" : "justify-between"}`}
+        >
           <ProfileMenu email={email} collapsed={collapsed} />
           <button
             onClick={() => setSettingsOpen(true)}

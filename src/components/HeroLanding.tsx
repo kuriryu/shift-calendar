@@ -1,8 +1,13 @@
+"use client";
+
 import BrandMark from "@/components/BrandMark";
 import PrimaryButton from "@/components/PrimaryButton";
+import { useAppStore } from "@/stores/useAppStore";
 
-/** ランディングヒーロー。CTA からシフト作成へ進む */
+/** ランディングヒーロー。CTA で同一URLのまま作成フロー（ステップ1）へ */
 export default function HeroLanding() {
+  const startCreate = useAppStore((s) => s.startCreate);
+
   return (
     <section className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-slate-50 md:min-h-full">
       <div className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 items-center gap-6 px-5 py-8 md:grid-cols-2 md:gap-16 md:px-6 md:py-28">
@@ -22,7 +27,7 @@ export default function HeroLanding() {
             希望の収集からシフト作成まで。面倒な作業を減らし、現場の時間を戻します。
           </p>
           <div className="mt-5 flex justify-center md:mt-8 md:justify-start">
-            <PrimaryButton href="/create">シフトを作成する</PrimaryButton>
+            <PrimaryButton onClick={startCreate}>シフトを作成する</PrimaryButton>
           </div>
         </div>
 

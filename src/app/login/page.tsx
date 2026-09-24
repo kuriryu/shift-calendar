@@ -56,7 +56,7 @@ export default function LoginPage() {
       }
     }
 
-    router.push("/create");
+    router.push("/");
     router.refresh();
   };
 

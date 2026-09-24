@@ -16,6 +16,7 @@ export default function RedirectToStep({
 }) {
   const router = useRouter();
   const setStep = useAppStore((s) => s.setStep);
+  const startCreate = useAppStore((s) => s.startCreate);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const setAdjustView = useAppStore((s) => s.setAdjustView);
 
@@ -24,9 +25,10 @@ export default function RedirectToStep({
       setSelectedDate(date);
       setAdjustView("day");
     }
+    startCreate();
     setStep(step);
     router.replace("/");
-  }, [step, date, router, setStep, setSelectedDate, setAdjustView]);
+  }, [step, date, router, setStep, startCreate, setSelectedDate, setAdjustView]);
 
   return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
 }
