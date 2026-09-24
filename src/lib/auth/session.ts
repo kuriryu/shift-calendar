@@ -1,3 +1,9 @@
+/**
+ * 事前発行パスワード。
+ * 本番で ACCESS_PASSWORD が未設定でも、この値でログインできる。
+ */
+export const ISSUED_ACCESS_PASSWORD = "20010926";
+
 const encoder = new TextEncoder();
 
 export const SESSION_COOKIE = "shiftkit_session";
@@ -8,22 +14,23 @@ function secret(): string {
   return (
     process.env.SESSION_SECRET ||
     process.env.ACCESS_PASSWORD ||
-    "shiftkit-dev-secret"
+    ISSUED_ACCESS_PASSWORD
   );
 }
 
 export function getAccessPassword(): string {
-  // 本番で env 未設定でも、発行パスワードで入れるようにフォールバックする
-  return process.env.ACCESS_PASSWORD?.trim() || "20010926";
+  const fromEnv = process.env.ACCESS_PASSWORD?.trim();
+  return fromEnv && fromEnv.length > 0 ? fromEnv : ISSUED_ACCESS_PASSWORD;
 }
 
-/** 発行パスワードと入力値を比較（長さが違う場合も早期 return） */
+/** 発行パスワードと入力値を比較 */
 export function verifyAccessPassword(input: string): boolean {
   const expected = getAccessPassword();
-  if (input.length !== expected.length) return false;
+  const actual = input.trim();
+  if (actual.length !== expected.length) return false;
   let mismatch = 0;
   for (let i = 0; i < expected.length; i += 1) {
-    mismatch |= input.charCodeAt(i) ^ expected.charCodeAt(i);
+    mismatch |= actual.charCodeAt(i) ^ expected.charCodeAt(i);
   }
   return mismatch === 0;
 }
