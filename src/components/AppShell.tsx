@@ -140,11 +140,11 @@ function ProfileMenu({
               )}
             </div>
 
-            {email && (
+            {email ? (
               <div className="border-t border-slate-100 pt-3">
                 <SignOutButton />
               </div>
-            )}
+            ) : null}
             <button
               onClick={close}
               className="mt-2 w-full rounded-md py-1 text-[11px] text-slate-400 hover:bg-slate-50"
@@ -170,14 +170,29 @@ export default function AppShell({
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sessionEmail, setSessionEmail] = useState<string | null>(email);
 
   // ログイン履歴を記録（セッション中は1回）
   useEffect(() => {
-    if (!email) return;
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as { email?: string };
+        if (!cancelled && data.email) setSessionEmail(data.email);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!sessionEmail) return;
     if (sessionStorage.getItem("login-recorded")) return;
     sessionStorage.setItem("login-recorded", "1");
-    recordLogin(email);
-  }, [email, recordLogin]);
+    recordLogin(sessionEmail);
+  }, [sessionEmail, recordLogin]);
 
   // モバイル（sm 未満）ではサイドバーは既定で折りたたみ、展開時はドロワーとして重ねて表示する
   const isMobile = useIsMobile();
@@ -227,7 +242,7 @@ export default function AppShell({
           >
             <Icon name={mobileOpen ? "close" : "menu"} size={22} />
           </button>
-          <ProfileMenu email={email} collapsed align="right" />
+          <ProfileMenu email={sessionEmail} collapsed align="right" />
         </header>
       )}
 
@@ -320,7 +335,7 @@ export default function AppShell({
             isMobile ? "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "p-2"
           } ${collapsed ? "flex-col" : "justify-between"}`}
         >
-          <ProfileMenu email={email} collapsed={collapsed} />
+          <ProfileMenu email={sessionEmail} collapsed={collapsed} />
           <button
             onClick={() => setSettingsOpen(true)}
             aria-label="シフト作成の条件設定"

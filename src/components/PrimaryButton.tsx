@@ -9,6 +9,7 @@ export default function PrimaryButton({
   children,
   className = "",
   href,
+  type = "button",
   ...props
 }: {
   children: ReactNode;
@@ -26,7 +27,7 @@ export default function PrimaryButton({
   }
 
   return (
-    <button type="button" className={classes} style={{ color: "#ffffff" }} {...props}>
+    <button type={type} className={classes} style={{ color: "#ffffff" }} {...props}>
       {children}
     </button>
   );

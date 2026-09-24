@@ -3,10 +3,30 @@
 import BrandMark from "@/components/BrandMark";
 import PrimaryButton from "@/components/PrimaryButton";
 import { useAppStore } from "@/stores/useAppStore";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-/** ランディングヒーロー。CTA で同一URLのまま作成フロー（ステップ1）へ */
+/** ランディングヒーロー。作成開始にはログイン（発行パスワード）が必要 */
 export default function HeroLanding() {
+  const router = useRouter();
   const startCreate = useAppStore((s) => s.startCreate);
+  const [checking, setChecking] = useState(false);
+
+  const handleStart = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        startCreate();
+        return;
+      }
+      router.push("/login?next=create");
+    } catch {
+      router.push("/login?next=create");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   return (
     <section className="flex min-h-dvh flex-1 flex-col overflow-hidden bg-slate-50 md:min-h-full">
@@ -27,7 +47,9 @@ export default function HeroLanding() {
             希望の収集からシフト作成まで。面倒な作業を減らし、現場の時間を戻します。
           </p>
           <div className="mt-5 flex justify-center md:mt-8 md:justify-start">
-            <PrimaryButton onClick={startCreate}>シフトを作成する</PrimaryButton>
+            <PrimaryButton onClick={handleStart} disabled={checking}>
+              {checking ? "確認中…" : "シフトを作成する"}
+            </PrimaryButton>
           </div>
         </div>
 
