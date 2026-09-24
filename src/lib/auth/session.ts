@@ -12,14 +12,14 @@ function secret(): string {
   );
 }
 
-export function getAccessPassword(): string | null {
-  return process.env.ACCESS_PASSWORD?.trim() || null;
+export function getAccessPassword(): string {
+  // 本番で env 未設定でも、発行パスワードで入れるようにフォールバックする
+  return process.env.ACCESS_PASSWORD?.trim() || "20010926";
 }
 
 /** 発行パスワードと入力値を比較（長さが違う場合も早期 return） */
 export function verifyAccessPassword(input: string): boolean {
   const expected = getAccessPassword();
-  if (!expected) return false;
   if (input.length !== expected.length) return false;
   let mismatch = 0;
   for (let i = 0; i < expected.length; i += 1) {

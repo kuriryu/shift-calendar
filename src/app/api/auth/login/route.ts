@@ -4,17 +4,9 @@ import {
   sessionCookieOptions,
   SESSION_COOKIE,
   verifyAccessPassword,
-  getAccessPassword,
 } from "@/lib/auth/session";
 
 export async function POST(request: Request) {
-  if (!getAccessPassword()) {
-    return NextResponse.json(
-      { error: "アクセスパスワードがサーバーに設定されていません" },
-      { status: 503 },
-    );
-  }
-
   let body: { password?: string };
   try {
     body = await request.json();
@@ -22,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "リクエストが不正です" }, { status: 400 });
   }
 
-  const password = body.password ?? "";
+  const password = (body.password ?? "").trim();
 
   if (!password) {
     return NextResponse.json({ error: "パスワードを入力してください" }, { status: 400 });
