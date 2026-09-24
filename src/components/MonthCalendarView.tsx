@@ -102,16 +102,19 @@ export default function MonthCalendarView({
   );
 
   return (
-    <div className="space-y-3">
-      <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
-        <p className="px-4 py-2.5 text-sm font-semibold text-slate-700">
+    <div
+      key={month}
+      className="animate-[fadeIn_200ms_cubic-bezier(0.16,1,0.3,1)] space-y-4"
+    >
+      <div className="overflow-hidden rounded-none border border-slate-200 bg-white">
+        <p className="sticky top-0 z-10 border-b border-slate-200 bg-white px-4 py-2 text-lg font-bold leading-normal text-slate-900">
           {monthLabel(month)}
         </p>
-        <div className="grid grid-cols-7 bg-slate-50">
+        <div className="sticky top-10 z-10 grid grid-cols-7 border-b border-slate-200 bg-white">
           {WEEKDAY_HEADERS.map((w) => (
             <span
               key={w}
-              className="py-1.5 text-center text-[11px] font-medium text-slate-500"
+              className="py-2 text-center text-xs font-medium leading-4 text-slate-500"
             >
               {w}
             </span>
@@ -120,7 +123,7 @@ export default function MonthCalendarView({
         <div className="grid grid-cols-7 auto-rows-[minmax(5.5rem,auto)]">
           {cells.map((d, i) =>
             d === null ? (
-              <div key={`blank-${i}`} className="bg-slate-50/50" />
+              <div key={`blank-${i}`} className="rounded-none border border-slate-200 bg-slate-200/50" />
             ) : (
               (() => {
                 const dayAssignments = assignments
@@ -132,8 +135,8 @@ export default function MonthCalendarView({
                 return (
                   <div
                     key={d}
-                    className={`flex flex-col items-stretch gap-0.5 p-1.5 text-left transition-colors ${
-                      selected ? "bg-indigo-50 ring-2 ring-inset ring-indigo-400" : ""
+                    className={`flex flex-col items-stretch gap-1 rounded-none border border-slate-200 p-2 text-left ${
+                      selected ? "bg-slate-100" : "bg-white"
                     }`}
                   >
                     <button
@@ -141,14 +144,10 @@ export default function MonthCalendarView({
                       onClick={() => select(d)}
                       aria-label={`${Number(d.slice(8))}日 出勤${dayAssignments.length}名${
                         selected ? " 選択中" : ""
-                      }`}
+                      }${isToday ? " 今日" : ""}`}
                       aria-pressed={selected}
-                      className={`mb-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold hover:bg-slate-100 ${
-                        selected
-                          ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                          : isToday
-                            ? "text-indigo-600 ring-1 ring-indigo-400"
-                            : "text-slate-700"
+                      className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-none text-sm font-semibold leading-5 tabular-nums hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                        isToday ? "text-slate-900 underline decoration-blue-600" : "text-slate-900"
                       }`}
                     >
                       {Number(d.slice(8))}
@@ -161,7 +160,7 @@ export default function MonthCalendarView({
                           key={a.id}
                           type="button"
                           onClick={(e) => openHours(e, a)}
-                          className="truncate rounded px-1 py-0.5 text-left text-[9px] font-medium text-white hover:opacity-90"
+                          className="truncate rounded px-1 py-0.5 text-left text-[9px] font-medium tabular-nums text-white hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                           style={{ backgroundColor: color.bg }}
                           title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
                           aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}

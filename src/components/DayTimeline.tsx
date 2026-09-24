@@ -11,6 +11,7 @@ import AssignmentEditPopover, {
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
+import { navCircleButtonClassName } from "@/components/FieldControl";
 import { toMinutes } from "@/lib/time";
 import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
 import type { ShiftAssignment, Staff } from "@/types";
@@ -127,7 +128,7 @@ export default function DayTimeline({ date }: { date: string }) {
             onClick={() => goDay(-1)}
             disabled={dayIndex <= 0}
             aria-label="前の日"
-            className="rounded-full border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className={navCircleButtonClassName}
           >
             <Icon name="chevron_left" size={20} />
           </button>
@@ -139,7 +140,7 @@ export default function DayTimeline({ date }: { date: string }) {
             onClick={() => goDay(1)}
             disabled={dayIndex >= monthDays.length - 1}
             aria-label="次の日"
-            className="rounded-full border border-slate-200 p-1.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className={navCircleButtonClassName}
           >
             <Icon name="chevron_right" size={20} />
           </button>

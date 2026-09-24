@@ -53,30 +53,36 @@ export default function Dashboard() {
   }[active];
 
   return (
-    <div className="space-y-12">
-      <div>
-        <header className="flex flex-wrap items-start justify-between gap-4 px-0.5 py-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 md:gap-12 md:space-y-0">
+      <div className="shrink-0">
+        <header className="flex flex-wrap items-start justify-between gap-2 px-0.5 py-1 md:gap-4 md:py-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold tracking-wide text-indigo-600">
+            <p className="text-[11px] font-semibold tracking-wide text-blue-600 md:text-xs">
               STEP {active}
             </p>
             <h1
               id={`step-${active}-title`}
-              className="mt-5 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl"
+              className="mt-1 text-xl font-bold leading-tight tracking-tight text-slate-900 md:mt-5 md:text-4xl"
             >
               {def.label}
             </h1>
-            <p className="mt-14 mb-2 text-base leading-relaxed text-slate-500">{def.desc}</p>
+            <p className="mt-1.5 text-xs leading-snug text-slate-500 md:mt-14 md:mb-2 md:text-base md:leading-relaxed">
+              {def.desc}
+            </p>
           </div>
           <ViolationBadge />
         </header>
 
-        <div className="mt-8">
+        <div className="mt-2 md:mt-8">
           <StepProgress current={active} />
         </div>
       </div>
 
-      <div aria-live="polite" className="pt-1">
+      <div
+        key={`${active}-${month}`}
+        aria-live="polite"
+        className="flex min-h-0 flex-1 flex-col animate-[fadeIn_200ms_cubic-bezier(0.16,1,0.3,1)]"
+      >
         {panel}
       </div>
     </div>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AIシフト管理 — ヒーロー</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="m-0 bg-slate-50">
+<section class="bg-slate-50 overflow-hidden">
+  <style>
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes float-y {
+      0%, 100% { transform: translate3d(0, 0, 0); }
+      50% { transform: translate3d(0, -18px, 0); }
+    }
+    @keyframes tilt-float {
+      0%, 100% { transform: translate3d(0, 0, 0) rotateX(8deg) rotateY(-14deg) rotateZ(-2deg); }
+      50% { transform: translate3d(0, -14px, 12px) rotateX(4deg) rotateY(-8deg) rotateZ(1deg); }
+    }
+    @keyframes aura-pulse {
+      0%, 100% { opacity: 0.45; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.08); }
+    }
+    .hero-fade { animation: fade-in-up 0.9s ease-out both; }
+    .hero-fade-delay { animation-delay: 0.15s; }
+    .float-slow { animation: float-y 6.5s ease-in-out infinite; }
+    .tilt-slow { animation: tilt-float 8s ease-in-out infinite; transform-style: preserve-3d; }
+    .aura { animation: aura-pulse 7s ease-in-out infinite; }
+  </style>
+
+  <div class="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 md:grid-cols-2 md:gap-16 md:py-28">
+    <div class="hero-fade text-center md:text-left">
+      <span class="inline-flex items-center rounded-full border border-blue-100 bg-white px-3 py-1 text-xs font-medium tracking-wide text-blue-600">
+        シフト管理
+      </span>
+      <h1 class="mt-6 text-3xl font-semibold leading-snug tracking-tight text-slate-800 sm:text-4xl lg:text-5xl">
+        シフトの事務作業を、<br />スマートに。
+      </h1>
+      <p class="mt-5 max-w-lg text-base leading-relaxed text-slate-600 sm:text-lg">
+        希望の収集からシフト作成まで。面倒な作業を減らし、現場の時間を戻します。
+      </p>
+      <div class="mt-8">
+        <a href="/create" class="primary-button inline-flex h-11 min-h-11 items-center justify-center gap-1 rounded-md bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700" style="color:#ffffff">
+          シフトを作成する
+        </a>
+      </div>
+    </div>
+
+    <div class="three-d-container relative aspect-square w-full [perspective:1200px]">
+      <div class="aura pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300/50 blur-3xl"></div>
+      <div class="aura pointer-events-none absolute right-6 top-8 h-56 w-56 rounded-full bg-blue-400/40 blur-3xl" style="animation-delay: 1.4s;"></div>
+      <div class="aura pointer-events-none absolute bottom-6 left-8 h-48 w-48 rounded-full bg-sky-300/40 blur-3xl" style="animation-delay: 2.6s;"></div>
+
+      <div class="tilt-slow relative z-10 flex h-full w-full items-center justify-center">
+        <div class="float-slow relative w-[78%] rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-xl shadow-slate-300/40 backdrop-blur-md" style="transform: rotateX(12deg) rotateY(-18deg);">
+          <div class="mb-3 flex items-center justify-between">
+            <div class="h-2.5 w-24 rounded-full bg-slate-200"></div>
+            <div class="flex -space-x-2">
+              <span class="h-6 w-6 rounded-full border-2 border-white bg-blue-500"></span>
+              <span class="h-6 w-6 rounded-full border-2 border-white bg-cyan-400"></span>
+              <span class="h-6 w-6 rounded-full border-2 border-white bg-slate-400"></span>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="col-span-2 h-24 rounded-2xl bg-gradient-to-br from-slate-100 to-blue-50 p-3">
+              <div class="flex h-full items-end gap-1.5">
+                <span class="h-[40%] w-3 rounded-sm bg-blue-300"></span>
+                <span class="h-[70%] w-3 rounded-sm bg-blue-500"></span>
+                <span class="h-[55%] w-3 rounded-sm bg-cyan-400"></span>
+                <span class="h-[85%] w-3 rounded-sm bg-blue-600"></span>
+                <span class="h-[48%] w-3 rounded-sm bg-slate-300"></span>
+              </div>
+            </div>
+            <div class="flex h-24 flex-col justify-between rounded-2xl bg-slate-800 p-3 text-white">
+              <span class="text-[10px] text-slate-300">稼働率</span>
+              <span class="text-lg font-semibold">96%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="float-slow absolute -left-1 top-8 z-20 w-36 rounded-2xl border border-white/80 bg-white/70 p-3 shadow-lg backdrop-blur-md" style="animation-delay: 0.8s;">
+          <div class="mb-2 flex items-center gap-2">
+            <span class="h-7 w-7 rounded-full bg-blue-600"></span>
+            <div>
+              <div class="h-2 w-14 rounded-full bg-slate-300"></div>
+              <div class="mt-1 h-1.5 w-10 rounded-full bg-slate-200"></div>
+            </div>
+          </div>
+          <div class="h-10 rounded-lg bg-gradient-to-r from-cyan-100 to-blue-100"></div>
+        </div>
+
+        <div class="float-slow absolute -right-2 bottom-10 z-20 w-40 rounded-2xl border border-white/80 bg-white/75 p-3 shadow-lg backdrop-blur-md" style="animation-delay: 1.6s;">
+          <div class="mb-2 h-2 w-16 rounded-full bg-slate-300"></div>
+          <div class="flex h-14 items-end gap-1">
+            <span class="h-[30%] flex-1 rounded-sm bg-slate-200"></span>
+            <span class="h-[60%] flex-1 rounded-sm bg-blue-400"></span>
+            <span class="h-[45%] flex-1 rounded-sm bg-cyan-300"></span>
+            <span class="h-[80%] flex-1 rounded-sm bg-blue-600"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</body>
+</html>

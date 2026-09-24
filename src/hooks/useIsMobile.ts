@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-const QUERY = "(max-width: 639px)"; // Tailwind の sm 未満
+const QUERY = "(max-width: 767px)"; // 768px 未満
 
 function subscribe(callback: () => void) {
   const mq = window.matchMedia(QUERY);

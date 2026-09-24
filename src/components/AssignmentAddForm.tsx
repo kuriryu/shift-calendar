@@ -1,12 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useAppStore } from "@/stores/useAppStore";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ControlledActionDialog } from "smarthr-ui";
+import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { timeOptionsOf } from "@/lib/coverage";
 import { toMinutes } from "@/lib/time";
 import { BREAK_OPTIONS } from "@/components/AssignmentEditPopover";
+import FieldControl, { FieldInput, FieldSelect } from "@/components/FieldControl";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import type { Staff } from "@/types";
 import { dayLabel } from "@/lib/dates";
+
+const SHIFT_SLOTS = [
+  { value: "早番", start: "09:00", end: "15:00" },
+  { value: "中番", start: "12:00", end: "18:00" },
+  { value: "遅番", start: "15:00", end: "21:00" },
+] as const;
 
 /** 選択日に未割当のスタッフへシフトを追加する共通フォーム */
 export default function AssignmentAddForm({
@@ -16,15 +25,24 @@ export default function AssignmentAddForm({
   date: string;
   candidates: Staff[];
 }) {
+  const isMobile = useIsMobile();
   const settings = useAppStore((s) => s.settings);
   const addAssignment = useAppStore((s) => s.addAssignment);
+  const monthAssignments = useAppStore(
+    (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
+  );
   const timeOptions = useMemo(() => timeOptionsOf(settings), [settings]);
 
+  const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState("");
+  const [shiftSlot, setShiftSlot] = useState("");
+  const [customSlot, setCustomSlot] = useState("");
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("13:00");
   const [breakMin, setBreakMin] = useState("auto");
   const [breakStart, setBreakStart] = useState("14:00");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   const breakMinNum = breakMin === "auto" ? null : Number(breakMin);
   const breakStartOptions =
@@ -38,46 +56,80 @@ export default function AssignmentAddForm({
     ? breakStart
     : (breakStartOptions[0] ?? "");
 
+  const resetForm = useCallback(() => {
+    setStaffId("");
+    setShiftSlot("");
+    setCustomSlot("");
+    setStart("09:00");
+    setEnd("13:00");
+    setBreakMin("auto");
+    setBreakStart("14:00");
+    setError("");
+    setSubmitting(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) resetForm();
+  }, [open, resetForm]);
+
   if (candidates.length === 0) return null;
 
   const formId = `add-${date}`;
 
-  return (
-    <form
-      className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-4"
-      aria-label={`${dayLabel(date)} にシフトを追加`}
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!staffId || start >= end) return;
-        addAssignment({
-          staffId,
-          date,
-          startTime: start,
-          endTime: end,
-          ...(breakMinNum !== null
-            ? {
-                breakMinutes: breakMinNum,
-                ...(breakMinNum > 0 && validBreakStart
-                  ? { breakStartTime: validBreakStart }
-                  : {}),
-              }
-            : {}),
-        });
-        setStaffId("");
-        setBreakMin("auto");
-      }}
-    >
-      <p className="mb-3 text-xs font-semibold text-slate-600">＋ シフトを追加</p>
-      <div className="flex flex-wrap items-end gap-x-3 gap-y-3">
-        <div className="space-y-1.5">
-          <label htmlFor={`${formId}-staff`} className="block text-[11px] font-medium text-slate-500">
-            スタッフ
-          </label>
-          <select
+  const submit = () => {
+    if (submitting) return false;
+    const slot = (shiftSlot === "custom" ? customSlot : shiftSlot).trim();
+    if (!staffId || !slot || start >= end) {
+      setError("スタッフ、勤務帯、開始と終了の時刻を入力してください。");
+      return false;
+    }
+    const duplicate = monthAssignments.some(
+      (a) => a.date === date && a.staffId === staffId,
+    );
+    if (duplicate) {
+      setError("この人は同じ日にすでにシフトがあります。");
+      return false;
+    }
+    setSubmitting(true);
+    setError("");
+    addAssignment({
+      staffId,
+      date,
+      startTime: start,
+      endTime: end,
+      shiftSlot: slot,
+      ...(breakMinNum !== null
+        ? {
+            breakMinutes: breakMinNum,
+            ...(breakMinNum > 0 && validBreakStart
+              ? { breakStartTime: validBreakStart }
+              : {}),
+          }
+        : {}),
+    });
+    resetForm();
+    setOpen(false);
+    return true;
+  };
+
+  const fields = (
+    <div className="flex flex-col gap-3">
+      {error && (
+        <p className="text-xs text-red-700" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap items-end gap-3">
+        <FieldControl
+          id={`${formId}-staff`}
+          label="スタッフ"
+          className="w-full min-w-[12rem] sm:w-auto sm:min-w-[14rem] sm:flex-1"
+        >
+          <FieldSelect
             id={`${formId}-staff`}
             value={staffId}
             onChange={(e) => setStaffId(e.target.value)}
-            className="min-w-[8rem] rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs"
+            required
           >
             <option value="">スタッフを選択</option>
             {candidates.map((s) => (
@@ -85,58 +137,107 @@ export default function AssignmentAddForm({
                 {s.name}
               </option>
             ))}
-          </select>
-        </div>
+          </FieldSelect>
+        </FieldControl>
 
-        <div className="space-y-1.5">
-          <label htmlFor={`${formId}-start`} className="block text-[11px] font-medium text-slate-500">
-            開始時刻
-          </label>
-          <select
+        <FieldControl
+          id={`${formId}-slot`}
+          label="勤務帯"
+          className="w-full min-w-[10rem] sm:w-auto sm:min-w-[11rem] sm:flex-1"
+        >
+          <FieldSelect
+            id={`${formId}-slot`}
+            value={shiftSlot}
+            required
+            onChange={(e) => {
+              const value = e.target.value;
+              setShiftSlot(value);
+              const preset = SHIFT_SLOTS.find((s) => s.value === value);
+              if (!preset) return;
+              if (timeOptions.includes(preset.start)) setStart(preset.start);
+              if (timeOptions.includes(preset.end)) setEnd(preset.end);
+            }}
+          >
+            <option value="">選択してください</option>
+            {SHIFT_SLOTS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.value}
+              </option>
+            ))}
+            <option value="custom">その他（入力）</option>
+          </FieldSelect>
+        </FieldControl>
+
+        {shiftSlot === "custom" && (
+          <FieldControl
+            id={`${formId}-slot-custom`}
+            label="勤務帯（自由入力）"
+            className="w-full min-w-[10rem] sm:w-auto sm:min-w-[11rem] sm:flex-1"
+          >
+            <FieldInput
+              id={`${formId}-slot-custom`}
+              value={customSlot}
+              onChange={(e) => setCustomSlot(e.target.value)}
+              required
+              maxLength={20}
+              placeholder="例: 通し"
+            />
+          </FieldControl>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-end gap-3">
+        <FieldControl
+          id={`${formId}-start`}
+          label="開始時刻"
+          className="w-[7.5rem] shrink-0"
+        >
+          <FieldSelect
             id={`${formId}-start`}
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold tabular-nums"
+            className="font-semibold tabular-nums"
           >
             {timeOptions.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
-        </div>
+          </FieldSelect>
+        </FieldControl>
 
-        <span className="pb-2 text-xs text-slate-400" aria-hidden>
+        <span className="pb-3 text-xs text-slate-400" aria-hidden>
           〜
         </span>
 
-        <div className="space-y-1.5">
-          <label htmlFor={`${formId}-end`} className="block text-[11px] font-medium text-slate-500">
-            終了時刻
-          </label>
-          <select
+        <FieldControl
+          id={`${formId}-end`}
+          label="終了時刻"
+          className="w-[7.5rem] shrink-0"
+        >
+          <FieldSelect
             id={`${formId}-end`}
             value={end}
             onChange={(e) => setEnd(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold tabular-nums"
+            className="font-semibold tabular-nums"
           >
             {timeOptions.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>
             ))}
-          </select>
-        </div>
+          </FieldSelect>
+        </FieldControl>
 
-        <div className="space-y-1.5">
-          <label htmlFor={`${formId}-break`} className="block text-[11px] font-medium text-slate-500">
-            休憩
-          </label>
-          <select
+        <FieldControl
+          id={`${formId}-break`}
+          label="休憩"
+          className="w-[7rem] shrink-0"
+        >
+          <FieldSelect
             id={`${formId}-break`}
             value={breakMin}
             onChange={(e) => setBreakMin(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs"
           >
             <option value="auto">自動</option>
             {BREAK_OPTIONS.map((b) => (
@@ -144,22 +245,19 @@ export default function AssignmentAddForm({
                 {b === 0 ? "なし" : `${b}分`}
               </option>
             ))}
-          </select>
-        </div>
+          </FieldSelect>
+        </FieldControl>
 
         {breakMinNum !== null && breakMinNum > 0 && (
-          <div className="space-y-1.5">
-            <label
-              htmlFor={`${formId}-break-start`}
-              className="block text-[11px] font-medium text-slate-500"
-            >
-              休憩開始
-            </label>
-            <select
+          <FieldControl
+            id={`${formId}-break-start`}
+            label="休憩開始"
+            className="w-[7.5rem] shrink-0"
+          >
+            <FieldSelect
               id={`${formId}-break-start`}
               value={validBreakStart}
               onChange={(e) => setBreakStart(e.target.value)}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-xs"
               disabled={breakStartOptions.length === 0}
             >
               {breakStartOptions.length === 0 ? (
@@ -171,18 +269,65 @@ export default function AssignmentAddForm({
                   </option>
                 ))
               )}
-            </select>
-          </div>
+            </FieldSelect>
+          </FieldControl>
         )}
 
-        <button
-          type="submit"
-          disabled={!staffId || start >= end}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        >
-          追加
-        </button>
+        {!isMobile && (
+          <button
+            type="submit"
+            disabled={submitting || !staffId || start >= end}
+            className="box-border h-11 min-h-11 shrink-0 rounded-md bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+          >
+            {submitting ? "追加中…" : "追加"}
+          </button>
+        )}
       </div>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="mt-3">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex h-11 min-h-11 w-full items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+        >
+          ＋ シフトを追加
+        </button>
+        <ControlledActionDialog
+          isOpen={open}
+          heading={`${dayLabel(date)} にシフトを追加`}
+          actionButton={{
+            text: submitting ? "追加中…" : "追加",
+            theme: "primary",
+          }}
+          onClickAction={() => {
+            submit();
+          }}
+          onClickClose={() => setOpen(false)}
+          onClickOverlay={() => setOpen(false)}
+          width="calc(100vw - 2rem)"
+          className="assignment-add-dialog"
+        >
+          <div className="space-y-3 pt-1">{fields}</div>
+        </ControlledActionDialog>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      className="mt-4 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-4"
+      aria-label={`${dayLabel(date)} にシフトを追加`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <p className="mb-5 text-base font-bold text-slate-800">＋ シフトを追加</p>
+      {fields}
     </form>
   );
 }

@@ -7,6 +7,7 @@ import AssignmentEditPopover, {
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
+import { navCircleButtonClassName } from "@/components/FieldControl";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { timeOptionsOf } from "@/lib/coverage";
@@ -128,7 +129,7 @@ export default function WeekCalendarView({
             onClick={() => goWeek(-1)}
             disabled={weekIndex <= 0}
             aria-label="前の週"
-            className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className={navCircleButtonClassName}
           >
             <Icon name="chevron_left" size={20} />
           </button>
@@ -142,15 +143,18 @@ export default function WeekCalendarView({
             onClick={() => goWeek(1)}
             disabled={weekIndex >= weeks.length - 1}
             aria-label="次の週"
-            className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className={navCircleButtonClassName}
           >
             <Icon name="chevron_right" size={20} />
           </button>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <div className="grid min-w-[42rem] grid-cols-7 divide-x divide-slate-100">
+      <div
+        key={currentWeek?.key ?? selectedDate}
+        className="animate-[fadeIn_200ms_cubic-bezier(0.16,1,0.3,1)] overflow-x-auto rounded-none border border-slate-200 bg-white"
+      >
+        <div className="grid min-w-[42rem] grid-cols-7">
           {weekDates.map((date, i) => {
             const inMonth = date.startsWith(month);
             const dayAssignments = assignments
@@ -160,8 +164,8 @@ export default function WeekCalendarView({
             return (
               <div
                 key={date}
-                className={`flex min-h-48 flex-col ${
-                  selected ? "bg-indigo-50/50" : inMonth ? "bg-white" : "bg-slate-50/80"
+                className={`flex min-h-48 flex-col rounded-none border border-slate-200 ${
+                  selected ? "bg-slate-100" : inMonth ? "bg-white" : "bg-slate-200/50"
                 }`}
               >
                 <button
@@ -170,12 +174,12 @@ export default function WeekCalendarView({
                     selected ? "選択中" : ""
                   }`}
                   aria-pressed={selected}
-                  className={`flex flex-col items-center border-b border-slate-100 px-1 py-2 ${
-                    selected ? "bg-indigo-600 text-white" : "hover:bg-slate-50"
+                  className={`flex flex-col items-center rounded-none border-b border-slate-200 px-2 py-2 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                    selected ? "bg-slate-100" : "hover:bg-slate-100"
                   }`}
                 >
-                  <span className="text-[10px] opacity-80">{WEEKDAY_HEADERS[i]}</span>
-                  <span className="text-sm font-semibold">
+                  <span className="text-xs font-medium leading-4 text-slate-500">{WEEKDAY_HEADERS[i]}</span>
+                  <span className={`text-sm font-semibold leading-5 tabular-nums ${inMonth ? "text-slate-900" : "text-slate-400"}`}>
                     {Number(date.slice(8))}
                   </span>
                 </button>
@@ -188,7 +192,7 @@ export default function WeekCalendarView({
                         <button
                           type="button"
                           onClick={(e) => openHours(e, a)}
-                          className="w-full truncate rounded px-1.5 py-1 text-left text-[10px] font-medium text-white hover:opacity-90"
+                          className="w-full truncate rounded px-1 py-1 text-left text-[10px] font-medium tabular-nums text-white hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                           style={{ backgroundColor: color.bg }}
                           title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
                           aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}

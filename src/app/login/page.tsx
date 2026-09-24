@@ -56,7 +56,7 @@ export default function LoginPage() {
       }
     }
 
-    router.push("/");
+    router.push("/create");
     router.refresh();
   };
 
@@ -64,8 +64,8 @@ export default function LoginPage() {
     <main className="flex min-h-full flex-1 items-center justify-center px-4 py-8 sm:px-8">
       <div className="w-full max-w-md space-y-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
         <div className="text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            シフトカレンダー
+          <h1 className="font-[family-name:var(--font-brand)] text-2xl font-semibold tracking-tight text-slate-900">
+            Shift Kit
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             {mode === "login"

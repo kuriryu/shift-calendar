@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
+import FieldControl, { FieldSelect } from "@/components/FieldControl";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDismissable } from "@/hooks/useDismissable";
 import { toMinutes } from "@/lib/time";
@@ -93,50 +94,38 @@ export default function AssignmentEditPopover({
             <Icon name="schedule" size={16} className="text-indigo-600" />
             勤務時間
           </h3>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-            <div className="space-y-1.5">
-              <label
-                htmlFor={`edit-start-${fieldId}`}
-                className="block text-[11px] font-medium text-slate-500"
-              >
-                開始時刻
-              </label>
-              <select
+          <div className="flex items-end gap-2">
+            <FieldControl id={`edit-start-${fieldId}`} label="開始時刻">
+              <FieldSelect
                 id={`edit-start-${fieldId}`}
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2.5 text-center text-sm font-semibold tabular-nums text-slate-900"
+                className="font-semibold tabular-nums"
               >
                 {timeOptions.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
-              </select>
-            </div>
-            <span className="mb-2.5 text-sm text-slate-400" aria-hidden>
+              </FieldSelect>
+            </FieldControl>
+            <span className="pb-3 text-sm text-slate-400" aria-hidden>
               〜
             </span>
-            <div className="space-y-1.5">
-              <label
-                htmlFor={`edit-end-${fieldId}`}
-                className="block text-[11px] font-medium text-slate-500"
-              >
-                終了時刻
-              </label>
-              <select
+            <FieldControl id={`edit-end-${fieldId}`} label="終了時刻">
+              <FieldSelect
                 id={`edit-end-${fieldId}`}
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2.5 text-center text-sm font-semibold tabular-nums text-slate-900"
+                className="font-semibold tabular-nums"
               >
                 {timeOptions.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
-              </select>
-            </div>
+              </FieldSelect>
+            </FieldControl>
           </div>
         </section>
 
@@ -148,48 +137,34 @@ export default function AssignmentEditPopover({
             <Icon name="local_cafe" size={16} className="text-indigo-600" />
             休憩
           </h3>
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label
-                htmlFor={`edit-break-min-${fieldId}`}
-                className="block text-[11px] font-medium text-slate-500"
-              >
-                休憩時間
-              </label>
-              <select
+          <div className="space-y-4">
+            <FieldControl id={`edit-break-min-${fieldId}`} label="休憩時間">
+              <FieldSelect
                 id={`edit-break-min-${fieldId}`}
                 value={breakMin}
                 onChange={(e) => setBreakMin(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-2.5 py-2.5 text-sm font-medium text-slate-800"
               >
                 {BREAK_OPTIONS.map((b) => (
                   <option key={b} value={String(b)}>
                     {b === 0 ? "なし" : `${b}分`}
                   </option>
                 ))}
-              </select>
-            </div>
+              </FieldSelect>
+            </FieldControl>
             {breakMinNum > 0 && (
-              <div className="space-y-1.5">
-                <label
-                  htmlFor={`edit-break-start-${fieldId}`}
-                  className="block text-[11px] font-medium text-slate-500"
-                >
-                  休憩開始時刻
-                </label>
-                <select
+              <FieldControl id={`edit-break-start-${fieldId}`} label="休憩開始時刻">
+                <FieldSelect
                   id={`edit-break-start-${fieldId}`}
                   value={validBreakStart}
                   onChange={(e) => setBreakStart(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-2.5 py-2.5 text-sm font-medium text-slate-800"
                 >
                   {breakStartOptions.map((t) => (
                     <option key={t} value={t}>
                       {t}〜
                     </option>
                   ))}
-                </select>
-              </div>
+                </FieldSelect>
+              </FieldControl>
             )}
           </div>
         </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import Icon from "@/components/Icon";
+import FieldControl, { FieldSelect } from "@/components/FieldControl";
 import StepPanel from "@/components/steps/StepPanel";
 import { useAppStore } from "@/stores/useAppStore";
 
@@ -10,11 +11,6 @@ function yearMonthOptions() {
   const years = [thisYear - 1, thisYear, thisYear + 1];
   const months = Array.from({ length: 12 }, (_, i) => i + 1);
   return { years, months };
-}
-
-function shiftMonth(y: number, m: number, delta: number) {
-  const d = new Date(y, m - 1 + delta, 1);
-  return { year: d.getFullYear(), mon: d.getMonth() + 1 };
 }
 
 export default function MonthStep() {
@@ -35,81 +31,45 @@ export default function MonthStep() {
     setMonth(`${y}-${String(m).padStart(2, "0")}`);
   };
 
-  const minY = years[0];
-  const maxY = years[years.length - 1];
-  const canPrev = year > minY || (year === minY && mon > 1);
-  const canNext = year < maxY || (year === maxY && mon < 12);
-
-  const selectClass =
-    "rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base font-bold text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
-
   return (
     <StepPanel step={1}>
-      <div className="flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-3 md:gap-5">
         <div
-          className="flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 md:h-14 md:w-14 md:rounded-2xl"
           aria-hidden
         >
-          <Icon name="calendar_month" size={28} />
+          <Icon name="calendar_month" size={24} />
         </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              const next = shiftMonth(year, mon, -1);
-              applyYearMonth(next.year, next.mon);
-            }}
-            disabled={!canPrev}
-            aria-label="前の月"
-            className="rounded-full border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            <Icon name="chevron_left" size={22} />
-          </button>
-
-          <label className="sr-only" htmlFor="month-year">
-            年
-          </label>
-          <select
-            id="month-year"
-            value={year}
-            onChange={(e) => applyYearMonth(Number(e.target.value), mon)}
-            className={selectClass}
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}年
-              </option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="month-month">
-            月
-          </label>
-          <select
-            id="month-month"
-            value={mon}
-            onChange={(e) => applyYearMonth(year, Number(e.target.value))}
-            className={selectClass}
-          >
-            {months.map((m) => (
-              <option key={m} value={m}>
-                {m}月
-              </option>
-            ))}
-          </select>
-
-          <button
-            type="button"
-            onClick={() => {
-              const next = shiftMonth(year, mon, 1);
-              applyYearMonth(next.year, next.mon);
-            }}
-            disabled={!canNext}
-            aria-label="次の月"
-            className="rounded-full border border-slate-200 p-2.5 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-          >
-            <Icon name="chevron_right" size={22} />
-          </button>
+        <div className="flex flex-wrap items-end justify-center gap-3 md:gap-4">
+          <FieldControl id="month-year" label="年" className="w-36 shrink-0 md:w-44">
+            <FieldSelect
+              id="month-year"
+              value={year}
+              onChange={(e) => applyYearMonth(Number(e.target.value), mon)}
+              className="font-semibold tabular-nums"
+            >
+              {years.map((y) => (
+                <option key={y} value={y}>
+                  {y}年
+                </option>
+              ))}
+            </FieldSelect>
+          </FieldControl>
+          <FieldControl id="month-month" label="月" className="w-28 shrink-0 md:w-36">
+            <FieldSelect
+              id="month-month"
+              value={mon}
+              onChange={(e) => applyYearMonth(year, Number(e.target.value))}
+              className="font-semibold tabular-nums"
+            >
+              {months.map((m) => (
+                <option key={m} value={m}>
+                  {m}月
+                </option>
+              ))}
+            </FieldSelect>
+          </FieldControl>
         </div>
 
         {hasData(month) ? (

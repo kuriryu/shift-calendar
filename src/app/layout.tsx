@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Noto_Sans_JP } from "next/font/google";
+import { Geist, Inter, Noto_Sans_JP } from "next/font/google";
 import SmartHRProvider from "@/components/SmartHRProvider";
 import "smarthr-ui/smarthr-ui.css";
 import "./globals.css";
@@ -14,16 +14,42 @@ const notoSansJp = Noto_Sans_JP({
   subsets: ["latin"],
 });
 
+const inter = Inter({
+  variable: "--font-brand",
+  subsets: ["latin"],
+});
+
+const siteUrl = "https://monthly-shift-calendar.vercel.app";
+const siteTitle = "Shift Kit";
+const siteDescription =
+  "シフトの事務作業をスマートに。希望の収集からシフト作成まで、面倒な作業を減らします。";
+
 export const metadata: Metadata = {
-  title: "シフトカレンダー",
-  description: "今月のシフトを確認するカレンダー",
+  metadataBase: new URL(siteUrl),
+  title: siteTitle,
+  description: siteDescription,
+  openGraph: {
+    type: "website",
+    locale: "ja_JP",
+    url: siteUrl,
+    siteName: siteTitle,
+    title: siteTitle,
+    description: siteDescription,
+    images: [{ url: `${siteUrl}/ogp.png`, width: 1200, height: 630, alt: siteTitle }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+    images: [`${siteUrl}/ogp.png`],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="ja"
-      className={`${geistSans.variable} ${notoSansJp.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${notoSansJp.variable} ${inter.variable} h-full antialiased`}
     >
       <head>
         <link

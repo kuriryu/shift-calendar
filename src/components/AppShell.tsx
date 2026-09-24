@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import SignOutButton from "@/components/SignOutButton";
 import SidebarCalendar from "@/components/SidebarCalendar";
 import StaffFilter from "@/components/StaffFilter";
@@ -10,6 +11,7 @@ import { useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useDismissable } from "@/hooks/useDismissable";
+import BrandMark from "@/components/BrandMark";
 
 function formatAt(iso: string): string {
   const d = new Date(iso);
@@ -19,9 +21,12 @@ function formatAt(iso: string): string {
 function ProfileMenu({
   email,
   collapsed,
+  align = "left",
 }: {
   email: string | null;
   collapsed: boolean;
+  /** ヘッダー右端など、パネルを右寄せしたいとき */
+  align?: "left" | "right";
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -35,8 +40,8 @@ function ProfileMenu({
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2 rounded-lg text-slate-600 hover:bg-slate-100 ${
-          collapsed ? "h-9 w-9 justify-center" : "h-9 px-2"
+        className={`inline-flex min-h-11 items-center gap-2 rounded-md text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+          collapsed ? "h-11 w-11 justify-center" : "h-11 px-2"
         }`}
         aria-label="プロフィールと履歴"
         aria-haspopup="dialog"
@@ -52,19 +57,23 @@ function ProfileMenu({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={close} aria-hidden />
+          <div className="fixed inset-0 z-[60]" onClick={close} aria-hidden />
           <div
             ref={panelRef}
             role="dialog"
             aria-label="プロフィールと履歴"
-            className="absolute bottom-11 left-0 z-50 w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl"
+            className={`absolute z-[70] w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border border-slate-200 bg-white p-4 shadow-xl ${
+              align === "right"
+                ? "right-0 top-11"
+                : "bottom-11 left-0"
+            }`}
           >
             <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
                 <Icon name="account_circle" size={26} />
               </span>
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-slate-700">
+                <p className="truncate text-sm font-normal leading-5 text-slate-700">
                   {email ?? "ゲスト"}
                 </p>
                 <p className="text-[10px] text-slate-400">
@@ -196,81 +205,110 @@ export default function AppShell({
   }, [drawerOpen]);
 
   return (
-    <div className="flex min-h-full flex-1">
-      {/* ドロワー展開時: レイアウトのズレ防止用スペーサー + 背景 */}
-      {drawerOpen && (
-        <>
-          <div className="w-14 shrink-0" aria-hidden />
-          <div
-            className="fixed inset-0 z-30 bg-slate-900/30"
-            onClick={() => setMobileOpen(false)}
-            aria-hidden
-          />
-        </>
-      )}
-
-      {/* サイドバー（折りたたみ可能） */}
-      <aside
-        aria-label="サイドバー"
-        className={`flex h-screen shrink-0 flex-col border-r border-slate-200 bg-white transition-[width] ${
-          drawerOpen
-            ? "fixed inset-y-0 left-0 z-40 w-72 shadow-2xl"
-            : `sticky top-0 z-30 ${collapsed ? "w-14" : "w-64"}`
-        }`}
-      >
-        <div
-          className={`flex h-16 shrink-0 items-center border-b border-slate-100 ${
-            collapsed ? "justify-center" : "justify-between px-5"
+    <div className="flex h-dvh min-h-0 flex-1 flex-col overflow-hidden md:h-auto md:min-h-full md:overflow-visible md:flex-row">
+      {isMobile && (
+        <header
+          className={`sticky top-0 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-2 ${
+            drawerOpen ? "z-[220]" : "z-40"
           }`}
         >
-          {!collapsed && (
-            <h1 className="text-sm font-bold text-slate-800">シフトカレンダー</h1>
-          )}
           <button
             onClick={handleToggle}
-            aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
-            aria-expanded={!collapsed}
-            className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label={mobileOpen ? "メニューを閉じる" : "メニューを開く"}
+            aria-expanded={mobileOpen}
+            aria-controls="app-sidebar"
+            className="inline-flex h-11 min-h-11 min-w-11 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
           >
-            <Icon
-              name={collapsed ? "keyboard_double_arrow_right" : "keyboard_double_arrow_left"}
-              size={18}
-            />
+            <Icon name={mobileOpen ? "close" : "menu"} size={22} />
           </button>
-        </div>
+          <ProfileMenu email={email} collapsed align="right" />
+        </header>
+      )}
 
-        {!collapsed && (
-          <div className="flex-1 overflow-y-auto">
-            <section aria-label="カレンダー" className="px-2 py-5">
-              <SidebarCalendar />
-            </section>
-            <section aria-label="スタッフ絞り込み" className="border-t border-slate-100 px-2 py-5">
-              <StaffFilter />
-            </section>
-          </div>
-        )}
-        {collapsed && <div className="flex-1" />}
-
-        {/* 最下部: プロフィール + 設定 */}
+      {drawerOpen && (
         <div
-          className={`flex shrink-0 items-center gap-1 border-t border-slate-100 p-2 ${
-            collapsed ? "flex-col" : "justify-between"
-          }`}
+          className="fixed inset-0 z-[200] bg-slate-900/40"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden
+        />
+      )}
+
+      <aside
+        id="app-sidebar"
+        aria-label="サイドバー"
+        className={`flex shrink-0 flex-col overflow-hidden border-r border-slate-300 bg-slate-50 transition-[width] ${
+          drawerOpen
+            ? "fixed inset-y-0 left-0 z-[210] h-dvh max-h-dvh w-[min(280px,88vw)] pt-14 shadow-2xl"
+            : `sticky top-0 z-30 h-[calc(100dvh-3.5rem)] md:h-screen ${isMobile ? "hidden" : collapsed ? "w-14" : "w-[280px]"}`
+        }`}
+      >
+        {!collapsed ? (
+          <>
+            <div
+              className={`flex shrink-0 items-center border-b border-slate-200 bg-white px-4 ${
+                isMobile ? "h-12" : "h-16"
+              }`}
+            >
+              <Link href="/" className="min-w-0" aria-label="Shift Kit ヒーロー画面へ">
+                <BrandMark size="md" />
+              </Link>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <section
+                aria-label="カレンダー"
+                className={isMobile ? "px-3 py-3" : "p-4"}
+              >
+                <SidebarCalendar />
+              </section>
+              <section
+                aria-label="スタッフ絞り込み"
+                className={`border-t border-slate-300 ${isMobile ? "px-3 py-3" : "p-4"}`}
+              >
+                <StaffFilter />
+              </section>
+            </div>
+          </>
+        ) : (
+          <div className="min-h-0 flex-1" />
+        )}
+
+        {/* 最下部: 開閉＋プロフィール＋設定（モバイルはヘッダーで開閉するため開閉ボタン非表示） */}
+        <div
+          className={`flex shrink-0 items-center gap-2 border-t border-slate-300 ${
+            isMobile ? "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "p-2"
+          } ${collapsed ? "flex-col" : "justify-between"}`}
         >
+          {!isMobile && (
+            <button
+              onClick={handleToggle}
+              aria-label={collapsed ? "サイドバーを展開" : "サイドバーを折りたたむ"}
+              aria-expanded={!collapsed}
+              className="inline-flex h-11 min-h-11 min-w-11 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+            >
+              <Icon
+                name={
+                  collapsed
+                    ? "keyboard_double_arrow_right"
+                    : "keyboard_double_arrow_left"
+                }
+                size={18}
+              />
+            </button>
+          )}
           <ProfileMenu email={email} collapsed={collapsed} />
           <button
             onClick={() => setSettingsOpen(true)}
             aria-label="シフト作成の条件設定"
             title="条件設定"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+            className="inline-flex h-11 min-h-11 min-w-11 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
           >
             <Icon name="settings" size={20} />
           </button>
         </div>
       </aside>
 
-      {/* メインエリア */}
-      <main className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-5 py-8 sm:px-10 sm:py-10">
+      {/* メインエリア: モバイルは 100dvh 内に収めてページスクロールを避ける */}
+      <main className="mx-auto flex w-full min-h-0 min-w-0 max-w-7xl flex-1 flex-col overflow-hidden bg-white p-3 md:overflow-visible md:p-6">
         {children}
       </main>
 

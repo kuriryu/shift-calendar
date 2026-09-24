@@ -58,6 +58,8 @@ export type ShiftAssignment = {
   endTime: string; // "HH:MM"
   breakMinutes: number;
   breakStartTime?: string; // 休憩開始 "HH:MM"（カウント精度のため保持）
+  /** 早番・中番・遅番、または自由入力の勤務帯 */
+  shiftSlot?: string;
   source: "auto" | "manual" | "ai";
 };
 

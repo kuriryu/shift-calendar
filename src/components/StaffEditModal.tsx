@@ -1,20 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  Cluster,
-  ControlledActionDialog,
-  FormControl,
-  Input,
-  Select,
-  Stack,
-} from "smarthr-ui";
+import { ControlledActionDialog } from "smarthr-ui";
 import type { Role, Staff, TimeRange } from "@/types";
 import { ROLE_LABELS } from "@/types";
 import { ROLE_META } from "@/lib/roles";
 import { timeOptionsOf } from "@/lib/coverage";
 import { migrateStaffPatterns } from "@/lib/staff-pattern";
 import { useAppStore } from "@/stores/useAppStore";
+import FieldControl, { FieldInput, FieldSelect } from "@/components/FieldControl";
 
 const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -27,6 +21,7 @@ function patternError(start: string, end: string): string | null {
 }
 
 function PatternFields({
+  id,
   label,
   start,
   end,
@@ -35,6 +30,7 @@ function PatternFields({
   options,
   error,
 }: {
+  id: string;
   label: string;
   start: string;
   end: string;
@@ -44,34 +40,49 @@ function PatternFields({
   error: string | null;
 }) {
   return (
-    <FormControl label={label}>
-      <Stack gap={0.5}>
-        <Cluster gap={0.5} align="center">
-          <Select
+    <div className="space-y-2">
+      <p className="text-xs font-medium leading-4 text-slate-500">{label}</p>
+      <div className="flex items-end gap-2">
+        <FieldControl id={`${id}-start`} label="開始">
+          <FieldSelect
+            id={`${id}-start`}
             value={start}
             onChange={(e) => onStart(e.target.value)}
-            options={[
-              { value: "", label: "なし" },
-              ...options.map((t) => ({ value: t, label: t })),
-            ]}
-          />
-          <span>–</span>
-          <Select
+            className="tabular-nums"
+          >
+            <option value="">なし</option>
+            {options.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </FieldSelect>
+        </FieldControl>
+        <span className="pb-3 text-xs text-slate-400" aria-hidden>
+          〜
+        </span>
+        <FieldControl id={`${id}-end`} label="終了">
+          <FieldSelect
+            id={`${id}-end`}
             value={end}
             onChange={(e) => onEnd(e.target.value)}
-            options={[
-              { value: "", label: "なし" },
-              ...options.map((t) => ({ value: t, label: t })),
-            ]}
-          />
-        </Cluster>
-        {error && (
-          <p role="alert" className="text-xs text-red-600">
-            {error}
-          </p>
-        )}
-      </Stack>
-    </FormControl>
+            className="tabular-nums"
+          >
+            <option value="">なし</option>
+            {options.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </FieldSelect>
+        </FieldControl>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -156,10 +167,8 @@ export default function StaffEditModal({
         (role === "employee" ? settings.employeeDaysOffTarget : 0),
       weekdayPattern: toPattern(weekdayStart, weekdayEnd),
       weekendPattern: toPattern(weekendStart, weekendEnd),
-      // 旧フィールドはクリア
       defaultPattern: undefined,
       unavailableWeekdays: offWeekdays.length > 0 ? offWeekdays : undefined,
-      // 特別要望UIは非表示。既存値は編集時に維持
       specialNote: staff?.specialNote,
     };
     if (staff) {
@@ -187,76 +196,60 @@ export default function StaffEditModal({
       width={560}
       className="staff-edit-dialog"
     >
-      <Stack gap={1.5}>
+      <div className="space-y-4">
         {error && (
-          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p role="alert" className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">
             {error}
           </p>
         )}
 
-        <FormControl
-          label={
-            <>
-              名前
-              <span className="ms-0.5 text-red-600" aria-hidden>
-                *
-              </span>
-              <span className="sr-only">必須</span>
-              <span className="ms-2 text-xs font-normal text-slate-400">
-                ニックネームでも可
-              </span>
-            </>
-          }
-        >
-          <Input
+        <FieldControl id="staff-name" label="名前" required hint="ニックネームでも可">
+          <FieldInput
+            id="staff-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="例: 山田 太郎"
           />
-        </FormControl>
+        </FieldControl>
 
-        <FormControl
-          label={
-            <>
-              属性
-              <span className="ms-0.5 text-red-600" aria-hidden>
-                *
-              </span>
-              <span className="sr-only">必須</span>
-            </>
-          }
-        >
-          <Select
+        <FieldControl id="staff-role" label="属性" required>
+          <FieldSelect
+            id="staff-role"
             value={role}
             onChange={(e) => setRole(e.target.value as Role | "")}
-            options={[
-              { value: "", label: "選択してください" },
-              ...(Object.keys(ROLE_LABELS) as Role[]).map((r) => ({
-                value: r,
-                label: ROLE_META[r].label,
-              })),
-            ]}
-          />
-        </FormControl>
+          >
+            <option value="">選択してください</option>
+            {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
+              <option key={r} value={r}>
+                {ROLE_META[r].label}
+              </option>
+            ))}
+          </FieldSelect>
+        </FieldControl>
 
-        <Cluster gap={1.5}>
-          <FormControl label="週の上限時間">
-            <Input
+        <div className="flex flex-wrap gap-4">
+          <FieldControl id="staff-hours" label="週の上限時間">
+            <FieldInput
+              id="staff-hours"
               type="number"
               value={maxHours}
               onChange={(e) => setMaxHours(e.target.value)}
+              className="tabular-nums"
             />
-          </FormControl>
-          <FormControl label="最大連勤日数">
-            <Input
+          </FieldControl>
+          <FieldControl id="staff-consec" label="最大連勤日数">
+            <FieldInput
+              id="staff-consec"
               type="number"
               value={maxConsec}
               onChange={(e) => setMaxConsec(e.target.value)}
+              className="tabular-nums"
             />
-          </FormControl>
-        </Cluster>
+          </FieldControl>
+        </div>
 
         <PatternFields
+          id="weekday-pattern"
           label="基本パターン・平日（月〜金）"
           start={weekdayStart}
           end={weekdayEnd}
@@ -266,6 +259,7 @@ export default function StaffEditModal({
           error={weekdayErr}
         />
         <PatternFields
+          id="weekend-pattern"
           label="基本パターン・休日（土・日）"
           start={weekendStart}
           end={weekendEnd}
@@ -275,28 +269,31 @@ export default function StaffEditModal({
           error={weekendErr}
         />
 
-        <FormControl label="固定休（毎週休みの曜日）">
-          <Cluster gap={0.5}>
+        <fieldset className="space-y-2">
+          <legend className="text-xs font-medium leading-4 text-slate-500">
+            固定休（毎週休みの曜日）
+          </legend>
+          <div className="flex flex-wrap gap-2">
             {WEEKDAY_NAMES.map((label, d) => (
               <label
                 key={d}
-                className={`flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${
+                className={`inline-flex h-11 min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border px-4 text-sm ${
                   offWeekdays.includes(d)
-                    ? "border-indigo-400 bg-indigo-50 font-semibold text-indigo-700"
-                    : "border-slate-200 text-slate-500 hover:bg-slate-50"
+                    ? "border-blue-600 bg-slate-100 font-semibold text-slate-900"
+                    : "border-slate-200 text-slate-700 hover:bg-slate-100"
                 }`}
               >
                 <input
                   type="checkbox"
-                  className="hidden"
+                  className="sr-only"
                   checked={offWeekdays.includes(d)}
                   onChange={() => toggleWeekday(d)}
                 />
                 {label}
               </label>
             ))}
-          </Cluster>
-        </FormControl>
+          </div>
+        </fieldset>
 
         {staff && (
           <div className="pt-2">
@@ -312,13 +309,13 @@ export default function StaffEditModal({
                   onClose();
                 }
               }}
-              className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+              className="h-11 min-h-11 w-full rounded-md border border-red-200 bg-red-50 px-4 text-sm font-medium text-red-700 hover:bg-red-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
             >
               このスタッフを削除
             </button>
           </div>
         )}
-      </Stack>
+      </div>
     </ControlledActionDialog>
   );
 }

@@ -4,6 +4,7 @@ import type { Role, ShiftRequest, Staff } from "@/types";
 import { ROLE_META } from "@/lib/roles";
 import StaffBulkMenu from "@/components/StaffBulkMenu";
 import Icon from "@/components/Icon";
+import { navCircleButtonClassName } from "@/components/FieldControl";
 import { useMounted } from "@/hooks/useMounted";
 import { useDismissable } from "@/hooks/useDismissable";
 import { useCallback, useMemo, useRef, useState } from "react";
@@ -476,7 +477,7 @@ export default function RequestMatrix() {
               onClick={() => goDay(-1)}
               disabled={dayIndex <= 0}
               aria-label="前の日"
-              className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className={navCircleButtonClassName}
             >
               <Icon name="chevron_left" size={20} />
             </button>
@@ -488,7 +489,7 @@ export default function RequestMatrix() {
               onClick={() => goDay(1)}
               disabled={dayIndex >= days.length - 1}
               aria-label="次の日"
-              className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className={navCircleButtonClassName}
             >
               <Icon name="chevron_right" size={20} />
             </button>
@@ -605,7 +606,7 @@ export default function RequestMatrix() {
               onClick={() => goWeek(-1)}
               disabled={weekIndex <= 0}
               aria-label="前の週"
-              className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className={navCircleButtonClassName}
             >
               <Icon name="chevron_left" size={20} />
             </button>
@@ -616,7 +617,7 @@ export default function RequestMatrix() {
               onClick={() => goWeek(1)}
               disabled={weekIndex >= weeks.length - 1}
               aria-label="次の週"
-              className="rounded-full border border-slate-200 p-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className={navCircleButtonClassName}
             >
               <Icon name="chevron_right" size={20} />
             </button>
