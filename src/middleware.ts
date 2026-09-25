@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { LOGIN_ENABLED } from "@/lib/auth/feature";
 import { parseSessionToken, SESSION_COOKIE } from "@/lib/auth/session";
 
 export async function middleware(request: NextRequest) {
+  if (!LOGIN_ENABLED) return NextResponse.next();
+
   const { pathname } = request.nextUrl;
   const isPublic =
     pathname === "/" ||

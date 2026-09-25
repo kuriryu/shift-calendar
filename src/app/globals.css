@@ -160,6 +160,21 @@ button.primary-button {
 .assignment-add-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main {
   background-color: #2563eb !important;
 }
+/* プロフィールメニューは top layer。ブラウザ標準の popover 初期値を上書きする */
+.profile-layer {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
 .staff-edit-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .settings-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,

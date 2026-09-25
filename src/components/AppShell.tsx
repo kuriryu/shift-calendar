@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import SignOutButton from "@/components/SignOutButton";
 import SidebarCalendar from "@/components/SidebarCalendar";
 import StaffFilter from "@/components/StaffFilter";
 import Icon from "@/components/Icon";
+import { LOGIN_ENABLED } from "@/lib/auth/feature";
 import { useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -29,14 +31,64 @@ function ProfileMenu({
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const panelRef = useDismissable<HTMLDivElement>(open, close);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const layerRef = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<{
+    top?: number;
+    bottom?: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
   const activities = useAppStore((s) => s.activities);
   const clearLoginHistory = useAppStore((s) => s.clearLoginHistory);
   const logins = activities.filter((a) => a.kind === "login").slice(0, 5);
   const edits = activities.filter((a) => a.kind !== "login").slice(0, 8);
 
+  useLayoutEffect(() => {
+    if (!open) return;
+    const button = buttonRef.current;
+    const layer = layerRef.current;
+    if (!button || !layer) return;
+
+    const place = () => {
+      const rect = button.getBoundingClientRect();
+      const gap = 4;
+      if (align === "right") {
+        setAnchor({
+          top: rect.bottom + gap,
+          right: Math.max(8, window.innerWidth - rect.right),
+        });
+        return;
+      }
+      setAnchor({
+        bottom: window.innerHeight - rect.top + gap,
+        left: Math.max(8, rect.left),
+      });
+    };
+
+    place();
+    try {
+      if (!layer.matches(":popover-open")) layer.showPopover();
+    } catch {
+      /* popover 非対応時も fixed で表示する */
+    }
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+      try {
+        if (layer.matches(":popover-open")) layer.hidePopover();
+      } catch {
+        /* noop */
+      }
+    };
+  }, [open, align]);
+
   return (
     <div className="relative">
       <button
+        ref={buttonRef}
         onClick={() => setOpen(!open)}
         className={`inline-flex min-h-11 items-center gap-2 rounded-md text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
           collapsed ? "h-11 w-11 justify-center" : "h-11 px-2"
@@ -53,18 +105,21 @@ function ProfileMenu({
         )}
       </button>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-[60]" onClick={close} aria-hidden />
+      {open &&
+        createPortal(
+          <div
+            ref={layerRef}
+            popover="manual"
+            className="profile-layer"
+            onClick={close}
+          >
           <div
             ref={panelRef}
             role="dialog"
             aria-label="プロフィールと履歴"
-            className={`absolute z-[70] w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border border-slate-200 bg-white p-4 shadow-xl ${
-              align === "right"
-                ? "right-0 top-11"
-                : "bottom-11 left-0"
-            }`}
+            style={anchor ?? undefined}
+            onClick={(event) => event.stopPropagation()}
+            className="absolute w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
           >
             <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600">
@@ -151,8 +206,9 @@ function ProfileMenu({
               閉じる（Esc）
             </button>
           </div>
-        </>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -171,6 +227,7 @@ export default function AppShell({
   const [authenticated, setAuthenticated] = useState(!!email);
 
   useEffect(() => {
+    if (!LOGIN_ENABLED) return;
     let cancelled = false;
     fetch("/api/auth/me")
       .then((res) => {

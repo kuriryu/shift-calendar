@@ -142,6 +142,8 @@ type AppState = {
   assignments: Record<string, ShiftAssignment[]>;
   violations: Violation[];
   activities: ActivityEntry[];
+  /** 旧初期値（週20時間・連勤3日）を未設定へ移したか */
+  hourDefaultsMigrated: boolean;
 
   // ── 以下は永続化しない一時状態 ──
   /** シフト作成フローに入ったか（false のときヒーロー表示） */
@@ -237,6 +239,22 @@ export const useAppStore = create<AppState>()(
         };
       };
 
+      if (typeof window !== "undefined") {
+        queueMicrotask(() => {
+          const current = get();
+          if (current.hourDefaultsMigrated) return;
+          set({
+            hourDefaultsMigrated: true,
+            staff: current.staff.map((s) =>
+              s.maxHoursPerWeek === 20 && s.maxConsecutiveDays === 3
+                ? { ...s, maxHoursPerWeek: 0, maxConsecutiveDays: 0 }
+                : s,
+            ),
+          });
+          get().recompute();
+        });
+      }
+
       return {
         staff: INITIAL_STAFF,
         settings: DEFAULT_SETTINGS,
@@ -250,6 +268,7 @@ export const useAppStore = create<AppState>()(
         assignments: {},
         violations: [],
         activities: [],
+        hourDefaultsMigrated: false,
         createStarted: false,
         currentStep: null,
         adjustView: "day",
@@ -866,7 +885,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "shift-app-v1",
-      version: 6,
+      version: 8,
       // 復元直後に違反リストを再計算（violations は永続化していないため）
       onRehydrateStorage: () => (state) => {
         state?.recompute();
@@ -886,30 +905,25 @@ export const useAppStore = create<AppState>()(
         const selectedMonth = p.selectedMonth ?? DEFAULT_MONTH;
 
         // v6: ダミースタッフを捨てて空から開始。希望・シフトもクリア
-        if (fromVersion < 6) {
-          return {
-            staff: [],
-            settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
-            selectedMonth,
-            selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
-            sidebarCollapsed: p.sidebarCollapsed ?? false,
-            hiddenStaffIds: [],
-            requests: {},
-            assignments: {},
-            activities: (p.activities ?? []).filter((a) => a.kind !== "login"),
-          };
-        }
+        const cleared = fromVersion < 6;
+        // v8: 以前の初期値（週20時間・連勤3日）は未設定にする
+        const staff = (cleared ? [] : (p.staff ?? [])).map((s) =>
+          fromVersion < 8 && s.maxHoursPerWeek === 20 && s.maxConsecutiveDays === 3
+            ? { ...s, maxHoursPerWeek: 0, maxConsecutiveDays: 0 }
+            : s,
+        );
 
         return {
-          staff: p.staff ?? [],
+          staff,
           settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
           selectedMonth,
           selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
           sidebarCollapsed: p.sidebarCollapsed ?? false,
-          hiddenStaffIds: p.hiddenStaffIds ?? [],
-          requests: p.requests ?? {},
-          assignments: p.assignments ?? {},
+          hiddenStaffIds: cleared ? [] : (p.hiddenStaffIds ?? []),
+          requests: cleared ? {} : (p.requests ?? {}),
+          assignments: cleared ? {} : (p.assignments ?? {}),
           activities: (p.activities ?? []).filter((a) => a.kind !== "login"),
+          hourDefaultsMigrated: true,
         };
       },
       partialize: (s) => ({
@@ -922,6 +936,7 @@ export const useAppStore = create<AppState>()(
         requests: s.requests,
         assignments: s.assignments,
         activities: s.activities,
+        hourDefaultsMigrated: s.hourDefaultsMigrated,
       }),
     },
   ),

@@ -2,6 +2,7 @@
 
 import BrandMark from "@/components/BrandMark";
 import PrimaryButton from "@/components/PrimaryButton";
+import { LOGIN_ENABLED } from "@/lib/auth/feature";
 import { useAppStore } from "@/stores/useAppStore";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,6 +14,10 @@ export default function HeroLanding() {
   const [checking, setChecking] = useState(false);
 
   const handleStart = async () => {
+    if (!LOGIN_ENABLED) {
+      startCreate();
+      return;
+    }
     setChecking(true);
     try {
       const res = await fetch("/api/auth/me");

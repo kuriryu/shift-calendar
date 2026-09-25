@@ -9,7 +9,9 @@ export type Staff = {
   id: string;
   name: string;
   role: Role;
+  /** 週の上限時間。0 は未設定（上限チェックなし） */
   maxHoursPerWeek: number;
+  /** 最大連勤日数。0 は未設定（連勤チェックなし） */
   maxConsecutiveDays: number;
   /** 1か月あたりの希望勤務日数。未設定は undefined */
   desiredWorkDays?: number;

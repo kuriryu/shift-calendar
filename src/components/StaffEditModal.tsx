@@ -14,8 +14,8 @@ const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 
 /** 労基法32条: 週の法定労働時間は40時間 */
 const WEEKLY_HOUR_PRESETS = [8, 12, 16, 20, 24, 28, 32, 36, 40];
-/** 労基法35条: 週1日の休日が必要なので、連勤の上限は6日 */
-const CONSECUTIVE_DAY_PRESETS = [1, 2, 3, 4, 5, 6];
+/** 連勤は7日まで選べる */
+const CONSECUTIVE_DAY_PRESETS = [1, 2, 3, 4, 5, 6, 7];
 /** 暦の最大日数 */
 const MONTHLY_DAY_PRESETS = Array.from({ length: 31 }, (_, i) => i + 1);
 /** 週40時間の月換算（40 × 52 / 12 ≒ 173時間）まで */
@@ -29,6 +29,11 @@ function selectValues(presets: number[], current: string): string[] {
     values.sort((a, b) => a - b);
   }
   return values.map(String);
+}
+
+/** 0 と未保存は未設定 */
+function storedChoice(value: number | undefined): string {
+  return value != null && value > 0 ? String(value) : "";
 }
 
 function patternError(start: string, end: string): string | null {
@@ -128,14 +133,10 @@ export default function StaffEditModal({
 
   const [name, setName] = useState(seeded?.name ?? "");
   const [role, setRole] = useState<Role | "">(seeded?.role ?? "");
-  const [maxHours, setMaxHours] = useState(String(seeded?.maxHoursPerWeek ?? 20));
-  const [maxConsec, setMaxConsec] = useState(String(seeded?.maxConsecutiveDays ?? 3));
-  const [desiredDays, setDesiredDays] = useState(
-    seeded?.desiredWorkDays ? String(seeded.desiredWorkDays) : "",
-  );
-  const [desiredHours, setDesiredHours] = useState(
-    seeded?.desiredMonthlyHours ? String(seeded.desiredMonthlyHours) : "",
-  );
+  const [maxHours, setMaxHours] = useState(storedChoice(seeded?.maxHoursPerWeek));
+  const [maxConsec, setMaxConsec] = useState(storedChoice(seeded?.maxConsecutiveDays));
+  const [desiredDays, setDesiredDays] = useState(storedChoice(seeded?.desiredWorkDays));
+  const [desiredHours, setDesiredHours] = useState(storedChoice(seeded?.desiredMonthlyHours));
   const [weekdayStart, setWeekdayStart] = useState(seeded?.weekdayPattern?.start ?? "");
   const [weekdayEnd, setWeekdayEnd] = useState(seeded?.weekdayPattern?.end ?? "");
   const [weekendStart, setWeekendStart] = useState(seeded?.weekendPattern?.start ?? "");
@@ -148,10 +149,10 @@ export default function StaffEditModal({
     const s = staff ? migrateStaffPatterns(staff) : null;
     setName(s?.name ?? "");
     setRole(s?.role ?? "");
-    setMaxHours(String(s?.maxHoursPerWeek ?? 20));
-    setMaxConsec(String(s?.maxConsecutiveDays ?? 3));
-    setDesiredDays(s?.desiredWorkDays ? String(s.desiredWorkDays) : "");
-    setDesiredHours(s?.desiredMonthlyHours ? String(s.desiredMonthlyHours) : "");
+    setMaxHours(storedChoice(s?.maxHoursPerWeek));
+    setMaxConsec(storedChoice(s?.maxConsecutiveDays));
+    setDesiredDays(storedChoice(s?.desiredWorkDays));
+    setDesiredHours(storedChoice(s?.desiredMonthlyHours));
     setWeekdayStart(s?.weekdayPattern?.start ?? "");
     setWeekdayEnd(s?.weekdayPattern?.end ?? "");
     setWeekendStart(s?.weekendPattern?.start ?? "");
@@ -187,8 +188,8 @@ export default function StaffEditModal({
     const base = {
       name: trimmed,
       role,
-      maxHoursPerWeek: Number(maxHours) || 0,
-      maxConsecutiveDays: Number(maxConsec) || 1,
+      maxHoursPerWeek: Number(maxHours) > 0 ? Number(maxHours) : 0,
+      maxConsecutiveDays: Number(maxConsec) > 0 ? Number(maxConsec) : 0,
       desiredWorkDays: Number(desiredDays) > 0 ? Number(desiredDays) : undefined,
       desiredMonthlyHours: Number(desiredHours) > 0 ? Number(desiredHours) : undefined,
       monthlyDaysOffTarget:
@@ -228,9 +229,11 @@ export default function StaffEditModal({
     >
       <div className="space-y-4">
         {error && (
-          <p role="alert" className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">
-            {error}
-          </p>
+          <div className="py-4">
+            <p role="alert" className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          </div>
         )}
 
         <FieldControl id="staff-name" label="名前" required hint="ニックネームでも可">
@@ -258,13 +261,14 @@ export default function StaffEditModal({
         </FieldControl>
 
         <div className="flex flex-wrap gap-4">
-          <FieldControl id="staff-hours" label="週の上限時間" hint="上限40時間">
+          <FieldControl id="staff-hours" label="週の上限時間">
             <FieldSelect
               id="staff-hours"
               value={maxHours}
               onChange={(e) => setMaxHours(e.target.value)}
               className="tabular-nums"
             >
+              <option value="">未設定</option>
               {selectValues(WEEKLY_HOUR_PRESETS, maxHours).map((h) => (
                 <option key={h} value={h}>
                   {h}時間
@@ -272,13 +276,14 @@ export default function StaffEditModal({
               ))}
             </FieldSelect>
           </FieldControl>
-          <FieldControl id="staff-consec" label="最大連勤日数" hint="上限6日">
+          <FieldControl id="staff-consec" label="最大連勤日数">
             <FieldSelect
               id="staff-consec"
               value={maxConsec}
               onChange={(e) => setMaxConsec(e.target.value)}
               className="tabular-nums"
             >
+              <option value="">未設定</option>
               {selectValues(CONSECUTIVE_DAY_PRESETS, maxConsec).map((d) => (
                 <option key={d} value={d}>
                   {d}日
@@ -289,7 +294,7 @@ export default function StaffEditModal({
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <FieldControl id="staff-desired-hours" label="月の希望の勤務時間" hint="上限173時間">
+          <FieldControl id="staff-desired-hours" label="月の希望の勤務時間">
             <FieldSelect
               id="staff-desired-hours"
               value={desiredHours}
@@ -304,7 +309,7 @@ export default function StaffEditModal({
               ))}
             </FieldSelect>
           </FieldControl>
-          <FieldControl id="staff-desired-days" label="希望の勤務日数" hint="月あたり・上限31日">
+          <FieldControl id="staff-desired-days" label="希望の勤務日数">
             <FieldSelect
               id="staff-desired-days"
               value={desiredDays}

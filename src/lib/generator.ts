@@ -192,7 +192,7 @@ export function generateMonth(
       if (note?.onlyWeekdays && !note.onlyWeekdays.includes(weekday)) continue;
       if (note?.maxDaysPerWeek != null && st.weekDays >= note.maxDaysPerWeek)
         continue;
-      if (st.streak >= s.maxConsecutiveDays) continue;
+      if (s.maxConsecutiveDays > 0 && st.streak >= s.maxConsecutiveDays) continue;
       const win = availabilityWindow(s, date, requestMap.get(`${s.id}:${date}`), open, close, note);
       if (!win) continue;
       if (win.end - win.start < 60) continue;
@@ -211,7 +211,11 @@ export function generateMonth(
       const st = state.get(c.staff.id)!;
       const a = makeAssignment(c.staff, date, startMin, endMin, preferredBreakMin);
       const workMin = workMinutesOf(a);
-      if (st.weekMinutes + workMin > c.staff.maxHoursPerWeek * 60) return false;
+      if (
+        c.staff.maxHoursPerWeek > 0 &&
+        st.weekMinutes + workMin > c.staff.maxHoursPerWeek * 60
+      )
+        return false;
       dayAssignments.push(a);
       assignedToday.add(c.staff.id);
       st.weekMinutes += workMin;
@@ -283,8 +287,16 @@ export function generateMonth(
         pool.sort((a, b) => {
           const sa = state.get(a.staff.id)!;
           const sb = state.get(b.staff.id)!;
-          const remainA = a.staff.maxHoursPerWeek * 60 - sa.weekMinutes;
-          const remainB = b.staff.maxHoursPerWeek * 60 - sb.weekMinutes;
+          const capA =
+            a.staff.maxHoursPerWeek > 0
+              ? a.staff.maxHoursPerWeek * 60
+              : Number.POSITIVE_INFINITY;
+          const capB =
+            b.staff.maxHoursPerWeek > 0
+              ? b.staff.maxHoursPerWeek * 60
+              : Number.POSITIVE_INFINITY;
+          const remainA = capA - sa.weekMinutes;
+          const remainB = capB - sb.weekMinutes;
           return remainB - remainA || sa.streak - sb.streak;
         });
 

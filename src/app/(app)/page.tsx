@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import HeroLanding from "@/components/HeroLanding";
 import Dashboard from "@/components/Dashboard";
+import { LOGIN_ENABLED } from "@/lib/auth/feature";
 import { useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { useRouter } from "next/navigation";
@@ -15,7 +16,7 @@ export default function HomePage() {
   const showHero = useAppStore((s) => s.showHero);
 
   useEffect(() => {
-    if (!mounted || !createStarted) return;
+    if (!LOGIN_ENABLED || !mounted || !createStarted) return;
     let cancelled = false;
     fetch("/api/auth/me").then((res) => {
       if (cancelled) return;

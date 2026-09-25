@@ -183,7 +183,7 @@ export function validateMonth(
       }
       streak = isConsecutive ? streak + 1 : 1;
       prevDate = a.date;
-      if (streak > staff.maxConsecutiveDays) {
+      if (staff.maxConsecutiveDays > 0 && streak > staff.maxConsecutiveDays) {
         violations.push({
           id: vid(),
           severity: "error",
@@ -203,7 +203,7 @@ export function validateMonth(
     }
     const buckets = weeksOfMonth(month);
     for (const [key, minutes] of weekMinutes) {
-      if (minutes > staff.maxHoursPerWeek * 60) {
+      if (staff.maxHoursPerWeek > 0 && minutes > staff.maxHoursPerWeek * 60) {
         const bucket = buckets.find((b) => b.key === key);
         violations.push({
           id: vid(),

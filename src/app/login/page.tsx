@@ -1,9 +1,19 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import LoginForm from "@/components/LoginForm";
+import { LOGIN_ENABLED } from "@/lib/auth/feature";
 
 export default function LoginPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!LOGIN_ENABLED) router.replace("/");
+  }, [router]);
+
+  if (!LOGIN_ENABLED) return null;
+
   return (
     <Suspense
       fallback={
