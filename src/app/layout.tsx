@@ -19,7 +19,7 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const siteUrl = "https://monthly-shift-calendar.vercel.app";
+const siteUrl = "https://shift-kit.vercel.app";
 const siteTitle = "Shift Kit";
 const siteDescription =
   "シフトの事務作業をスマートに。希望の収集からシフト作成まで、面倒な作業を減らします。";
@@ -35,13 +35,13 @@ export const metadata: Metadata = {
     siteName: siteTitle,
     title: siteTitle,
     description: siteDescription,
-    images: [{ url: `${siteUrl}/ogp.png`, width: 1200, height: 630, alt: siteTitle }],
+    images: [{ url: "/ogp.png", width: 1200, height: 630, alt: siteTitle }],
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
     description: siteDescription,
-    images: [`${siteUrl}/ogp.png`],
+    images: ["/ogp.png"],
   },
 };
 
