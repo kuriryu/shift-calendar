@@ -25,10 +25,12 @@ export default function RequestStep() {
   return (
     <StepPanel step={3}>
       {requests.length === 0 && !hasPatternStaff && (
-        <p className="flex items-center gap-2 rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          <Icon name="lightbulb" size={18} />
-          まだ希望が入力されていません。セルをタップして休・出勤・時間帯を指定できます。
-        </p>
+        <div className="pb-8 md:pb-10">
+          <p className="flex items-center gap-2 rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-800">
+            <Icon name="lightbulb" size={18} />
+            まだ希望が入力されていません。セルをタップして休・出勤・時間帯を指定できます。
+          </p>
+        </div>
       )}
 
       <RequestMatrix />

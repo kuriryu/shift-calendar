@@ -72,7 +72,7 @@ export default function StaffFilter() {
                     if (el) el.indeterminate = someVisible;
                   }}
                   onChange={() => toggleRoleFilter(role)}
-                  className="h-3.5 w-3.5 accent-indigo-600"
+                  className="h-3.5 w-3.5 accent-blue-600"
                 />
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded ${meta.soft}`}
@@ -103,7 +103,7 @@ export default function StaffFilter() {
                           className="peer sr-only"
                         />
                         <span
-                          className="inline-flex shrink-0 rounded-sm peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-indigo-600"
+                          className="inline-flex shrink-0 rounded-sm peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-blue-600"
                           style={{ color: isHidden ? "#94a3b8" : color.dot }}
                           aria-hidden
                         >

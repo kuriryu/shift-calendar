@@ -111,6 +111,12 @@ export default function StaffEditModal({
   const [role, setRole] = useState<Role | "">(seeded?.role ?? "");
   const [maxHours, setMaxHours] = useState(String(seeded?.maxHoursPerWeek ?? 20));
   const [maxConsec, setMaxConsec] = useState(String(seeded?.maxConsecutiveDays ?? 3));
+  const [desiredDays, setDesiredDays] = useState(
+    seeded?.desiredWorkDays ? String(seeded.desiredWorkDays) : "",
+  );
+  const [desiredHours, setDesiredHours] = useState(
+    seeded?.desiredMonthlyHours ? String(seeded.desiredMonthlyHours) : "",
+  );
   const [weekdayStart, setWeekdayStart] = useState(seeded?.weekdayPattern?.start ?? "");
   const [weekdayEnd, setWeekdayEnd] = useState(seeded?.weekdayPattern?.end ?? "");
   const [weekendStart, setWeekendStart] = useState(seeded?.weekendPattern?.start ?? "");
@@ -125,6 +131,8 @@ export default function StaffEditModal({
     setRole(s?.role ?? "");
     setMaxHours(String(s?.maxHoursPerWeek ?? 20));
     setMaxConsec(String(s?.maxConsecutiveDays ?? 3));
+    setDesiredDays(s?.desiredWorkDays ? String(s.desiredWorkDays) : "");
+    setDesiredHours(s?.desiredMonthlyHours ? String(s.desiredMonthlyHours) : "");
     setWeekdayStart(s?.weekdayPattern?.start ?? "");
     setWeekdayEnd(s?.weekdayPattern?.end ?? "");
     setWeekendStart(s?.weekendPattern?.start ?? "");
@@ -162,6 +170,8 @@ export default function StaffEditModal({
       role,
       maxHoursPerWeek: Number(maxHours) || 0,
       maxConsecutiveDays: Number(maxConsec) || 1,
+      desiredWorkDays: Number(desiredDays) > 0 ? Number(desiredDays) : undefined,
+      desiredMonthlyHours: Number(desiredHours) > 0 ? Number(desiredHours) : undefined,
       monthlyDaysOffTarget:
         staff?.monthlyDaysOffTarget ??
         (role === "employee" ? settings.employeeDaysOffTarget : 0),
@@ -169,10 +179,11 @@ export default function StaffEditModal({
       weekendPattern: toPattern(weekendStart, weekendEnd),
       defaultPattern: undefined,
       unavailableWeekdays: offWeekdays.length > 0 ? offWeekdays : undefined,
-      specialNote: staff?.specialNote,
     };
     if (staff) {
-      updateStaff({ ...staff, ...base });
+      const next = { ...staff, ...base };
+      delete next.specialNote;
+      updateStaff(next);
     } else {
       addStaff(base);
     }
@@ -248,6 +259,31 @@ export default function StaffEditModal({
           </FieldControl>
         </div>
 
+        <div className="flex flex-wrap gap-4">
+          <FieldControl id="staff-desired-days" label="希望の勤務日数" hint="月あたり">
+            <FieldInput
+              id="staff-desired-days"
+              type="number"
+              min={0}
+              value={desiredDays}
+              onChange={(e) => setDesiredDays(e.target.value)}
+              placeholder="未設定"
+              className="tabular-nums"
+            />
+          </FieldControl>
+          <FieldControl id="staff-desired-hours" label="月の希望の勤務時間">
+            <FieldInput
+              id="staff-desired-hours"
+              type="number"
+              min={0}
+              value={desiredHours}
+              onChange={(e) => setDesiredHours(e.target.value)}
+              placeholder="未設定"
+              className="tabular-nums"
+            />
+          </FieldControl>
+        </div>
+
         <PatternFields
           id="weekday-pattern"
           label="基本パターン・平日（月〜金）"
@@ -279,7 +315,7 @@ export default function StaffEditModal({
                 key={d}
                 className={`inline-flex h-11 min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-md border px-4 text-sm ${
                   offWeekdays.includes(d)
-                    ? "border-blue-600 bg-slate-100 font-semibold text-slate-900"
+                    ? "border-blue-600 bg-blue-600 font-semibold text-white"
                     : "border-slate-200 text-slate-700 hover:bg-slate-100"
                 }`}
               >

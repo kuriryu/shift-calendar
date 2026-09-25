@@ -7,7 +7,6 @@ import type { Staff } from "@/types";
 import Icon from "@/components/Icon";
 import RoleBadge from "@/components/RoleBadge";
 import StaffEditModal from "@/components/StaffEditModal";
-import { parseSpecialNote } from "@/lib/notes";
 import { ROLE_ORDER } from "@/lib/roles";
 
 const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
@@ -39,10 +38,10 @@ export default function StaffManager() {
     <div className="space-y-4">
       <p className="flex items-center gap-1.5 px-0.5 py-1.5 text-xs leading-relaxed text-slate-500">
         <Icon name="info" size={14} />
-        名前をクリックすると属性・基本パターン・特別な要望を編集できます。
+        名前をクリックすると属性・基本パターンを編集できます。
       </p>
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="w-full border-collapse text-left">
+        <table className="w-full border-collapse whitespace-nowrap text-left">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
               <th className="px-4 py-3 font-semibold">名前</th>
@@ -50,29 +49,24 @@ export default function StaffManager() {
               <th className="px-4 py-3 font-semibold">週の上限</th>
               <th className="px-4 py-3 font-semibold">基本パターン</th>
               <th className="px-4 py-3 font-semibold">固定休</th>
-              <th className="px-4 py-3 font-semibold">特別な要望</th>
             </tr>
           </thead>
           <tbody>
             {ROLE_ORDER.flatMap((role) =>
               staff
                 .filter((s) => s.role === role)
-                .map((s) => {
-                  const noteSummary = s.specialNote
-                    ? parseSpecialNote(s.specialNote).summary
-                    : [];
-                  return (
+                .map((s) => (
                     <tr key={s.id} className="border-b border-slate-100 text-xs">
                       <td className="px-4 py-3">
                         <button
                           onClick={() => setEditing(s)}
-                          className="group flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                          className="group flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-slate-700 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                         >
                           {s.name}
                           <Icon
                             name="edit"
                             size={14}
-                            className="text-slate-300 group-hover:text-indigo-500"
+                            className="text-slate-300 group-hover:text-blue-500"
                           />
                         </button>
                       </td>
@@ -106,23 +100,8 @@ export default function StaffManager() {
                               .join("・")
                           : "—"}
                       </td>
-                      <td className="max-w-48 px-4 py-3">
-                        {s.specialNote ? (
-                          <div>
-                            <p className="truncate text-slate-600" title={s.specialNote}>
-                              {s.specialNote}
-                            </p>
-                            <p className="text-[10px] text-indigo-500">
-                              → {noteSummary.join("、")}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-slate-300">—</span>
-                        )}
-                      </td>
                     </tr>
-                  );
-                }),
+                )),
             )}
           </tbody>
         </table>

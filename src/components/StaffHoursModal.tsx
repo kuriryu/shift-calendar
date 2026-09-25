@@ -41,6 +41,11 @@ export default function StaffHoursModal({
     .filter((a) => monthDays.has(a.date))
     .reduce((sum, a) => sum + workMinutesOf(a), 0);
   const todayAssignment = mine.find((a) => a.date === date);
+  const monthWorkDays = new Set(
+    mine.filter((a) => monthDays.has(a.date)).map((a) => a.date),
+  ).size;
+  const desiredDays = staff.desiredWorkDays ?? 0;
+  const desiredHours = staff.desiredMonthlyHours ?? 0;
 
   return (
     <div
@@ -52,7 +57,7 @@ export default function StaffHoursModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={`hours-title-${staff.id}`}
-        className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+        className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white px-6 pt-10 pb-2 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h3
@@ -66,14 +71,14 @@ export default function StaffHoursModal({
         </p>
 
         <dl className="mt-5 grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-indigo-50/80 px-4 py-4">
-            <dt className="text-[11px] font-medium text-indigo-700/80">今週</dt>
-            <dd className="mt-1.5 text-2xl font-bold tabular-nums text-indigo-900">
+          <div className="rounded-xl bg-blue-50/80 px-4 py-4">
+            <dt className="text-[11px] font-medium text-blue-700/80">今週</dt>
+            <dd className="mt-1.5 text-2xl font-bold tabular-nums text-blue-900">
               {formatHours(weekMin)}
               <span className="ml-1 text-sm font-medium">時間</span>
             </dd>
             {week && (
-              <p className="mt-1 text-[10px] text-indigo-600/70">{week.label}</p>
+              <p className="mt-1 text-[10px] text-blue-600/70">{week.label}</p>
             )}
           </div>
           <div className="rounded-xl bg-slate-100 px-4 py-4">
@@ -86,16 +91,38 @@ export default function StaffHoursModal({
           </div>
         </dl>
 
-        {staff.maxHoursPerWeek > 0 && (
-          <p className="mt-3 text-xs text-slate-500">
-            週の上限 {staff.maxHoursPerWeek} 時間
-            {weekMin / 60 > staff.maxHoursPerWeek && (
-              <span className="ml-1 font-medium text-amber-700">（超過）</span>
+        {(desiredDays > 0 || desiredHours > 0) && (
+          <p className="mt-3 text-xs text-slate-600">
+            {desiredDays > 0 && (
+              <span>
+                出勤 {monthWorkDays}日 / 希望 {desiredDays}日
+              </span>
+            )}
+            {desiredDays > 0 && desiredHours > 0 && (
+              <span className="mx-2 text-slate-300" aria-hidden>
+                ·
+              </span>
+            )}
+            {desiredHours > 0 && (
+              <span>
+                実働 {formatHours(monthMin)}時間 / 希望 {desiredHours}時間
+              </span>
             )}
           </p>
         )}
 
-        <div className="mt-5 space-y-2">
+        {staff.maxHoursPerWeek > 0 && (
+          <div className="mt-5">
+            <p className="text-xs text-slate-500">
+              週の上限 {staff.maxHoursPerWeek} 時間
+              {weekMin / 60 > staff.maxHoursPerWeek && (
+                <span className="ml-1 font-medium text-amber-700">（超過）</span>
+              )}
+            </p>
+          </div>
+        )}
+
+        <div className="mt-8 flex flex-col gap-2">
           {todayAssignment && onEditToday && (
             <button
               type="button"
@@ -103,7 +130,7 @@ export default function StaffHoursModal({
                 onClose();
                 onEditToday();
               }}
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-3 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3 text-sm font-semibold text-white hover:bg-blue-700"
             >
               <Icon name="edit" size={18} />
               この日のシフトを編集

@@ -4,20 +4,21 @@ import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppS
 import { useMounted } from "@/hooks/useMounted";
 import {
   daysOfMonth,
-  dayLabel,
   formatDate,
   monthLabel,
   weekdayOf,
 } from "@/lib/dates";
-import { staffColorOf } from "@/lib/staff-color";
-import type { ShiftAssignment, ShiftRequest, Staff, StepId } from "@/types";
+import type { StepId, Violation } from "@/types";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
 
-type DayMark = "none" | "partial" | "complete" | "count" | "staff";
+type DayMark = "none" | "partial" | "complete" | "count" | "error" | "warning" | "ok";
 
 function markDotClass(mark: DayMark, count: number, selected: boolean): string {
-  if (mark === "none" || mark === "staff") return "";
+  if (mark === "none") return "";
+  if (mark === "error") return "bg-red-500";
+  if (mark === "warning") return "bg-amber-400";
+  if (mark === "ok") return "bg-emerald-500";
   if (selected) return "bg-white";
   if (mark === "partial") return "border border-blue-600 bg-transparent";
   if (mark === "complete") return "bg-blue-600";
@@ -26,98 +27,11 @@ function markDotClass(mark: DayMark, count: number, selected: boolean): string {
   return "bg-blue-600";
 }
 
-function requestLabel(r: ShiftRequest): string {
-  if (r.type === "off") return "休み";
-  if (r.type === "time_limited" && r.timeRange) {
-    return `${r.timeRange.start}〜${r.timeRange.end}`;
-  }
-  return "出勤可能";
-}
-
-function DayDetail({
-  date,
-  staff,
-  requests,
-  assignments,
-  mode,
-}: {
-  date: string;
-  staff: Staff[];
-  requests: ShiftRequest[];
-  assignments: ShiftAssignment[];
-  mode: "requests" | "draft" | "assignments";
-}) {
-  if (mode === "requests") {
-    const byStaff = new Map(requests.filter((r) => r.date === date).map((r) => [r.staffId, r]));
-    return (
-      <div className="mt-4 max-h-56 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
-        <p className="mb-2.5 px-0.5 text-[10px] font-semibold text-slate-500">
-          {dayLabel(date)} の希望
-        </p>
-        {staff.length === 0 ? (
-          <p className="px-0.5 py-1 text-[11px] text-slate-400">スタッフ未登録</p>
-        ) : (
-          staff.map((s) => {
-            const r = byStaff.get(s.id);
-            return (
-              <div
-                key={s.id}
-                className="flex items-center justify-between gap-2 px-0.5 py-1.5 text-[11px]"
-              >
-                <span className="flex min-w-0 items-center gap-1.5 truncate text-slate-700">
-                  <span
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: staffColorOf(s.id).dot }}
-                    aria-hidden
-                  />
-                  <span className="truncate">{s.name}</span>
-                </span>
-                <span className={r ? "shrink-0 text-slate-600" : "shrink-0 text-slate-300"}>
-                  {r ? requestLabel(r) : "未入力"}
-                </span>
-              </div>
-            );
-          })
-        )}
-      </div>
-    );
-  }
-
-  const dayAssignments = assignments.filter((a) => a.date === date);
-  const staffMap = new Map(staff.map((s) => [s.id, s]));
-  return (
-    <div className="mt-4 max-h-56 space-y-2 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
-      <p className="mb-2.5 px-0.5 text-[10px] font-semibold text-slate-500">
-        {dayLabel(date)} の{mode === "draft" ? "案" : "シフト"}
-      </p>
-      {dayAssignments.length === 0 ? (
-        <p className="px-0.5 py-1 text-[11px] text-slate-400">割当なし</p>
-      ) : (
-        dayAssignments.map((a) => {
-          const s = staffMap.get(a.staffId);
-          const color = staffColorOf(a.staffId);
-          return (
-            <div
-              key={a.id}
-              className="flex items-center justify-between gap-2 px-0.5 py-1.5 text-[11px]"
-            >
-              <span className="flex min-w-0 items-center gap-1.5 truncate text-slate-700">
-                <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: color.dot }}
-                  aria-hidden
-                />
-                <span className="truncate">{s?.name ?? a.staffId}</span>
-              </span>
-              <span className="shrink-0 tabular-nums text-slate-600">
-                {a.startTime}–{a.endTime}
-              </span>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+function statusOf(date: string, violations: Violation[]): "error" | "warning" | "ok" {
+  const day = violations.filter((v) => v.date === date);
+  if (day.some((v) => v.severity === "error")) return "error";
+  if (day.some((v) => v.severity === "warning")) return "warning";
+  return "ok";
 }
 
 export default function SidebarCalendar() {
@@ -133,6 +47,7 @@ export default function SidebarCalendar() {
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const draft = useAppStore((s) => s.draft);
+  const violations = useAppStore((s) => s.violations);
 
   if (!mounted) {
     return <div className="h-60 px-2" aria-hidden />;
@@ -168,26 +83,17 @@ export default function SidebarCalendar() {
     staff.filter((s) => !hidden.has(s.id)).map((s) => s.id),
   );
 
-  const staffDotsOf = (date: string): string[] => {
-    const ids = [
-      ...new Set(
-        assignments
-          .filter((a) => a.date === date && visibleStaffIds.has(a.staffId))
-          .map((a) => a.staffId),
-      ),
-    ];
-    return ids.slice(0, 4);
-  };
+  const hasVisibleShift = (date: string, source: { date: string; staffId: string }[]) =>
+    source.some((a) => a.date === date && visibleStaffIds.has(a.staffId));
 
   const markOf = (date: string): { mark: DayMark; count: number } => {
     if (active >= 6 && confirmed) {
-      const dots = staffDotsOf(date);
-      if (dots.length > 0) return { mark: "staff", count: dots.length };
-      return { mark: "none", count: 0 };
+      if (!hasVisibleShift(date, assignments)) return { mark: "none", count: 0 };
+      return { mark: statusOf(date, violations), count: 1 };
     }
-    if (active === 5 && hasDraft) {
-      const c = draftCounts.get(date) ?? 0;
-      return { mark: c > 0 ? "complete" : "none", count: c };
+    if (active === 5 && hasDraft && draft) {
+      if (!hasVisibleShift(date, draft.assignments)) return { mark: "none", count: 0 };
+      return { mark: statusOf(date, draft.violations), count: draftCounts.get(date) ?? 0 };
     }
     if (staffTotal === 0) return { mark: "none", count: 0 };
     const n = requestCounts.get(date) ?? 0;
@@ -210,18 +116,8 @@ export default function SidebarCalendar() {
   const today = formatDate(new Date());
   const locked = active === 1 || active === 2;
   const showRequestLegend = (active === 3 || active === 4) && staffTotal > 0;
-  const showDetail =
-    !locked && (active === 3 || active === 4 || active === 5 || active === 6);
-  const detailMode =
-    active === 6 && confirmed
-      ? "assignments"
-      : active === 5 && hasDraft
-        ? "draft"
-        : active === 5 && confirmed
-          ? "assignments"
-          : "requests";
-  const detailAssignments =
-    detailMode === "draft" && draft ? draft.assignments : assignments;
+  const showStatusLegend =
+    (active >= 6 && confirmed) || (active === 5 && hasDraft);
 
   return (
     <div className={`flex flex-col gap-3 px-1 ${locked ? "opacity-55" : ""}`}>
@@ -236,6 +132,23 @@ export default function SidebarCalendar() {
           {active === 2
             ? "スタッフ登録中は、カレンダーの日付は選べません"
             : "対象月の選択中は、カレンダーの日付は選べません"}
+        </p>
+      )}
+
+      {showStatusLegend && (
+        <p className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[10px] leading-snug text-slate-400">
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-500" />
+            エラー
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />
+            警告
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            問題なし
+          </span>
         </p>
       )}
 
@@ -271,15 +184,20 @@ export default function SidebarCalendar() {
           ) : (
             (() => {
               const { mark, count } = markOf(d);
-              const staffDots = mark === "staff" ? staffDotsOf(d) : [];
               const markHint =
                 mark === "partial"
                   ? "（入力中）"
                   : mark === "complete"
                     ? "（入力完了）"
-                    : mark === "staff" || mark === "count"
+                    : mark === "count"
                       ? `（出勤${count}名）`
-                      : "";
+                      : mark === "error"
+                        ? "（エラー）"
+                        : mark === "warning"
+                          ? "（警告）"
+                          : mark === "ok"
+                            ? "（問題なし）"
+                            : "";
               return (
                 <button
                   key={d}
@@ -303,43 +221,15 @@ export default function SidebarCalendar() {
                   >
                     {Number(d.slice(8))}
                   </span>
-                  {mark === "staff" ? (
-                    <span className="mt-0.5 flex h-1.5 items-center justify-center gap-px">
-                      {staffDots.map((id) => (
-                        <span
-                          key={id}
-                          className="h-1.5 w-1.5 rounded-full"
-                          style={{ backgroundColor: staffColorOf(id).dot }}
-                        />
-                      ))}
-                    </span>
-                  ) : (
-                    <span
-                      className={`mt-0.5 h-1.5 w-1.5 rounded-full ${markDotClass(mark, count, d === selectedDate)}`}
-                    />
-                  )}
+                  <span
+                    className={`mt-0.5 h-1.5 w-1.5 rounded-full ${markDotClass(mark, count, d === selectedDate)}`}
+                  />
                 </button>
               );
             })()
           ),
         )}
       </div>
-
-      {showDetail && selectedDate.startsWith(month) && active >= 3 && (
-        <DayDetail
-          date={selectedDate}
-          staff={
-            active === 6
-              ? staff.filter((s) => visibleStaffIds.has(s.id))
-              : staff
-          }
-          requests={requests}
-          assignments={detailAssignments.filter(
-            (a) => active !== 6 || visibleStaffIds.has(a.staffId),
-          )}
-          mode={detailMode}
-        />
-      )}
 
       {active === 2 && (
         <p className="px-1 text-[11px] leading-snug text-slate-400">

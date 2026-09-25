@@ -6,6 +6,7 @@ import WeekCalendarView from "@/components/WeekCalendarView";
 import MonthCalendarView from "@/components/MonthCalendarView";
 import StepPanel from "@/components/steps/StepPanel";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
+import { businessHoursOf } from "@/lib/coverage";
 
 const VIEWS = [
   { id: "day" as const, label: "日", icon: "schedule" },
@@ -21,12 +22,14 @@ export default function AdjustStep() {
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const setStep = useAppStore((s) => s.setStep);
+  const settings = useAppStore((s) => s.settings);
+  const { open, close } = businessHoursOf(selectedDate, settings);
+  const hhmm = (minutes: number) =>
+    `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 
   return (
-    <StepPanel
-      step={6}
-      hideNext
-      actions={
+    <StepPanel step={6} hideNext>
+      <div className="flex flex-wrap items-center gap-3">
         <div
           className="flex items-center gap-1 rounded-lg bg-slate-100 p-1"
           role="group"
@@ -37,7 +40,7 @@ export default function AdjustStep() {
               key={v.id}
               onClick={() => setView(v.id)}
               aria-pressed={view === v.id}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
                 view === v.id
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -48,8 +51,12 @@ export default function AdjustStep() {
             </button>
           ))}
         </div>
-      }
-    >
+        {view === "day" && (
+          <p className="text-xs text-slate-600">
+            営業 {hhmm(open)}〜{hhmm(close)}・名前をドラッグで並べ替え／タップで稼働時間
+          </p>
+        )}
+      </div>
       {assignments.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-sky-200 bg-sky-50/70 px-6 py-10 text-center sm:flex-row sm:text-left">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-sky-600 ring-1 ring-sky-100">

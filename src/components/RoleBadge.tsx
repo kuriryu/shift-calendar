@@ -20,7 +20,7 @@ export default function RoleBadge({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full font-medium ${meta.chip} ${pad} ${className}`}
+      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full font-medium ${meta.chip} ${pad} ${className}`}
     >
       <Icon name={meta.icon} size={iconSize} />
       {meta.label}

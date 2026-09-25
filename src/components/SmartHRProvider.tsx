@@ -3,12 +3,12 @@
 import { IntlProvider } from "react-intl";
 import { createTheme, ThemeProvider } from "smarthr-ui";
 
-/** アプリの indigo-600 (#4f46e5) に合わせる */
+/** アプリのプライマリー blue-600 (#2563eb) に合わせる */
 const theme = createTheme({
   color: {
-    MAIN: "#4f46e5",
-    TEXT_LINK: "#4f46e5",
-    BRAND: "#4f46e5",
+    MAIN: "#2563eb",
+    TEXT_LINK: "#2563eb",
+    BRAND: "#2563eb",
   },
 });
 

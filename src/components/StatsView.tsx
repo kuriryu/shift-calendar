@@ -9,7 +9,7 @@ import RoleBadge from "@/components/RoleBadge";
 import { ROLE_ORDER } from "@/lib/roles";
 
 const ROLE_BAR: Record<Role, string> = {
-  employee: "bg-indigo-400",
+  employee: "bg-blue-400",
   part_time: "bg-emerald-400",
   student: "bg-amber-400",
 };
@@ -74,8 +74,18 @@ export default function StatsView() {
                     </td>
                     <td className="px-4 py-3 font-semibold text-slate-700">
                       {minutesToHoursLabel(totalMin)}
+                      {(s.desiredMonthlyHours ?? 0) > 0 && (
+                        <span className="ml-1 font-normal text-slate-500">
+                          / 希望 {s.desiredMonthlyHours}h
+                        </span>
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-slate-600">{workDays}日</td>
+                    <td className="px-4 py-3 text-slate-600">
+                      {workDays}日
+                      {(s.desiredWorkDays ?? 0) > 0 && (
+                        <span className="text-slate-500"> / 希望 {s.desiredWorkDays}日</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-slate-600">
                       {days.length - workDays}日
                     </td>

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import SignOutButton from "@/components/SignOutButton";
 import SidebarCalendar from "@/components/SidebarCalendar";
 import StaffFilter from "@/components/StaffFilter";
-import SettingsModal from "@/components/SettingsModal";
 import Icon from "@/components/Icon";
 import { useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
@@ -46,7 +45,7 @@ function ProfileMenu({
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
           <Icon name="account_circle" size={20} />
         </span>
         {!collapsed && (
@@ -68,7 +67,7 @@ function ProfileMenu({
             }`}
           >
             <div className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-3">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600">
                 <Icon name="account_circle" size={26} />
               </span>
               <div className="min-w-0">
@@ -169,7 +168,6 @@ export default function AppShell({
   const recordLogin = useAppStore((s) => s.recordLogin);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [authenticated, setAuthenticated] = useState(!!email);
 
   useEffect(() => {
@@ -227,11 +225,7 @@ export default function AppShell({
   return (
     <div className="flex h-dvh min-h-0 flex-1 flex-col overflow-hidden md:h-auto md:min-h-full md:overflow-visible md:flex-row">
       {isMobile && (
-        <header
-          className={`sticky top-0 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-2 ${
-            drawerOpen ? "z-[220]" : "z-40"
-          }`}
-        >
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-2">
           <button
             onClick={handleToggle}
             aria-label={mobileOpen ? "メニューを閉じる" : "メニューを開く"}
@@ -258,7 +252,7 @@ export default function AppShell({
         aria-label="サイドバー"
         className={`flex shrink-0 flex-col overflow-hidden border-r border-slate-300 bg-slate-50 transition-[width] ${
           drawerOpen
-            ? "fixed inset-y-0 left-0 z-[210] h-dvh max-h-dvh w-[min(280px,88vw)] pt-14 shadow-2xl"
+            ? "fixed inset-y-0 left-0 z-[210] h-dvh max-h-dvh w-[min(280px,88vw)] shadow-2xl"
             : `sticky top-0 z-30 h-[calc(100dvh-3.5rem)] md:h-screen ${isMobile ? "hidden" : collapsed ? "w-14" : "w-[280px]"}`
         }`}
       >
@@ -319,7 +313,7 @@ export default function AppShell({
             </section>
             <section
               aria-label="スタッフ絞り込み"
-              className={`border-t border-slate-300 ${isMobile ? "px-3 py-3" : "p-4"}`}
+              className={isMobile ? "px-3 py-3" : "p-4"}
             >
               <StaffFilter />
             </section>
@@ -328,21 +322,12 @@ export default function AppShell({
           <div className="min-h-0 flex-1" />
         )}
 
-        {/* 最下部: プロフィール＋設定 */}
         <div
-          className={`flex shrink-0 items-center gap-2 border-t border-slate-300 ${
+          className={`flex shrink-0 items-center ${
             isMobile ? "p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" : "p-2"
-          } ${collapsed ? "flex-col" : "justify-between"}`}
+          }`}
         >
           <ProfileMenu email={authenticated ? "ログイン中" : null} collapsed={collapsed} />
-          <button
-            onClick={() => setSettingsOpen(true)}
-            aria-label="シフト作成の条件設定"
-            title="条件設定"
-            className="inline-flex h-11 min-h-11 min-w-11 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-          >
-            <Icon name="settings" size={20} />
-          </button>
         </div>
       </aside>
 
@@ -351,9 +336,6 @@ export default function AppShell({
         {children}
       </main>
 
-      {settingsOpen && (
-        <SettingsModal isOpen onClose={() => setSettingsOpen(false)} />
-      )}
     </div>
   );
 }

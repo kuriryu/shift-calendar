@@ -11,8 +11,8 @@ export const ROLE_META: Record<
   employee: {
     icon: "badge",
     label: ROLE_LABELS.employee,
-    chip: "bg-indigo-100 text-indigo-700",
-    soft: "bg-indigo-50 text-indigo-600",
+    chip: "bg-blue-100 text-blue-700",
+    soft: "bg-blue-50 text-blue-600",
   },
   part_time: {
     icon: "schedule",

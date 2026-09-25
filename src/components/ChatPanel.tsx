@@ -32,7 +32,7 @@ export default function ChatPanel() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-xl text-white shadow-lg hover:bg-indigo-700"
+        className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-xl text-white shadow-lg hover:bg-blue-700"
         aria-label="AIアシスタントを開く"
       >
         ✦
@@ -42,11 +42,11 @@ export default function ChatPanel() {
 
   return (
     <div className="fixed bottom-5 right-5 z-40 flex h-96 w-80 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-indigo-600 px-3 py-2">
+      <div className="flex items-center justify-between border-b border-slate-100 bg-blue-600 px-3 py-2">
         <span className="text-sm font-semibold text-white">AIアシスタント</span>
         <button
           onClick={() => setOpen(false)}
-          className="rounded px-1.5 text-indigo-100 hover:bg-indigo-500"
+          className="rounded px-1.5 text-blue-100 hover:bg-blue-500"
           aria-label="閉じる"
         >
           ✕
@@ -59,7 +59,7 @@ export default function ChatPanel() {
             key={i}
             className={`max-w-[85%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs leading-relaxed ${
               m.role === "user"
-                ? "ml-auto bg-indigo-600 text-white"
+                ? "ml-auto bg-blue-600 text-white"
                 : "bg-slate-100 text-slate-700"
             }`}
           >
@@ -74,11 +74,11 @@ export default function ChatPanel() {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="例: 10日のAさんを休みにして"
-          className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-indigo-400"
+          className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs outline-none focus:border-blue-400"
         />
         <button
           onClick={send}
-          className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
         >
           送信
         </button>

@@ -28,7 +28,7 @@ function SectionCard({
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50/60 p-5">
       <h3 className="mb-4 flex items-center gap-2 px-0.5 py-1 text-sm font-semibold text-slate-800">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
           <Icon name={icon} size={16} />
         </span>
         {title}
@@ -162,6 +162,9 @@ export default function SettingsModal({
       width={560}
       className="settings-dialog"
     >
+      <h1 className="mb-5 text-2xl font-bold leading-tight tracking-tight text-slate-900">
+        シフト作成の条件設定
+      </h1>
       <div className="space-y-3">
         <SectionCard icon="schedule" title="営業時間">
           <SettingRow label="開店">
@@ -231,6 +234,26 @@ export default function SettingsModal({
               onChange={(n) => setField("employeeDaysOffTarget", n)}
             />
           </SettingRow>
+          <SettingRow label="週の最低労働時間" hint="不足でエラー">
+            <Stepper
+              value={form.employeeMinHoursPerWeek}
+              min={0}
+              max={60}
+              unit="時間"
+              ariaLabel="社員の週最低労働時間"
+              onChange={(n) => setField("employeeMinHoursPerWeek", n)}
+            />
+          </SettingRow>
+          <SettingRow label="週の最低出勤日数" hint="不足でエラー">
+            <Stepper
+              value={form.employeeMinDaysPerWeek}
+              min={0}
+              max={7}
+              unit="日"
+              ariaLabel="社員の週最低出勤日数"
+              onChange={(n) => setField("employeeMinDaysPerWeek", n)}
+            />
+          </SettingRow>
         </SectionCard>
 
         <SectionCard icon="trending_up" title="ピーク時間帯">
@@ -243,7 +266,7 @@ export default function SettingsModal({
                   peakHours: [...f.peakHours, { start: "12:00", end: "14:00" }],
                 }))
               }
-              className="flex items-center gap-1 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50"
+              className="flex items-center gap-1 rounded-md bg-white px-2.5 py-1 text-xs font-medium text-blue-600 ring-1 ring-blue-200 hover:bg-blue-50"
             >
               <Icon name="add" size={14} />
               追加
@@ -300,48 +323,6 @@ export default function SettingsModal({
             </ul>
           )}
         </SectionCard>
-
-        <button
-          type="button"
-          onClick={() => setField("strictBreakMode", !form.strictBreakMode)}
-          aria-pressed={form.strictBreakMode}
-          className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
-            form.strictBreakMode
-              ? "border-indigo-300 bg-indigo-50"
-              : "border-slate-200 bg-slate-50/60 hover:bg-slate-50"
-          }`}
-        >
-          <span
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-              form.strictBreakMode
-                ? "bg-indigo-600 text-white"
-                : "bg-slate-200 text-slate-500"
-            }`}
-          >
-            <Icon name="coffee" size={16} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-slate-800">
-              休憩中も人数を厳守
-            </span>
-            <span className="block text-[11px] text-slate-400">
-              {form.strictBreakMode ? "不足はエラー" : "不足は警告（ゆるめ）"}
-            </span>
-          </span>
-          <span
-            className={`relative h-6 w-10 shrink-0 rounded-full transition-colors ${
-              form.strictBreakMode ? "bg-indigo-600" : "bg-slate-300"
-            }`}
-            aria-hidden
-          >
-            <span
-              className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left]"
-              style={{
-                left: form.strictBreakMode ? "1.25rem" : "0.125rem",
-              }}
-            />
-          </span>
-        </button>
 
         {error && (
           <p

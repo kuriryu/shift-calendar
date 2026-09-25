@@ -18,7 +18,6 @@ import {
   weekKeyOf,
   weeksOfMonth,
 } from "@/lib/dates";
-import { staffColorOf } from "@/lib/staff-color";
 import type { ShiftAssignment, Staff } from "@/types";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
@@ -156,7 +155,6 @@ export default function WeekCalendarView({
       >
         <div className="grid min-w-[42rem] grid-cols-7">
           {weekDates.map((date, i) => {
-            const inMonth = date.startsWith(month);
             const dayAssignments = assignments
               .filter((a) => a.date === date && !hidden.has(a.staffId))
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -164,9 +162,7 @@ export default function WeekCalendarView({
             return (
               <div
                 key={date}
-                className={`flex min-h-48 flex-col rounded-none border border-slate-200 ${
-                  selected ? "bg-slate-100" : inMonth ? "bg-white" : "bg-slate-200/50"
-                }`}
+                className="flex min-h-48 flex-col rounded-none border border-slate-200 bg-white"
               >
                 <button
                   onClick={() => select(date)}
@@ -174,26 +170,22 @@ export default function WeekCalendarView({
                     selected ? "選択中" : ""
                   }`}
                   aria-pressed={selected}
-                  className={`flex flex-col items-center rounded-none border-b border-slate-200 px-2 py-2 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
-                    selected ? "bg-slate-100" : "hover:bg-slate-100"
-                  }`}
+                  className="flex flex-col items-center rounded-none border-b border-slate-200 px-2 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                 >
                   <span className="text-xs font-medium leading-4 text-slate-500">{WEEKDAY_HEADERS[i]}</span>
-                  <span className={`text-sm font-semibold leading-5 tabular-nums ${inMonth ? "text-slate-900" : "text-slate-400"}`}>
+                  <span className="text-sm font-semibold leading-5 tabular-nums text-slate-800">
                     {Number(date.slice(8))}
                   </span>
                 </button>
                 <ul className="flex flex-1 flex-col gap-1 p-1.5">
                   {dayAssignments.map((a) => {
                     const s = staffMap.get(a.staffId);
-                    const color = staffColorOf(a.staffId);
                     return (
                       <li key={a.id}>
                         <button
                           type="button"
                           onClick={(e) => openHours(e, a)}
-                          className="w-full truncate rounded px-1 py-1 text-left text-[10px] font-medium tabular-nums text-white hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-                          style={{ backgroundColor: color.bg }}
+                          className="w-full truncate rounded bg-slate-100 px-1 py-1 text-left text-[10px] font-medium tabular-nums text-slate-800 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                           title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
                           aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
                         >
@@ -204,7 +196,7 @@ export default function WeekCalendarView({
                     );
                   })}
                   {dayAssignments.length === 0 && (
-                    <li className="px-1 py-2 text-center text-[10px] text-slate-300">
+                    <li className="px-1 py-2 text-center text-[10px] text-slate-800">
                       —
                     </li>
                   )}

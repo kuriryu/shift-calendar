@@ -15,7 +15,6 @@ import { navCircleButtonClassName } from "@/components/FieldControl";
 import { toMinutes } from "@/lib/time";
 import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
 import type { ShiftAssignment, Staff } from "@/types";
-import { staffColorOf } from "@/lib/staff-color";
 
 export default function DayTimeline({ date }: { date: string }) {
   const mounted = useMounted();
@@ -121,8 +120,8 @@ export default function DayTimeline({ date }: { date: string }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
+      <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="flex items-center justify-center gap-2 sm:col-start-2 sm:row-start-1">
           <button
             type="button"
             onClick={() => goDay(-1)}
@@ -145,30 +144,18 @@ export default function DayTimeline({ date }: { date: string }) {
             <Icon name="chevron_right" size={20} />
           </button>
         </div>
-        <span className="text-xs text-slate-400">
-          営業 {String(Math.floor(openMin / 60)).padStart(2, "0")}:{String(openMin % 60).padStart(2, "0")}〜
-          {String(Math.floor(closeMin / 60)).padStart(2, "0")}:{String(closeMin % 60).padStart(2, "0")}
-          ・名前をドラッグで並べ替え／タップで稼働時間
-        </span>
-        <ul className="ml-auto flex flex-wrap items-center gap-3 text-[11px] text-slate-500" aria-label="凡例">
-          {visibleStaff.slice(0, 8).map((s) => {
-            const color = staffColorOf(s.id);
-            return (
+        <ul className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 sm:col-start-3 sm:row-start-1 sm:justify-self-end" aria-label="凡例">
+          {visibleStaff.slice(0, 8).map((s) => (
               <li key={s.id} className="flex items-center gap-1">
-                <span
-                  className="h-2.5 w-2.5 rounded-sm"
-                  style={{ backgroundColor: color.bg }}
-                  aria-hidden
-                />
+                <span className="h-2.5 w-2.5 rounded-sm bg-slate-100" aria-hidden />
                 {s.name}
               </li>
-            );
-          })}
+            ))}
           {visibleStaff.length > 8 && (
-            <li className="text-slate-400">他 {visibleStaff.length - 8}名</li>
+            <li className="text-slate-600">他 {visibleStaff.length - 8}名</li>
           )}
           <li className="flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm bg-rose-100" aria-hidden />
+            <span className="h-2.5 w-2.5 rounded-sm bg-pink-200" aria-hidden />
             ピーク
           </li>
         </ul>
@@ -184,7 +171,7 @@ export default function DayTimeline({ date }: { date: string }) {
           {hours.map((m) => (
             <span
               key={m}
-              className="absolute -translate-x-1/2 text-[11px] text-slate-400"
+              className="absolute -translate-x-1/2 text-[11px] text-slate-600"
               style={{ left: `${pct(m)}%` }}
             >
               {Math.floor(m / 60)}
@@ -197,7 +184,7 @@ export default function DayTimeline({ date }: { date: string }) {
           {settings.peakHours.map((r, i) => (
             <div
               key={i}
-              className="absolute top-0 bottom-0 bg-rose-50"
+              className="absolute top-0 bottom-0 bg-pink-200"
               style={{
                 left: `${pct(toMinutes(r.start))}%`,
                 width: `${pct(toMinutes(r.end)) - pct(toMinutes(r.start))}%`,
@@ -218,7 +205,7 @@ export default function DayTimeline({ date }: { date: string }) {
           {highlightRange && (
             <div
               data-highlight-range
-              className="violation-highlight pointer-events-none absolute -top-1 -bottom-1 z-10 rounded-lg bg-red-100/60"
+              className="violation-highlight pointer-events-none absolute -top-1 -bottom-1 z-10 rounded-lg bg-slate-100"
               style={{
                 left: `${pct(toMinutes(highlightRange.start))}%`,
                 width: `${pct(toMinutes(highlightRange.end)) - pct(toMinutes(highlightRange.start))}%`,
@@ -243,8 +230,8 @@ export default function DayTimeline({ date }: { date: string }) {
                   onDrop={(e) => onStaffDrop(e, s.id)}
                   onDragEnd={onStaffDragEnd}
                   className={`relative flex h-11 items-center ${
-                    isHl ? "violation-highlight bg-red-50/70" : ""
-                  } ${dragId === s.id ? "opacity-60 ring-2 ring-inset ring-indigo-300" : ""}`}
+                    isHl ? "violation-highlight bg-slate-100" : ""
+                  } ${dragId === s.id ? "opacity-60" : ""}`}
                 >
                   <div className="absolute -left-36 flex w-32 items-center gap-0.5 pr-1">
                     <span
@@ -258,9 +245,7 @@ export default function DayTimeline({ date }: { date: string }) {
                       type="button"
                       onClick={() => setHoursStaff(s)}
                       aria-label={`${s.name}の稼働時間を表示`}
-                      className={`min-w-0 flex-1 truncate text-left text-xs font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-600 ${
-                        isHl ? "text-red-700" : "text-slate-700"
-                      }`}
+                      className="min-w-0 flex-1 truncate text-left text-xs font-medium text-slate-800 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600"
                     >
                       {s.name}
                     </button>
@@ -271,11 +256,10 @@ export default function DayTimeline({ date }: { date: string }) {
                       aria-label={`${s.name} ${a.startTime}〜${a.endTime}${
                         a.breakMinutes > 0 ? `、休憩${a.breakMinutes}分` : ""
                       }。タップで編集`}
-                      className="absolute h-7 rounded-md text-left text-[11px] font-semibold text-white shadow-sm hover:opacity-85"
+                      className="absolute h-7 rounded-md bg-slate-100 text-left text-[11px] font-semibold text-slate-800 shadow-sm hover:opacity-85"
                       style={{
                         left: `${pct(sMin)}%`,
                         width: `${pct(eMin) - pct(sMin)}%`,
-                        backgroundColor: staffColorOf(s.id).bg,
                       }}
                     >
                       <span className="px-2 leading-7">

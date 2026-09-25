@@ -61,7 +61,7 @@ export function validateMonth(
     // 人員不足（連続スロットをまとめて報告）
     // - 開店・閉店（締め作業）スロットの不足 → エラー
     // - それ以外の時間帯の不足 → 警告（原則人数）
-    // - 休憩起因の一時的な不足 → 警告（strictBreakMode ならエラー）
+    // - 休憩起因の一時的な不足 → エラー（休憩中も原則人数を守る）
     const plan = slotPlanOf(date, settings);
     let deficitStart: number | null = null;
     let deficitMin = 0;
@@ -79,7 +79,7 @@ export function validateMonth(
       if (breakCaused) {
         violations.push({
           id: vid(),
-          severity: settings.strictBreakMode ? "error" : "warning",
+          severity: "error",
           rule: "BREAK_UNDERSTAFFED",
           date,
           timeRange,
@@ -213,6 +213,46 @@ export function validateMonth(
           staffId: staff.id,
           message: `${staff.name} の週労働時間が上限超過（${minutesToHoursLabel(minutes)} / ${staff.maxHoursPerWeek}h、週 ${bucket?.label ?? key}）`,
         });
+      }
+    }
+
+    // 社員のみ: 週の最低労働時間・最低出勤日数（月またぎの週は月内日数で按分）
+    if (staff.role === "employee") {
+      const weekDayCount = new Map<string, number>();
+      for (const a of mine) {
+        const key = weekKeyOf(a.date);
+        weekDayCount.set(key, (weekDayCount.get(key) ?? 0) + 1);
+      }
+      const minHours = settings.employeeMinHoursPerWeek;
+      const minDays = settings.employeeMinDaysPerWeek;
+      for (const bucket of buckets) {
+        const span = bucket.dates.length;
+        if (span === 0) continue;
+        const ratio = span / 7;
+        const minutes = weekMinutes.get(bucket.key) ?? 0;
+        const workedDays = weekDayCount.get(bucket.key) ?? 0;
+        if (minHours > 0 && minutes < minHours * 60 * ratio) {
+          const requiredLabel = minutesToHoursLabel(Math.round(minHours * 60 * ratio));
+          violations.push({
+            id: vid(),
+            severity: "error",
+            rule: "WEEKLY_MIN_HOURS",
+            date: bucket.dates[0],
+            staffId: staff.id,
+            message: `${staff.name} の週労働時間が最低時間を下回っています（${minutesToHoursLabel(minutes)} / ${requiredLabel}、週 ${bucket.label}）`,
+          });
+        }
+        if (minDays > 0 && workedDays < minDays * ratio) {
+          const requiredDays = Math.round(minDays * ratio * 10) / 10;
+          violations.push({
+            id: vid(),
+            severity: "error",
+            rule: "WEEKLY_MIN_DAYS",
+            date: bucket.dates[0],
+            staffId: staff.id,
+            message: `${staff.name} の週出勤日数が最低日数を下回っています（${workedDays} / ${requiredDays}日、週 ${bucket.label}）`,
+          });
+        }
       }
     }
 

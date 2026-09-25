@@ -35,14 +35,14 @@ export default function MonthStep() {
     <StepPanel step={1}>
       <div className="flex flex-col items-center gap-3 md:gap-5">
         <div
-          className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 md:h-14 md:w-14 md:rounded-2xl"
+          className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 md:h-14 md:w-14 md:rounded-2xl"
           aria-hidden
         >
           <Icon name="calendar_month" size={24} />
         </div>
 
         <div className="flex flex-wrap items-end justify-center gap-3 md:gap-4">
-          <FieldControl id="month-year" label="年" className="w-36 shrink-0 md:w-44">
+          <FieldControl id="month-year" label="年" className="w-28 shrink-0">
             <FieldSelect
               id="month-year"
               value={year}
@@ -56,7 +56,7 @@ export default function MonthStep() {
               ))}
             </FieldSelect>
           </FieldControl>
-          <FieldControl id="month-month" label="月" className="w-28 shrink-0 md:w-36">
+          <FieldControl id="month-month" label="月" className="w-28 shrink-0">
             <FieldSelect
               id="month-month"
               value={mon}
@@ -73,7 +73,7 @@ export default function MonthStep() {
         </div>
 
         {hasData(month) ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
             <Icon name="folder_open" size={14} />
             この月にデータあり
           </span>

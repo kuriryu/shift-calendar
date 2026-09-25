@@ -15,7 +15,6 @@ import {
   monthLabel,
   weekdayOf,
 } from "@/lib/dates";
-import { staffColorOf } from "@/lib/staff-color";
 import type { ShiftAssignment, Staff } from "@/types";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
@@ -25,7 +24,7 @@ function shortTime(t: string): string {
   return m === 0 ? String(h) : `${h}.5`;
 }
 
-/** Googleカレンダー風の月グリッド。日付セルにスタッフ色のチップを並べる */
+/** Googleカレンダー風の月グリッド。日付セルにシフトのチップを並べる */
 export default function MonthCalendarView({
   onSelectDate,
 }: {
@@ -123,7 +122,7 @@ export default function MonthCalendarView({
         <div className="grid grid-cols-7 auto-rows-[minmax(5.5rem,auto)]">
           {cells.map((d, i) =>
             d === null ? (
-              <div key={`blank-${i}`} className="rounded-none border border-slate-200 bg-slate-200/50" />
+              <div key={`blank-${i}`} className="rounded-none border border-slate-200 bg-slate-100" />
             ) : (
               (() => {
                 const dayAssignments = assignments
@@ -135,9 +134,7 @@ export default function MonthCalendarView({
                 return (
                   <div
                     key={d}
-                    className={`flex flex-col items-stretch gap-1 rounded-none border border-slate-200 p-2 text-left ${
-                      selected ? "bg-slate-100" : "bg-white"
-                    }`}
+                    className="flex flex-col items-stretch gap-1 rounded-none border border-slate-200 bg-white p-2 text-left"
                   >
                     <button
                       type="button"
@@ -146,22 +143,18 @@ export default function MonthCalendarView({
                         selected ? " 選択中" : ""
                       }${isToday ? " 今日" : ""}`}
                       aria-pressed={selected}
-                      className={`mb-1 inline-flex h-6 w-6 items-center justify-center rounded-none text-sm font-semibold leading-5 tabular-nums hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
-                        isToday ? "text-slate-900 underline decoration-blue-600" : "text-slate-900"
-                      }`}
+                      className="mb-1 inline-flex h-6 w-6 items-center justify-center rounded-none text-sm font-semibold leading-5 tabular-nums text-slate-800 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                     >
                       {Number(d.slice(8))}
                     </button>
                     {dayAssignments.slice(0, 3).map((a) => {
                       const s = staffMap.get(a.staffId);
-                      const color = staffColorOf(a.staffId);
                       return (
                         <button
                           key={a.id}
                           type="button"
                           onClick={(e) => openHours(e, a)}
-                          className="truncate rounded px-1 py-0.5 text-left text-[9px] font-medium tabular-nums text-white hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-                          style={{ backgroundColor: color.bg }}
+                          className="truncate rounded bg-slate-100 px-1 py-0.5 text-left text-[9px] font-medium tabular-nums text-slate-800 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
                           title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
                           aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
                         >
@@ -174,7 +167,7 @@ export default function MonthCalendarView({
                       <button
                         type="button"
                         onClick={() => select(d)}
-                        className="px-1 text-left text-[9px] text-slate-400 hover:text-slate-600"
+                        className="px-1 text-left text-[9px] text-slate-800"
                       >
                         +{extra}件
                       </button>

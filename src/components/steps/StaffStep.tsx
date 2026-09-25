@@ -67,7 +67,7 @@ export default function StaffStep() {
         </dl>
         <button
           onClick={() => setCreating(true)}
-          className="flex h-11 min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          className="flex h-11 min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           <Icon name="person_add" size={18} />
           スタッフを新規登録

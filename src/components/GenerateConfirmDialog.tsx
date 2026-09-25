@@ -29,6 +29,9 @@ export default function GenerateConfirmDialog({
       width={480}
       className="generate-confirm-dialog"
     >
+      <h1 className="mb-5 text-2xl font-bold leading-tight tracking-tight text-slate-900">
+        シフト表を自動生成しますか？
+      </h1>
       <p className="text-sm leading-relaxed text-slate-700">
         登録したスタッフと希望をもとに、この月のシフト案を作ります。確定するまで既存のシフトは変わりません。
         {hasExisting && (

@@ -9,6 +9,7 @@ import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import type { Violation } from "@/types";
 
 function Concerns({ violations }: { violations: Violation[] }) {
+  const [open, setOpen] = useState(false);
   const errors = violations.filter((v) => v.severity === "error");
   const warnings = violations.filter((v) => v.severity === "warning");
   if (violations.length === 0) {
@@ -23,44 +24,57 @@ function Concerns({ violations }: { violations: Violation[] }) {
   }
   return (
     <section aria-labelledby="concerns-title" className="rounded-xl border border-slate-200 p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        aria-controls="concerns-details"
+        className="flex w-full flex-wrap items-center justify-between gap-2 text-left"
+      >
         <h2 id="concerns-title" className="flex items-center gap-2 text-sm font-semibold text-slate-700">
           <Icon name="report" size={18} />
           懸念事項
         </h2>
-        <div className="flex flex-wrap items-center gap-1.5" aria-label={`エラー ${errors.length}件、警告 ${warnings.length}件`}>
-          {errors.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-100">
-              <Icon name="error" size={14} />
-              エラー {errors.length}
-            </span>
-          )}
-          {warnings.length > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-100">
-              <Icon name="warning" size={14} />
-              警告 {warnings.length}
-            </span>
-          )}
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="flex flex-wrap items-center gap-1.5" aria-label={`エラー ${errors.length}件、警告 ${warnings.length}件`}>
+            {errors.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-100">
+                <Icon name="error" size={14} />
+                エラー {errors.length}
+              </span>
+            )}
+            {warnings.length > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-100">
+                <Icon name="warning" size={14} />
+                警告 {warnings.length}
+              </span>
+            )}
+          </span>
+          <Icon name={open ? "expand_less" : "expand_more"} size={18} className="text-slate-400" />
+        </span>
+      </button>
+      {open && (
+        <div id="concerns-details" className="mt-3">
+          <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+            {errors.map((v) => (
+              <li key={v.id} className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
+                <Icon name="error" size={14} className="mt-0.5 shrink-0" />
+                <span>{v.message}</span>
+              </li>
+            ))}
+            {warnings.map((v) => (
+              <li key={v.id} className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                <Icon name="warning" size={14} className="mt-0.5 shrink-0" />
+                <span>{v.message}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-400">
+            <Icon name="touch_app" size={14} className="mt-px shrink-0" />
+            出力後、上部の件数バッジから各項目をタップすると該当箇所を表示できます。調整ステップで手直しできます。
+          </p>
         </div>
-      </div>
-      <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-        {errors.map((v) => (
-          <li key={v.id} className="flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-800">
-            <Icon name="error" size={14} className="mt-0.5 shrink-0" />
-            <span>{v.message}</span>
-          </li>
-        ))}
-        {warnings.map((v) => (
-          <li key={v.id} className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            <Icon name="warning" size={14} className="mt-0.5 shrink-0" />
-            <span>{v.message}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-400">
-        <Icon name="touch_app" size={14} className="mt-px shrink-0" />
-        出力後、上部の件数バッジから各項目をタップすると該当箇所を表示できます。調整ステップで手直しできます。
-      </p>
+      )}
     </section>
   );
 }
@@ -85,7 +99,11 @@ export default function ProposalStep() {
       <StepPanel
         step={5}
         title="こんな感じでどうですか？"
-        hideNext
+        nextLabel="この内容で出力"
+        onNext={() => {
+          confirmDraft();
+          setStep(6);
+        }}
         actions={
           <>
             <button
@@ -104,16 +122,6 @@ export default function ProposalStep() {
             >
               <Icon name="undo" size={18} />
               破棄して希望入力へ
-            </button>
-            <button
-              onClick={() => {
-                confirmDraft();
-                setStep(6);
-              }}
-              className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              <Icon name="check" size={18} />
-              この内容で出力
             </button>
           </>
         }
@@ -189,7 +197,7 @@ export default function ProposalStep() {
         </div>
         <button
           onClick={() => setStep(4)}
-          className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
         >
           <Icon name="auto_awesome" size={18} />
           自動生成へ

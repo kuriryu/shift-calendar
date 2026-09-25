@@ -57,7 +57,7 @@ export default function Dashboard() {
               {def.desc}
             </p>
           </div>
-          <ViolationBadge />
+          {active !== 2 && <ViolationBadge />}
         </header>
 
         <div className="mt-2 md:mt-8">

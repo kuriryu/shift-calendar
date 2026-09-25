@@ -54,16 +54,6 @@ export default function HeroLanding() {
           className="relative mx-auto aspect-square w-full max-h-[min(42dvh,280px)] max-w-[280px] [perspective:1200px] md:max-h-none md:max-w-none"
           aria-hidden
         >
-          <div className="hero-aura pointer-events-none absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-300/50 blur-3xl" />
-          <div
-            className="hero-aura pointer-events-none absolute right-6 top-8 h-56 w-56 rounded-full bg-blue-400/40 blur-3xl"
-            style={{ animationDelay: "1.4s" }}
-          />
-          <div
-            className="hero-aura pointer-events-none absolute bottom-6 left-8 h-48 w-48 rounded-full bg-sky-300/40 blur-3xl"
-            style={{ animationDelay: "2.6s" }}
-          />
-
           <div className="hero-tilt-slow relative z-10 flex h-full w-full items-center justify-center">
             <div
               className="hero-float-slow relative w-[78%] rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-xl shadow-slate-300/40 backdrop-blur-md"
@@ -72,9 +62,9 @@ export default function HeroLanding() {
               <div className="mb-3 flex items-center justify-between">
                 <div className="h-2.5 w-24 rounded-full bg-slate-200" />
                 <div className="flex -space-x-2">
-                  <span className="h-6 w-6 rounded-full border-2 border-white bg-blue-500" />
-                  <span className="h-6 w-6 rounded-full border-2 border-white bg-cyan-400" />
-                  <span className="h-6 w-6 rounded-full border-2 border-white bg-slate-400" />
+                  <span className="h-6 w-6 rounded-full border-2 border-white bg-gradient-to-br from-blue-300 to-blue-600 opacity-90" />
+                  <span className="h-6 w-6 rounded-full border-2 border-white bg-gradient-to-br from-cyan-200 to-cyan-500 opacity-90" />
+                  <span className="h-6 w-6 rounded-full border-2 border-white bg-gradient-to-br from-slate-200 to-slate-500 opacity-90" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -99,7 +89,7 @@ export default function HeroLanding() {
               style={{ animationDelay: "0.8s" }}
             >
               <div className="mb-2 flex items-center gap-2">
-                <span className="h-7 w-7 rounded-full bg-blue-600" />
+                <span className="h-7 w-7 rounded-full bg-gradient-to-br from-sky-400 to-blue-700 opacity-90" />
                 <div>
                   <div className="h-2 w-14 rounded-full bg-slate-300" />
                   <div className="mt-1 h-1.5 w-10 rounded-full bg-slate-200" />

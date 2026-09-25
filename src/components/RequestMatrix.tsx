@@ -260,7 +260,7 @@ export default function RequestMatrix() {
           {hasRec ? (
             <button
               onClick={() => adoptRecommendations(s.id)}
-              className="rounded border border-indigo-200 bg-indigo-50 px-1 py-0.5 text-[9px] text-indigo-700 hover:bg-indigo-100"
+              className="rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[9px] text-blue-700 hover:bg-blue-100"
               aria-label={`${s.name} の候補をすべて採用`}
               title="候補をすべて採用"
             >
@@ -290,7 +290,7 @@ export default function RequestMatrix() {
                 scope="col"
                 className={`min-w-11 px-0.5 py-1.5 ${
                   isWeekendOrFri(date) ? "bg-sky-50" : ""
-                } ${date === selectedDate ? "bg-indigo-50" : ""}`}
+                } ${date === selectedDate ? "bg-blue-50" : ""}`}
               >
                 <button
                   type="button"
@@ -317,7 +317,7 @@ export default function RequestMatrix() {
               onDrop={(e) => onStaffDrop(e, s.id)}
               onDragEnd={onStaffDragEnd}
               className={`border-b border-slate-100 transition-transform ${
-                dragId === s.id ? "opacity-60 ring-2 ring-inset ring-indigo-300" : ""
+                dragId === s.id ? "opacity-60 ring-2 ring-inset ring-blue-300" : ""
               }`}
             >
               <th
@@ -340,13 +340,13 @@ export default function RequestMatrix() {
                   <td
                     key={date}
                     className={`p-0 ${isWeekendOrFri(date) ? "bg-sky-50/40" : ""} ${
-                      date === selectedDate ? "bg-indigo-50/60" : ""
+                      date === selectedDate ? "bg-blue-50/60" : ""
                     }`}
                   >
                     <button
                       onClick={(e) => onCellClick(e, s, date)}
                       aria-label={label}
-                      className="block w-full px-0.5 py-1 hover:bg-indigo-50"
+                      className="block w-full px-0.5 py-1 hover:bg-blue-50"
                     >
                       {cellOf(s, date)}
                     </button>
@@ -396,7 +396,7 @@ export default function RequestMatrix() {
               key={v.id}
               onClick={() => setView(v.id)}
               aria-pressed={view === v.id}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
                 view === v.id
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-500 hover:text-slate-800"
@@ -459,7 +459,7 @@ export default function RequestMatrix() {
             <button
               onClick={() => adoptRecommendations()}
               disabled={noStaff}
-              className="flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
             >
               <Icon name="done_all" size={14} />
               全員の候補を採用
@@ -572,7 +572,7 @@ export default function RequestMatrix() {
                   <button
                     onClick={(e) => onCellClick(e, s, dayDate)}
                     aria-label={label}
-                    className="relative h-9 w-full rounded-md bg-slate-50 hover:bg-indigo-50/60"
+                    className="relative h-9 w-full rounded-md bg-slate-50 hover:bg-blue-50/60"
                   >
                     {show?.type === "off" && (
                       <span
@@ -648,11 +648,11 @@ export default function RequestMatrix() {
           <div className="rounded-xl border border-slate-200 bg-white p-4">
             <p className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] leading-snug text-slate-400">
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-1.5 w-1.5 rounded-full border border-indigo-400" />
+                <span className="inline-block h-1.5 w-1.5 rounded-full border border-blue-400" />
                 入力中
               </span>
               <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-indigo-600" />
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />
                 全員入力済み
               </span>
             </p>
@@ -689,7 +689,7 @@ export default function RequestMatrix() {
                         <span
                           className={`flex h-8 w-8 items-center justify-center rounded-full text-xs transition-colors ${
                             d === dayDate
-                              ? "bg-indigo-600 font-semibold text-white"
+                              ? "bg-blue-600 font-semibold text-white"
                               : "text-slate-700 group-hover:bg-slate-100"
                           }`}
                         >
@@ -702,8 +702,8 @@ export default function RequestMatrix() {
                               : d === dayDate
                                 ? "bg-white"
                                 : mark === "partial"
-                                  ? "border border-indigo-400 bg-transparent"
-                                  : "bg-indigo-600"
+                                  ? "border border-blue-400 bg-transparent"
+                                  : "bg-blue-600"
                           }`}
                         />
                       </button>
@@ -773,7 +773,7 @@ export default function RequestMatrix() {
                         <button
                           type="button"
                           onClick={() => adoptRecommendations(s.id)}
-                          className="rounded border border-indigo-200 bg-indigo-50 px-1.5 py-0.5 text-[9px] text-indigo-700 hover:bg-indigo-100"
+                          className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-700 hover:bg-blue-100"
                           aria-label={`${s.name} の候補をすべて採用`}
                         >
                           候補
@@ -795,7 +795,7 @@ export default function RequestMatrix() {
             ref={popoverRef}
             role="dialog"
             aria-label={`${popover.staff.name} ${Number(popover.date.slice(8))}日の希望`}
-            className="fixed z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+            className="fixed z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-5 pb-2 shadow-xl"
             style={{ left: popover.x, top: popover.y }}
           >
             <header className="space-y-1">
@@ -834,22 +834,22 @@ export default function RequestMatrix() {
               </button>
             </div>
 
-            <section className="mt-6 rounded-xl bg-indigo-50/70 px-4 pb-5 pt-4" aria-label="時間帯を指定">
+            <section className="mt-6 rounded-xl bg-blue-50/70 px-4 pb-2 pt-4" aria-label="時間帯を指定">
               <div className="mb-4 flex items-center gap-2">
-                <Icon name="schedule" size={18} className="text-indigo-700" />
-                <h3 className="text-sm font-semibold text-indigo-900">時間帯を指定</h3>
+                <Icon name="schedule" size={18} className="text-blue-700" />
+                <h3 className="text-sm font-semibold text-blue-900">時間帯を指定</h3>
               </div>
 
               <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-x-2.5 gap-y-0">
                 <div className="space-y-2">
-                  <label htmlFor="req-start" className="block text-xs font-medium text-indigo-800/80">
+                  <label htmlFor="req-start" className="block text-xs font-medium text-blue-800/80">
                     開始時刻
                   </label>
                   <select
                     id="req-start"
                     value={start}
                     onChange={(e) => setStart(e.target.value)}
-                    className="w-full rounded-lg border border-indigo-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
+                    className="w-full rounded-lg border border-blue-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
                   >
                     {timeOptions.map((t) => (
                       <option key={t} value={t}>
@@ -859,20 +859,20 @@ export default function RequestMatrix() {
                   </select>
                 </div>
                 <span
-                  className="pb-3 text-lg font-medium text-indigo-300"
+                  className="pb-3 text-lg font-medium text-blue-300"
                   aria-hidden
                 >
                   〜
                 </span>
                 <div className="space-y-2">
-                  <label htmlFor="req-end" className="block text-xs font-medium text-indigo-800/80">
+                  <label htmlFor="req-end" className="block text-xs font-medium text-blue-800/80">
                     終了時刻
                   </label>
                   <select
                     id="req-end"
                     value={end}
                     onChange={(e) => setEnd(e.target.value)}
-                    className="w-full rounded-lg border border-indigo-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
+                    className="w-full rounded-lg border border-blue-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
                   >
                     {timeOptions.map((t) => (
                       <option key={t} value={t}>
@@ -883,7 +883,7 @@ export default function RequestMatrix() {
                 </div>
               </div>
 
-              <div className="mt-6 pt-2">
+              <div className="mt-2">
                 <button
                   type="button"
                   onClick={() =>
@@ -896,7 +896,7 @@ export default function RequestMatrix() {
                     })
                   }
                   disabled={start >= end}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
                 >
                   <Icon name="done" size={18} />
                   この時間帯で指定
@@ -907,7 +907,7 @@ export default function RequestMatrix() {
             <button
               type="button"
               onClick={() => apply(null)}
-              className="mt-6 w-full rounded-lg py-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+              className="mt-2 w-full rounded-lg py-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
             >
               クリア（未入力に戻す）
             </button>

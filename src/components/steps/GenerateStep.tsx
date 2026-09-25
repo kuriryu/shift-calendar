@@ -4,6 +4,7 @@ import { useState } from "react";
 import Icon from "@/components/Icon";
 import StepPanel from "@/components/steps/StepPanel";
 import GenerateConfirmDialog from "@/components/GenerateConfirmDialog";
+import SettingsModal from "@/components/SettingsModal";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { monthLabel } from "@/lib/dates";
 
@@ -18,6 +19,7 @@ export default function GenerateStep() {
   const generateDraft = useAppStore((s) => s.generateDraft);
   const setStep = useAppStore((s) => s.setStep);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const employees = staff.filter((s) => s.role === "employee").length;
   const canGenerate = staff.length > 0;
@@ -73,25 +75,26 @@ export default function GenerateStep() {
   } as const;
 
   return (
-    <StepPanel step={4} hideNext>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-labelledby="gen-inputs" className="rounded-xl bg-slate-50 p-5">
+    <StepPanel
+      step={4}
+      nextLabel="生成"
+      onNext={() => setConfirmOpen(true)}
+      nextDisabled={!canGenerate}
+    >
+      <div className="grid w-full gap-6 lg:grid-cols-2">
+        <section aria-labelledby="gen-inputs" className="rounded-xl border border-slate-200 bg-white p-5">
           <h4 id="gen-inputs" className="mb-4 text-sm font-semibold text-slate-700">
             {monthLabel(month)} の入力状況
           </h4>
           <ul className="space-y-3">
             <li
-              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ring-1 ${
-                staff.length > 0
-                  ? "bg-emerald-50/80 ring-emerald-100"
-                  : "bg-red-50/80 ring-red-100"
+              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ${
+                staff.length > 0 ? "bg-emerald-50" : "bg-red-50"
               }`}
             >
               <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                  staff.length > 0
-                    ? "bg-white text-emerald-600"
-                    : "bg-white text-red-500"
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white ${
+                  staff.length > 0 ? "text-emerald-600" : "text-red-500"
                 }`}
                 aria-hidden
               >
@@ -109,17 +112,13 @@ export default function GenerateStep() {
               </div>
             </li>
             <li
-              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ring-1 ${
-                requests.length > 0
-                  ? "bg-emerald-50/80 ring-emerald-100"
-                  : "bg-white ring-slate-200"
+              className={`flex items-center gap-3 rounded-xl px-3.5 py-3 ${
+                requests.length > 0 ? "bg-emerald-50" : "bg-slate-100"
               }`}
             >
               <span
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                  requests.length > 0
-                    ? "bg-white text-emerald-600"
-                    : "bg-slate-50 text-slate-400"
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white ${
+                  requests.length > 0 ? "text-emerald-600" : "text-slate-400"
                 }`}
                 aria-hidden
               >
@@ -144,7 +143,7 @@ export default function GenerateStep() {
               </div>
             </li>
             {assignments.length > 0 && (
-              <li className="flex items-start gap-3 rounded-xl bg-amber-50/80 px-3.5 py-3 ring-1 ring-amber-100">
+              <li className="flex items-start gap-3 rounded-xl bg-amber-50 px-3.5 py-3">
                 <span
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-amber-600"
                   aria-hidden
@@ -163,14 +162,18 @@ export default function GenerateStep() {
         </section>
 
         <section aria-labelledby="gen-conditions" className="rounded-xl border border-slate-200 p-5">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-center gap-3">
             <h4 id="gen-conditions" className="text-sm font-semibold text-slate-700">
               作成時に確認する条件
             </h4>
-            <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-              <Icon name="settings" size={12} />
-              サイドバー左下で変更
-            </span>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-white px-2.5 py-1 text-xs font-semibold text-blue-600 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+            >
+              <Icon name="edit" size={14} />
+              編集
+            </button>
           </div>
           <ul className="space-y-2">
             {conditions.map((c) => {
@@ -191,7 +194,7 @@ export default function GenerateStep() {
                     <Icon
                       name={c.icon}
                       size={18}
-                      className="mt-0.5 shrink-0 text-indigo-500"
+                      className="mt-0.5 shrink-0 text-blue-500"
                     />
                     <span className="leading-snug">{c.text}</span>
                   </span>
@@ -203,14 +206,6 @@ export default function GenerateStep() {
       </div>
 
       <div className="flex flex-col items-center gap-2 py-4">
-        <button
-          onClick={() => setConfirmOpen(true)}
-          disabled={!canGenerate}
-          className="flex items-center gap-2 rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-        >
-          <Icon name="auto_awesome" size={22} />
-          シフトを自動生成する
-        </button>
         <p className="px-0.5 py-1.5 text-center text-xs leading-relaxed text-slate-400">
           生成後、確認画面で内容と懸念事項をチェックしてから確定します
         </p>
@@ -227,6 +222,9 @@ export default function GenerateStep() {
         onConfirm={run}
         onClose={() => setConfirmOpen(false)}
       />
+      {settingsOpen && (
+        <SettingsModal isOpen onClose={() => setSettingsOpen(false)} />
+      )}
     </StepPanel>
   );
 }

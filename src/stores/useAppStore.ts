@@ -545,7 +545,10 @@ export const useAppStore = create<AppState>()(
             const month = v.date.slice(0, 7);
             // 月・週単位の違反は曜日ビュー、日・時間帯の違反は時間ビューで示す
             const monthLevel =
-              v.rule === "WEEKLY_HOURS" || v.rule === "DAYS_OFF_TARGET";
+              v.rule === "WEEKLY_HOURS" ||
+              v.rule === "WEEKLY_MIN_HOURS" ||
+              v.rule === "WEEKLY_MIN_DAYS" ||
+              v.rule === "DAYS_OFF_TARGET";
             const base = {
               currentStep: 6 as StepId,
               adjustView: monthLevel ? ("month" as const) : ("day" as const),

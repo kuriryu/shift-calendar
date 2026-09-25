@@ -76,7 +76,7 @@ export default function AssignmentEditPopover({
         ref={editRef}
         role="dialog"
         aria-label={`${edit.staff.name} ${dayLabel(edit.date)} のシフトを編集`}
-        className="fixed z-50 w-[17.5rem] rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-xl"
+        className="fixed z-50 w-[17.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-6 pb-8 shadow-xl"
         style={{ left: edit.x, top: edit.y }}
       >
         <header className="mb-5">
@@ -91,7 +91,7 @@ export default function AssignmentEditPopover({
             id={`edit-hours-${fieldId}`}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-600"
           >
-            <Icon name="schedule" size={16} className="text-indigo-600" />
+            <Icon name="schedule" size={16} className="text-blue-600" />
             勤務時間
           </h3>
           <div className="flex items-end gap-2">
@@ -134,7 +134,7 @@ export default function AssignmentEditPopover({
             id={`edit-break-${fieldId}`}
             className="flex items-center gap-1.5 text-xs font-semibold text-slate-600"
           >
-            <Icon name="local_cafe" size={16} className="text-indigo-600" />
+            <Icon name="local_cafe" size={16} className="text-blue-600" />
             休憩
           </h3>
           <div className="space-y-4">
@@ -169,7 +169,7 @@ export default function AssignmentEditPopover({
           </div>
         </section>
 
-        <div className="mt-10 space-y-3">
+        <div className="mt-8 flex flex-col gap-2">
           <button
             type="button"
             onClick={() => {
@@ -187,7 +187,7 @@ export default function AssignmentEditPopover({
               }
             }}
             disabled={start >= end}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <Icon name="done" size={18} />
             時間を変更
@@ -198,7 +198,7 @@ export default function AssignmentEditPopover({
               removeAssignment(edit.assignment.id);
               onClose();
             }}
-            className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-50 px-3 py-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-50 px-3 py-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
           >
             <Icon name="delete" size={16} />
             このシフトを削除

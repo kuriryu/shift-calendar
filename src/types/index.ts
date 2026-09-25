@@ -11,6 +11,10 @@ export type Staff = {
   role: Role;
   maxHoursPerWeek: number;
   maxConsecutiveDays: number;
+  /** 1か月あたりの希望勤務日数。未設定は undefined */
+  desiredWorkDays?: number;
+  /** 1か月あたりの希望勤務時間。未設定は undefined */
+  desiredMonthlyHours?: number;
   monthlyDaysOffTarget: number; // 社員のみ意味を持つ（他は0）
   /** @deprecated 平日・土日パターンへ移行。マイグレーション用に残す */
   defaultPattern?: TimeRange;
@@ -69,6 +73,8 @@ export type ViolationRule =
   | "EMPLOYEE_PRESENT"
   | "MAX_CONSECUTIVE"
   | "WEEKLY_HOURS"
+  | "WEEKLY_MIN_HOURS"
+  | "WEEKLY_MIN_DAYS"
   | "DAYS_OFF_TARGET"
   | "REQUEST_OFF_CONFLICT"
   | "TIME_LIMIT_CONFLICT";
@@ -93,7 +99,8 @@ export type ShopSettings = {
   peakRequired: number; // ピーク時の必要人数
   edgeRequired: number; // 開店・閉店（締め作業）時の必須人数
   employeeDaysOffTarget: number; // 社員の月間休日目標（日）
-  strictBreakMode: boolean; // true なら休憩中の人数割れも error
+  employeeMinHoursPerWeek: number; // 社員の週最低労働時間
+  employeeMinDaysPerWeek: number; // 社員の週最低出勤日数
 };
 
 export const OPEN_TIME = "09:00";
@@ -112,7 +119,8 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   peakRequired: 3,
   edgeRequired: 2,
   employeeDaysOffTarget: 9,
-  strictBreakMode: false,
+  employeeMinHoursPerWeek: 32,
+  employeeMinDaysPerWeek: 4,
 };
 
 /** シフト作成フローのステップ番号 */
