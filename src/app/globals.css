@@ -18,6 +18,12 @@ body {
   min-height: 100dvh;
 }
 
+/* smarthr の input { padding-inline: unset } より優先し、共通入力枠は上下左右 12px */
+.field-control {
+  padding: 12px;
+  padding-inline: 12px;
+}
+
 /* PrimaryButton のリンク文字色（smarthr の a { color: inherit } を上書き） */
 a.primary-button,
 button.primary-button {

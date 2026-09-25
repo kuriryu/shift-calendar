@@ -259,7 +259,7 @@ export default function AppShell({
         {/* 上部: ロゴ（展開時）＋折りたたみボタン */}
         {!isMobile && (
           <div
-            className={`flex h-16 shrink-0 items-center border-b border-slate-200 bg-white ${
+            className={`flex h-16 shrink-0 items-center ${
               collapsed ? "justify-center px-0" : "justify-between px-4"
             }`}
           >
@@ -332,7 +332,7 @@ export default function AppShell({
       </aside>
 
       {/* メインエリア: モバイルは 100dvh 内に収めてページスクロールを避ける */}
-      <main className="mx-auto flex w-full min-h-0 min-w-0 max-w-7xl flex-1 flex-col overflow-hidden bg-white p-3 md:overflow-visible md:p-6">
+      <main className="mx-auto flex w-full min-h-0 min-w-0 max-w-7xl flex-1 flex-col overflow-hidden bg-white px-6 py-3 md:overflow-visible md:px-10 md:py-6">
         {children}
       </main>
 

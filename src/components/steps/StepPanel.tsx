@@ -59,7 +59,7 @@ export default function StepPanel({
 
       {showFooter && (
         <footer
-          className={`fixed bottom-0 right-0 left-0 z-40 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-[left] duration-150 md:px-6 ${
+          className={`fixed bottom-0 right-0 left-0 z-40 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white px-6 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-[left] duration-150 md:px-10 ${
             sidebarCollapsed ? "md:left-14" : "md:left-[280px]"
           }`}
         >

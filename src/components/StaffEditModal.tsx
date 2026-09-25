@@ -12,6 +12,25 @@ import FieldControl, { FieldInput, FieldSelect } from "@/components/FieldControl
 
 const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 
+/** 労基法32条: 週の法定労働時間は40時間 */
+const WEEKLY_HOUR_PRESETS = [8, 12, 16, 20, 24, 28, 32, 36, 40];
+/** 労基法35条: 週1日の休日が必要なので、連勤の上限は6日 */
+const CONSECUTIVE_DAY_PRESETS = [1, 2, 3, 4, 5, 6];
+/** 暦の最大日数 */
+const MONTHLY_DAY_PRESETS = Array.from({ length: 31 }, (_, i) => i + 1);
+/** 週40時間の月換算（40 × 52 / 12 ≒ 173時間）まで */
+const MONTHLY_HOUR_PRESETS = [10, 20, 40, 60, 80, 100, 120, 140, 160, 173];
+
+function selectValues(presets: number[], current: string): string[] {
+  const n = Number(current);
+  const values = [...presets];
+  if (current && Number.isFinite(n) && n > 0 && !values.includes(n)) {
+    values.push(n);
+    values.sort((a, b) => a - b);
+  }
+  return values.map(String);
+}
+
 function patternError(start: string, end: string): string | null {
   if (!start || !end) return null;
   if (start >= end) {
@@ -239,48 +258,66 @@ export default function StaffEditModal({
         </FieldControl>
 
         <div className="flex flex-wrap gap-4">
-          <FieldControl id="staff-hours" label="週の上限時間">
-            <FieldInput
+          <FieldControl id="staff-hours" label="週の上限時間" hint="上限40時間">
+            <FieldSelect
               id="staff-hours"
-              type="number"
               value={maxHours}
               onChange={(e) => setMaxHours(e.target.value)}
               className="tabular-nums"
-            />
+            >
+              {selectValues(WEEKLY_HOUR_PRESETS, maxHours).map((h) => (
+                <option key={h} value={h}>
+                  {h}時間
+                </option>
+              ))}
+            </FieldSelect>
           </FieldControl>
-          <FieldControl id="staff-consec" label="最大連勤日数">
-            <FieldInput
+          <FieldControl id="staff-consec" label="最大連勤日数" hint="上限6日">
+            <FieldSelect
               id="staff-consec"
-              type="number"
               value={maxConsec}
               onChange={(e) => setMaxConsec(e.target.value)}
               className="tabular-nums"
-            />
+            >
+              {selectValues(CONSECUTIVE_DAY_PRESETS, maxConsec).map((d) => (
+                <option key={d} value={d}>
+                  {d}日
+                </option>
+              ))}
+            </FieldSelect>
           </FieldControl>
         </div>
 
         <div className="flex flex-wrap gap-4">
-          <FieldControl id="staff-desired-days" label="希望の勤務日数" hint="月あたり">
-            <FieldInput
-              id="staff-desired-days"
-              type="number"
-              min={0}
-              value={desiredDays}
-              onChange={(e) => setDesiredDays(e.target.value)}
-              placeholder="未設定"
-              className="tabular-nums"
-            />
-          </FieldControl>
-          <FieldControl id="staff-desired-hours" label="月の希望の勤務時間">
-            <FieldInput
+          <FieldControl id="staff-desired-hours" label="月の希望の勤務時間" hint="上限173時間">
+            <FieldSelect
               id="staff-desired-hours"
-              type="number"
-              min={0}
               value={desiredHours}
               onChange={(e) => setDesiredHours(e.target.value)}
-              placeholder="未設定"
               className="tabular-nums"
-            />
+            >
+              <option value="">未設定</option>
+              {selectValues(MONTHLY_HOUR_PRESETS, desiredHours).map((h) => (
+                <option key={h} value={h}>
+                  {h}時間
+                </option>
+              ))}
+            </FieldSelect>
+          </FieldControl>
+          <FieldControl id="staff-desired-days" label="希望の勤務日数" hint="月あたり・上限31日">
+            <FieldSelect
+              id="staff-desired-days"
+              value={desiredDays}
+              onChange={(e) => setDesiredDays(e.target.value)}
+              className="tabular-nums"
+            >
+              <option value="">未設定</option>
+              {selectValues(MONTHLY_DAY_PRESETS, desiredDays).map((d) => (
+                <option key={d} value={d}>
+                  {d}日
+                </option>
+              ))}
+            </FieldSelect>
           </FieldControl>
         </div>
 

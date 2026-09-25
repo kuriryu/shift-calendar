@@ -11,7 +11,7 @@ import type {
  * 上下左右の余白をすべて 12px（p-3）で統一。高さはパディング＋文字サイズから自然に決める。
  */
 export const fieldClassName =
-  "box-border w-full appearance-none rounded-md border border-slate-200 bg-white p-3 text-sm leading-none text-slate-700";
+  "field-control box-border w-full appearance-none rounded-md border border-slate-200 bg-white p-3 text-sm leading-none text-slate-700";
 
 export default function FieldControl({
   id,
