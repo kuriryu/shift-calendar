@@ -1,6 +1,6 @@
 "use client";
 
-import type { ShiftRequest, Staff, TimeRange } from "@/types";
+import type { ShiftRequest, TimeRange } from "@/types";
 import Icon from "@/components/Icon";
 import { navCircleButtonClassName } from "@/components/FieldControl";
 import { useMounted } from "@/hooks/useMounted";
@@ -18,15 +18,25 @@ import {
   weekdayLabel,
   weekdayOf,
 } from "@/lib/dates";
-import { hasAnyPattern, patternOf, recommendationRequestOf } from "@/lib/staff-pattern";
+import { hasAnyPattern, recommendationRequestOf } from "@/lib/staff-pattern";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
 
-type PopoverState = {
-  staff: Staff;
-  date: string;
-  anchor: HTMLElement;
-};
+type Stamp =
+  | { kind: "available" | "off" | "triangle" | "free" }
+  | { kind: "time_limited"; start: string; end: string };
+
+const STAMPS: {
+  kind: "available" | "off" | "triangle" | "free";
+  label: string;
+  chip: string;
+  chipClass: string;
+}[] = [
+  { kind: "off", label: "休み", chip: "休", chipClass: "bg-slate-200 text-slate-700" },
+  { kind: "available", label: "出勤可能", chip: "○", chipClass: "bg-emerald-100 text-emerald-700" },
+  { kind: "triangle", label: "三角", chip: "△", chipClass: "bg-amber-100 text-amber-800" },
+  { kind: "free", label: "1日中", chip: "Free", chipClass: "bg-violet-100 text-violet-800" },
+];
 
 function compactTime(t: string): string {
   const [h, m] = t.split(":");
@@ -81,15 +91,16 @@ export default function RequestMatrix() {
     (s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS,
   );
   const setRequest = useAppStore((s) => s.setRequest);
-  const clearRequest = useAppStore((s) => s.clearRequest);
   const adoptRecommendations = useAppStore((s) => s.adoptRecommendations);
 
   const [personId, setPersonId] = useState<string | null>(null);
-  const [popover, setPopover] = useState<PopoverState | null>(null);
-  const closePopover = useCallback(() => setPopover(null), []);
-  const popoverRef = useDismissable<HTMLDivElement>(popover !== null, closePopover);
-  const { refs, floatingStyles, isPositioned } = useViewportPopover(popover?.anchor ?? null);
-  const popoverNodeRef = useMergeRefs([popoverRef, refs.setFloating]);
+  const [stamp, setStamp] = useState<Stamp | null>(null);
+  const [timeOpen, setTimeOpen] = useState(false);
+  const [timeAnchor, setTimeAnchor] = useState<HTMLElement | null>(null);
+  const closeTime = useCallback(() => setTimeOpen(false), []);
+  const timeRef = useDismissable<HTMLDivElement>(timeOpen, closeTime);
+  const { refs, floatingStyles, isPositioned } = useViewportPopover(timeOpen ? timeAnchor : null);
+  const timeNodeRef = useMergeRefs([timeRef, refs.setFloating]);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("13:00");
 
@@ -127,30 +138,45 @@ export default function RequestMatrix() {
 
   const selectPerson = (id: string) => {
     setPersonId(id);
-    closePopover();
+    closeTime();
   };
 
-  const openPopover = (e: React.MouseEvent, date: string) => {
-    if (!person) return;
-    setSelectedDate(date);
-    const existing = requestMap.get(date);
-    if (existing?.type === "time_limited" && existing.timeRange) {
-      setStart(existing.timeRange.start);
-      setEnd(existing.timeRange.end);
-    } else {
-      const pat = patternOf(person, date);
-      setStart(pat?.start ?? timeOptions[0]);
-      setEnd(pat?.end ?? timeOptions[Math.min(8, timeOptions.length - 1)]);
+  const openTime = (anchor: HTMLElement) => {
+    if (stamp?.kind === "time_limited") {
+      setStart(stamp.start);
+      setEnd(stamp.end);
     }
-    setPopover({ staff: person, date, anchor: e.currentTarget as HTMLElement });
+    setTimeAnchor(anchor);
+    setTimeOpen(true);
   };
 
-  const apply = (req: ShiftRequest | null) => {
-    if (!popover) return;
-    if (req) setRequest(req);
-    else clearRequest(popover.staff.id, popover.date);
-    closePopover();
+  const confirmTime = () => {
+    if (start >= end) return;
+    setStamp({ kind: "time_limited", start, end });
+    closeTime();
   };
+
+  const paint = (date: string) => {
+    if (!person || !stamp || timeOpen) return;
+    setSelectedDate(date);
+    if (stamp.kind === "time_limited") {
+      setRequest({
+        staffId: person.id,
+        date,
+        type: "time_limited",
+        timeRange: { start: stamp.start, end: stamp.end },
+      });
+      return;
+    }
+    setRequest({ staffId: person.id, date, type: stamp.kind });
+  };
+
+  const stampLabel =
+    stamp?.kind === "time_limited"
+      ? `${stamp.start}〜${stamp.end}`
+      : stamp
+        ? (STAMPS.find((item) => item.kind === stamp.kind)?.label ?? "")
+        : "";
 
   const hasPattern =
     !!person && (hasAnyPattern(person) || (person.unavailableWeekdays?.length ?? 0) > 0);
@@ -247,42 +273,59 @@ export default function RequestMatrix() {
           >
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <h3 className="text-base font-semibold text-slate-900">{monthLabel(month)}</h3>
-              <ul
-                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500"
-                aria-label="日付の凡例"
-              >
-                <li className="flex items-center gap-1.5">
-                  <span className="inline-flex h-5 items-center rounded bg-slate-200 px-1.5 text-[10px] font-semibold text-slate-700">
-                    休
-                  </span>
-                  休み
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <span className="inline-flex h-5 items-center rounded bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700">
-                    ○
-                  </span>
-                  出勤可能
-                </li>
-                <li className="flex items-center gap-1.5" title="あまり入りたくない。人がいなければ入る">
-                  <span className="inline-flex h-5 items-center rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800">
-                    △
-                  </span>
-                  三角
-                </li>
-                <li
-                  className="flex items-center gap-1.5"
-                  title="1日中入れる。時間帯はスタッフ情報で指定できる"
+              <div className="flex max-w-xl flex-col items-end gap-2">
+                <div
+                  className="flex flex-wrap items-center justify-end gap-1.5"
+                  role="toolbar"
+                  aria-label="希望の種類"
                 >
-                  <span className="inline-flex h-5 items-center rounded bg-violet-100 px-1.5 text-[10px] font-semibold text-violet-800">
-                    Free
-                  </span>
-                  1日中
-                </li>
-                <li className="flex items-center gap-1.5">
-                  <span className="inline-block h-5 w-5 rounded bg-sky-100" aria-hidden />
-                  時間帯
-                </li>
-              </ul>
+                  {STAMPS.map((item) => {
+                    const selected = stamp?.kind === item.kind;
+                    return (
+                      <button
+                        key={item.kind}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => {
+                          closeTime();
+                          setStamp({ kind: item.kind });
+                        }}
+                        className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                          selected
+                            ? "border-blue-600 bg-blue-50 text-slate-900"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        }`}
+                      >
+                        <span
+                          className={`inline-flex h-5 items-center rounded px-1.5 text-[10px] font-semibold ${item.chipClass}`}
+                        >
+                          {item.chip}
+                        </span>
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    aria-pressed={stamp?.kind === "time_limited"}
+                    aria-expanded={timeOpen}
+                    onClick={(e) => openTime(e.currentTarget)}
+                    className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                      stamp?.kind === "time_limited"
+                        ? "border-blue-600 bg-blue-50 text-slate-900"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className="inline-block h-5 w-5 rounded bg-sky-100" aria-hidden />
+                    {stamp?.kind === "time_limited" ? `${stamp.start}〜${stamp.end}` : "時間帯"}
+                  </button>
+                </div>
+                <p className="text-right text-[11px] leading-snug text-slate-500">
+                  {stamp
+                    ? `${stampLabel}を選んでいます。日付をタップすると、その日が${stampLabel}になります。`
+                    : "希望の種類を選んでから、日付をタップしてください。"}
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-7 gap-1">
@@ -307,7 +350,7 @@ export default function RequestMatrix() {
                     recommendation={
                       requestMap.has(date) ? null : recommendationRequestOf(person, date)
                     }
-                    onClick={(e) => openPopover(e, date)}
+                    onClick={() => paint(date)}
                   />
                 ),
               )}
@@ -316,162 +359,71 @@ export default function RequestMatrix() {
         </>
       ) : null}
 
-      {popover && (
+      {timeOpen && (
         <>
-          <div className="fixed inset-0 z-40" onClick={closePopover} aria-hidden />
+          <div className="fixed inset-0 z-40" onClick={closeTime} aria-hidden />
           <div
-            ref={popoverNodeRef}
+            ref={timeNodeRef}
             role="dialog"
-            aria-label={`${popover.staff.name} ${Number(popover.date.slice(8))}日の希望`}
-            className="z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-5 pb-2 shadow-xl"
+            aria-label="時間帯を指定"
+            className="z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-5 pb-5 shadow-xl"
             style={{ ...floatingStyles, visibility: isPositioned ? "visible" : "hidden" }}
           >
             <header className="space-y-1">
-              <p className="text-base font-bold tracking-tight text-slate-900">
-                {popover.staff.name}
-              </p>
+              <p className="text-base font-bold tracking-tight text-slate-900">時間帯を指定</p>
               <p className="text-sm text-slate-500">
-                {Number(popover.date.slice(8))}日（{weekdayLabel(popover.date)}）
+                決めたあと、日付をタップするとその時間帯になります。
               </p>
             </header>
 
-            <div className="mt-5 grid grid-cols-2 gap-3" role="group" aria-label="希望の種類">
-              <button
-                type="button"
-                onClick={() =>
-                  apply({
-                    staffId: popover.staff.id,
-                    date: popover.date,
-                    type: "available",
-                  })
-                }
-                className="flex flex-col items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-4 text-emerald-800 ring-1 ring-emerald-100 transition-colors hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500"
-              >
-                <Icon name="check_circle" size={22} className="text-emerald-600" />
-                <span className="text-xs font-semibold">出勤可能</span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  apply({ staffId: popover.staff.id, date: popover.date, type: "off" })
-                }
-                className="flex flex-col items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-4 text-slate-700 ring-1 ring-slate-200/80 transition-colors hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-500"
-              >
-                <Icon name="event_busy" size={22} className="text-slate-500" />
-                <span className="text-xs font-semibold">休み</span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  apply({
-                    staffId: popover.staff.id,
-                    date: popover.date,
-                    type: "triangle",
-                  })
-                }
-                aria-label="三角"
-                className="col-span-2 flex flex-col items-center gap-1 rounded-xl bg-amber-50 px-3 py-4 text-amber-900 ring-1 ring-amber-100 transition-colors hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
-              >
-                <span className="text-lg font-semibold leading-none text-amber-700" aria-hidden>
-                  △
-                </span>
-                <span className="text-[10px] font-normal text-amber-800/80">
-                  あまり入りたくない。人がいなければ入る
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  apply({
-                    staffId: popover.staff.id,
-                    date: popover.date,
-                    type: "free",
-                  })
-                }
-                className="col-span-2 flex flex-col items-center gap-1 rounded-xl bg-violet-50 px-3 py-4 text-violet-900 ring-1 ring-violet-100 transition-colors hover:bg-violet-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
-              >
-                <span className="text-xs font-semibold">Free</span>
-                <span className="text-[10px] font-normal text-violet-800/80">
-                  {popover.staff.freeTimeRange
-                    ? `${popover.staff.freeTimeRange.start}〜${popover.staff.freeTimeRange.end} で入れる`
-                    : "1日中入れます"}
-                </span>
-              </button>
-            </div>
-
-            <section className="mt-6 rounded-xl bg-blue-50/70 px-4 pb-2 pt-4" aria-label="時間帯を指定">
-              <div className="mb-4 flex items-center gap-2">
-                <Icon name="schedule" size={18} className="text-blue-700" />
-                <h3 className="text-sm font-semibold text-blue-900">時間帯を指定</h3>
-              </div>
-
-              <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-x-2.5 gap-y-0">
-                <div className="space-y-2">
-                  <label htmlFor="req-start" className="block text-xs font-medium text-blue-800/80">
-                    開始時刻
-                  </label>
-                  <select
-                    id="req-start"
-                    value={start}
-                    onChange={(e) => setStart(e.target.value)}
-                    className="w-full rounded-lg border border-blue-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
-                  >
-                    {timeOptions.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <span className="pb-3 text-lg font-medium text-blue-300" aria-hidden>
-                  〜
-                </span>
-                <div className="space-y-2">
-                  <label htmlFor="req-end" className="block text-xs font-medium text-blue-800/80">
-                    終了時刻
-                  </label>
-                  <select
-                    id="req-end"
-                    value={end}
-                    onChange={(e) => setEnd(e.target.value)}
-                    className="w-full rounded-lg border border-blue-200/80 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900 shadow-sm"
-                  >
-                    {timeOptions.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={() =>
-                    start < end &&
-                    apply({
-                      staffId: popover.staff.id,
-                      date: popover.date,
-                      type: "time_limited",
-                      timeRange: { start, end },
-                    })
-                  }
-                  disabled={start >= end}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            <div className="mt-5 grid grid-cols-[1fr_auto_1fr] items-end gap-x-2.5">
+              <div className="space-y-2">
+                <label htmlFor="req-start" className="block text-xs font-medium text-slate-500">
+                  開始時刻
+                </label>
+                <select
+                  id="req-start"
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900"
                 >
-                  <Icon name="done" size={18} />
-                  この時間帯で指定
-                </button>
+                  {timeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </section>
+              <span className="pb-3 text-lg font-medium text-slate-300" aria-hidden>
+                〜
+              </span>
+              <div className="space-y-2">
+                <label htmlFor="req-end" className="block text-xs font-medium text-slate-500">
+                  終了時刻
+                </label>
+                <select
+                  id="req-end"
+                  value={end}
+                  onChange={(e) => setEnd(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-3 text-center text-base font-semibold tabular-nums text-slate-900"
+                >
+                  {timeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             <button
               type="button"
-              onClick={() => apply(null)}
-              className="mt-2 w-full rounded-lg py-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+              onClick={confirmTime}
+              disabled={start >= end}
+              className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
-              クリア（未入力に戻す）
+              <Icon name="done" size={18} />
+              この時間帯にする
             </button>
           </div>
         </>
@@ -493,7 +445,7 @@ function DayCell({
   saved: ShiftRequest | null;
   freeTime?: TimeRange;
   recommendation: ShiftRequest | null;
-  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onClick: () => void;
 }) {
   const shown = saved ?? recommendation;
   const ghost = !saved && !!recommendation;
