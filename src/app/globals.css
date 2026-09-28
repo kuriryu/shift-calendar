@@ -103,23 +103,41 @@ button.primary-button {
   border-radius: 8px;
 }
 
+/* 条件設定の時刻セレクトを、人数ステッパーと同じ幅まで広げる */
+.settings-fields .smarthr-ui-Select {
+  display: block;
+  width: 100%;
+}
+
+/* 月の上限は時刻セレクトと同じ 8px の内側余白にする */
+.settings-fields input[type="number"] {
+  box-sizing: border-box;
+  height: 42px;
+  padding: 8px;
+  font-size: 16px;
+  line-height: 20px;
+}
+
 /* モーダルの見出し／フッター区切り線を非表示 */
 .staff-edit-dialog .smarthr-ui-Dialog-titleArea,
 .settings-dialog .smarthr-ui-Dialog-titleArea,
 .generate-confirm-dialog .smarthr-ui-Dialog-titleArea,
+.change-request-dialog .smarthr-ui-Dialog-titleArea,
 .assignment-add-dialog .smarthr-ui-Dialog-titleArea {
   border-bottom-width: 0;
 }
 .staff-edit-dialog .smarthr-ui-Dialog-actionArea,
 .settings-dialog .smarthr-ui-Dialog-actionArea,
 .generate-confirm-dialog .smarthr-ui-Dialog-actionArea,
+.change-request-dialog .smarthr-ui-Dialog-actionArea,
 .assignment-add-dialog .smarthr-ui-Dialog-actionArea {
   border-top-width: 0;
 }
 
 /* 条件設定・生成確認は本文側の h1 を見出しにする。ダイアログ標準見出しは読み上げ用に残す */
 .settings-dialog .smarthr-ui-Dialog-titleArea,
-.generate-confirm-dialog .smarthr-ui-Dialog-titleArea {
+.generate-confirm-dialog .smarthr-ui-Dialog-titleArea,
+.change-request-dialog .smarthr-ui-Dialog-titleArea {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -157,6 +175,7 @@ button.primary-button {
 .staff-edit-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
 .settings-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
 .generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
+.change-request-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
 .assignment-add-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main {
   background-color: #2563eb !important;
 }
@@ -178,6 +197,7 @@ button.primary-button {
 .staff-edit-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .settings-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
+.change-request-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .assignment-add-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover {
   background-color: #1d4ed8 !important;
 }

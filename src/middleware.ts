@@ -20,6 +20,9 @@ export async function middleware(request: NextRequest) {
 
   const session = await parseSessionToken(request.cookies.get(SESSION_COOKIE)?.value);
   if (!session) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ authenticated: false }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);

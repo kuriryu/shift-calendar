@@ -14,29 +14,25 @@ export default function StaffFilter() {
   const toggleStaffFilter = useAppStore((s) => s.toggleStaffFilter);
   const toggleRoleFilter = useAppStore((s) => s.toggleRoleFilter);
   const currentStep = useAppStore((s) => s.currentStep);
-  const month = useAppStore((s) => s.selectedMonth);
   const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS);
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
-  const draft = useAppStore((s) => s.draft);
-
   if (!mounted) return null;
 
-  const hasDraft = draft?.month === month;
   const confirmed = assignments.length > 0;
   const done: Record<StepId, boolean> = {
     1: true,
-    2: staff.length > 0,
-    3: requests.length > 0,
-    4: confirmed || hasDraft,
+    2: true,
+    3: staff.length > 0,
+    4: requests.length > 0,
     5: confirmed,
     6: confirmed,
   };
   const firstPending = ([1, 2, 3, 4, 5, 6] as StepId[]).find((id) => !done[id]);
   const active: StepId = currentStep ?? (confirmed ? 6 : (firstPending ?? 6));
-  /** 希望入力（ステップ3）以降で絞り込み可能 */
-  const locked = active < 3;
+  /** 希望入力（ステップ4）以降で絞り込み可能 */
+  const locked = active < 4;
 
   const hidden = new Set(hiddenStaffIds);
 
@@ -47,7 +43,7 @@ export default function StaffFilter() {
       </p>
       {locked && (
         <p className="mb-3 rounded-lg bg-slate-50 px-2.5 py-2 text-[10px] leading-relaxed text-slate-500">
-          希望入力（ステップ3）以降で使えるようになります
+          希望入力（ステップ4）以降で使えるようになります
         </p>
       )}
       <fieldset disabled={locked} className="space-y-4 border-0 p-0">

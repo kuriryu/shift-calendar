@@ -9,6 +9,8 @@ export type Staff = {
   id: string;
   name: string;
   role: Role;
+  /** 1日の上限時間（実働）。0 は未設定（上限チェックなし） */
+  maxHoursPerDay: number;
   /** 週の上限時間。0 は未設定（上限チェックなし） */
   maxHoursPerWeek: number;
   /** 最大連勤日数。0 は未設定（連勤チェックなし） */
@@ -24,6 +26,8 @@ export type Staff = {
   weekdayPattern?: TimeRange;
   /** 休日（土・日）の基本パターン。未入力日に自動適用 */
   weekendPattern?: TimeRange;
+  /** Freeの時間帯。未設定のFreeは、その日の営業時間いっぱい入れる */
+  freeTimeRange?: TimeRange;
   unavailableWeekdays?: number[]; // 0=日 … 6=土
   specialNote?: string; // 特別な要望（自由テキスト。AIが解釈して生成に反映）
   note?: string;
@@ -47,7 +51,11 @@ export type ActivityEntry = {
   message: string;
 };
 
-export type RequestType = "available" | "off" | "time_limited";
+/**
+ * triangle は、あまり入りたくないが他に人がいなければ入れる希望。
+ * Free（free）は1日中入れる希望。スタッフの freeTimeRange があるとその時間帯だけ。
+ */
+export type RequestType = "available" | "off" | "time_limited" | "triangle" | "free";
 
 export type ShiftRequest = {
   staffId: string;
@@ -74,6 +82,7 @@ export type ViolationRule =
   | "BREAK_UNDERSTAFFED"
   | "EMPLOYEE_PRESENT"
   | "MAX_CONSECUTIVE"
+  | "DAILY_HOURS"
   | "WEEKLY_HOURS"
   | "WEEKLY_MIN_HOURS"
   | "WEEKLY_MIN_DAYS"
@@ -87,7 +96,7 @@ export type Violation = {
   rule: ViolationRule;
   date: string;
   staffId?: string;
-  /** 時間帯に関する違反（人員不足など）の該当時間帯。ハイライト表示に使う */
+  /** 時間帯に関する違反（必要人数との不一致など）の該当時間帯。ハイライト表示に使う */
   timeRange?: TimeRange;
   message: string;
 };
@@ -97,12 +106,14 @@ export type ShopSettings = {
   closeTimeWeekday: string; // 閉店時刻（日〜木）
   closeTimeWeekend: string; // 閉店時刻（金・土）
   peakHours: TimeRange[]; // ピーク時間帯（変更可能）
-  normalRequired: number; // 原則の必要人数
-  peakRequired: number; // ピーク時の必要人数
-  edgeRequired: number; // 開店・閉店（締め作業）時の必須人数
+  normalRequired: number; // 通常時間帯の人数（ぴったり）
+  peakRequired: number; // ピーク時間帯の人数（ぴったり）
+  edgeRequired: number; // 開店・閉店の人数（ぴったり）
   employeeDaysOffTarget: number; // 社員の月間休日目標（日）
   employeeMinHoursPerWeek: number; // 社員の週最低労働時間
   employeeMinDaysPerWeek: number; // 社員の週最低出勤日数
+  /** この月の全体の労働時間の上限（時間）。0 は上限なし */
+  totalLaborHoursLimit: number;
 };
 
 export const OPEN_TIME = "09:00";
@@ -123,6 +134,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   employeeDaysOffTarget: 9,
   employeeMinHoursPerWeek: 32,
   employeeMinDaysPerWeek: 4,
+  totalLaborHoursLimit: 0,
 };
 
 /** シフト作成フローのステップ番号 */
@@ -139,7 +151,7 @@ export type HighlightTarget = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  employee: "社員",
+  employee: "契約社員",
   part_time: "パート",
   student: "学生",
 };

@@ -12,6 +12,8 @@ import FieldControl, { FieldInput, FieldSelect } from "@/components/FieldControl
 
 const WEEKDAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
 
+/** 1日の上限。学生の8時間などをここから選ぶ */
+const DAILY_HOUR_PRESETS = [3, 4, 5, 6, 7, 8, 9, 10];
 /** 労基法32条: 週の法定労働時間は40時間 */
 const WEEKLY_HOUR_PRESETS = [8, 12, 16, 20, 24, 28, 32, 36, 40];
 /** 連勤は7日まで選べる */
@@ -133,6 +135,7 @@ export default function StaffEditModal({
 
   const [name, setName] = useState(seeded?.name ?? "");
   const [role, setRole] = useState<Role | "">(seeded?.role ?? "");
+  const [maxDayHours, setMaxDayHours] = useState(storedChoice(seeded?.maxHoursPerDay));
   const [maxHours, setMaxHours] = useState(storedChoice(seeded?.maxHoursPerWeek));
   const [maxConsec, setMaxConsec] = useState(storedChoice(seeded?.maxConsecutiveDays));
   const [desiredDays, setDesiredDays] = useState(storedChoice(seeded?.desiredWorkDays));
@@ -141,6 +144,8 @@ export default function StaffEditModal({
   const [weekdayEnd, setWeekdayEnd] = useState(seeded?.weekdayPattern?.end ?? "");
   const [weekendStart, setWeekendStart] = useState(seeded?.weekendPattern?.start ?? "");
   const [weekendEnd, setWeekendEnd] = useState(seeded?.weekendPattern?.end ?? "");
+  const [freeStart, setFreeStart] = useState(seeded?.freeTimeRange?.start ?? "");
+  const [freeEnd, setFreeEnd] = useState(seeded?.freeTimeRange?.end ?? "");
   const [offWeekdays, setOffWeekdays] = useState<number[]>(seeded?.unavailableWeekdays ?? []);
   const [error, setError] = useState<string | null>(null);
 
@@ -149,6 +154,7 @@ export default function StaffEditModal({
     const s = staff ? migrateStaffPatterns(staff) : null;
     setName(s?.name ?? "");
     setRole(s?.role ?? "");
+    setMaxDayHours(storedChoice(s?.maxHoursPerDay));
     setMaxHours(storedChoice(s?.maxHoursPerWeek));
     setMaxConsec(storedChoice(s?.maxConsecutiveDays));
     setDesiredDays(storedChoice(s?.desiredWorkDays));
@@ -157,13 +163,16 @@ export default function StaffEditModal({
     setWeekdayEnd(s?.weekdayPattern?.end ?? "");
     setWeekendStart(s?.weekendPattern?.start ?? "");
     setWeekendEnd(s?.weekendPattern?.end ?? "");
+    setFreeStart(s?.freeTimeRange?.start ?? "");
+    setFreeEnd(s?.freeTimeRange?.end ?? "");
     setOffWeekdays(s?.unavailableWeekdays ?? []);
     setError(null);
   }, [staff, isOpen]);
 
   const weekdayErr = patternError(weekdayStart, weekdayEnd);
   const weekendErr = patternError(weekendStart, weekendEnd);
-  const hasPatternError = !!(weekdayErr || weekendErr);
+  const freeErr = patternError(freeStart, freeEnd);
+  const hasPatternError = !!(weekdayErr || weekendErr || freeErr);
 
   const toggleWeekday = (d: number) =>
     setOffWeekdays((prev) =>
@@ -181,13 +190,14 @@ export default function StaffEditModal({
       return;
     }
     if (hasPatternError) {
-      setError("基本パターンの時刻を修正してください");
+      setError("時刻を修正してください");
       return;
     }
     setError(null);
     const base = {
       name: trimmed,
       role,
+      maxHoursPerDay: Number(maxDayHours) > 0 ? Number(maxDayHours) : 0,
       maxHoursPerWeek: Number(maxHours) > 0 ? Number(maxHours) : 0,
       maxConsecutiveDays: Number(maxConsec) > 0 ? Number(maxConsec) : 0,
       desiredWorkDays: Number(desiredDays) > 0 ? Number(desiredDays) : undefined,
@@ -197,6 +207,7 @@ export default function StaffEditModal({
         (role === "employee" ? settings.employeeDaysOffTarget : 0),
       weekdayPattern: toPattern(weekdayStart, weekdayEnd),
       weekendPattern: toPattern(weekendStart, weekendEnd),
+      freeTimeRange: toPattern(freeStart, freeEnd),
       defaultPattern: undefined,
       unavailableWeekdays: offWeekdays.length > 0 ? offWeekdays : undefined,
     };
@@ -261,6 +272,21 @@ export default function StaffEditModal({
         </FieldControl>
 
         <div className="flex flex-wrap gap-4">
+          <FieldControl id="staff-day-hours" label="1日の上限時間">
+            <FieldSelect
+              id="staff-day-hours"
+              value={maxDayHours}
+              onChange={(e) => setMaxDayHours(e.target.value)}
+              className="tabular-nums"
+            >
+              <option value="">未設定</option>
+              {selectValues(DAILY_HOUR_PRESETS, maxDayHours).map((h) => (
+                <option key={h} value={h}>
+                  {h}時間
+                </option>
+              ))}
+            </FieldSelect>
+          </FieldControl>
           <FieldControl id="staff-hours" label="週の上限時間">
             <FieldSelect
               id="staff-hours"
@@ -346,6 +372,21 @@ export default function StaffEditModal({
           options={TIME_OPTIONS}
           error={weekendErr}
         />
+        <div className="space-y-2">
+          <PatternFields
+            id="free-time"
+            label="Freeの時間帯"
+            start={freeStart}
+            end={freeEnd}
+            onStart={setFreeStart}
+            onEnd={setFreeEnd}
+            options={TIME_OPTIONS}
+            error={freeErr}
+          />
+          <p className="text-[11px] leading-relaxed text-slate-400">
+            未設定のFreeは1日中入れます。時間を入れると、その時間だけ入れます。
+          </p>
+        </div>
 
         <fieldset className="space-y-2">
           <legend className="text-xs font-medium leading-4 text-slate-500">

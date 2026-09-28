@@ -31,6 +31,12 @@ export function isWeekendOrFri(dateStr: string): boolean {
   return w === 5 || w === 6; // 金・土は閉店時刻が異なる（設定の closeTimeWeekend）
 }
 
+/** 土・日。カレンダーの背景色に使う。金・土の閉店時刻とは別 */
+export function isWeekendDay(dateStr: string): boolean {
+  const w = weekdayOf(dateStr);
+  return w === 0 || w === 6;
+}
+
 export function monthLabel(month: string): string {
   const [y, m] = month.split("-").map(Number);
   return `${y}年${m}月`;

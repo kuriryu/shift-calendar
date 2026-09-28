@@ -2,7 +2,7 @@
 
 import { ControlledActionDialog } from "smarthr-ui";
 
-/** 自動生成の確認ダイアログ（ステップ4・再生成で共用） */
+/** 自動生成の前に出すダイアログ */
 export default function GenerateConfirmDialog({
   isOpen,
   hasExisting,
@@ -33,12 +33,12 @@ export default function GenerateConfirmDialog({
         シフト表を自動生成しますか？
       </h1>
       <p className="text-sm leading-relaxed text-slate-700">
-        登録したスタッフと希望をもとに、この月のシフト案を作ります。確定するまで既存のシフトは変わりません。
+        登録したスタッフと希望をもとに、この月のシフトを作り、調整へ進みます。
         {hasExisting && (
           <>
             <br />
             <br />
-            いま入っているシフトは、確定するまでそのままで、案だけ作り直します。
+            いま入っているシフトは、生成した内容に置き換わります。
           </>
         )}
       </p>

@@ -4,9 +4,11 @@ import Icon from "@/components/Icon";
 import { useCallback, useState } from "react";
 import AssignmentAddForm from "@/components/AssignmentAddForm";
 import AssignmentEditPopover, {
+  centerAnchor,
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
+import EagernessBadge, { useEagernessLabels } from "@/components/EagernessBadge";
 import { navCircleButtonClassName } from "@/components/FieldControl";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
@@ -52,6 +54,7 @@ export default function WeekCalendarView({
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
+  const eagerness = useEagernessLabels();
 
   const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
   const [hoursTarget, setHoursTarget] = useState<{
@@ -108,8 +111,7 @@ export default function WeekCalendarView({
       assignment: hoursTarget.assignment,
       staff: hoursTarget.staff,
       date: hoursTarget.date,
-      x: typeof window !== "undefined" ? Math.min(window.innerWidth / 2 - 140, window.innerWidth - 300) : 200,
-      y: typeof window !== "undefined" ? Math.min(window.innerHeight / 3, window.innerHeight - 480) : 120,
+      anchor: centerAnchor(),
     });
   };
 
@@ -170,7 +172,9 @@ export default function WeekCalendarView({
                     selected ? "選択中" : ""
                   }`}
                   aria-pressed={selected}
-                  className="flex flex-col items-center rounded-none border-b border-slate-200 px-2 py-2 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
+                  className={`flex w-full flex-col items-center rounded-none border-b border-slate-200 px-2 py-2 transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                    selected ? "bg-slate-100" : "hover:bg-slate-100"
+                  }`}
                 >
                   <span className="text-xs font-medium leading-4 text-slate-500">{WEEKDAY_HEADERS[i]}</span>
                   <span className="text-sm font-semibold leading-5 tabular-nums text-slate-800">
@@ -185,10 +189,19 @@ export default function WeekCalendarView({
                         <button
                           type="button"
                           onClick={(e) => openHours(e, a)}
-                          className="w-full truncate rounded bg-slate-100 px-1 py-1 text-left text-[10px] font-medium tabular-nums text-slate-800 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
-                          title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
-                          aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
+                          className={`w-full truncate rounded border border-slate-200 px-1 py-1 text-left text-[10px] font-medium tabular-nums text-slate-800 transition-colors focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 ${
+                            hoursTarget?.assignment.id === a.id || edit?.assignment.id === a.id
+                              ? "bg-slate-100"
+                              : "bg-white hover:bg-slate-100"
+                          }`}
+                          title={`${s?.name ?? a.staffId}${
+                            eagerness.get(a.staffId) ? ` ${eagerness.get(a.staffId)}` : ""
+                          } ${a.startTime}–${a.endTime}。タップで稼働時間`}
+                          aria-label={`${s?.name ?? a.staffId}${
+                            eagerness.get(a.staffId) ? `、${eagerness.get(a.staffId)}` : ""
+                          } ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
                         >
+                          <EagernessBadge label={eagerness.get(a.staffId) ?? null} compact />
                           {s?.name ?? a.staffId} {shortTime(a.startTime)}–
                           {shortTime(a.endTime)}
                         </button>

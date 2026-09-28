@@ -1,6 +1,6 @@
 import RedirectToStep from "@/components/RedirectToStep";
 
-// スタッフ管理はトップのステップ2に統合したためリダイレクト
+// スタッフ管理はトップのステップ3に統合したためリダイレクト
 export default function StaffPage() {
-  return <RedirectToStep step={2} />;
+  return <RedirectToStep step={3} />;
 }

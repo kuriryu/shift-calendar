@@ -9,8 +9,8 @@ import MonthStep from "@/components/steps/MonthStep";
 import StaffStep from "@/components/steps/StaffStep";
 import RequestStep from "@/components/steps/RequestStep";
 import GenerateStep from "@/components/steps/GenerateStep";
-import ProposalStep from "@/components/steps/ProposalStep";
 import AdjustStep from "@/components/steps/AdjustStep";
+import RulesGate from "@/components/steps/RulesGate";
 import type { StepId } from "@/types";
 
 export default function Dashboard() {
@@ -31,11 +31,11 @@ export default function Dashboard() {
   const def = STEPS[active - 1];
 
   const panel = {
-    1: <MonthStep />,
-    2: <StaffStep />,
-    3: <RequestStep />,
-    4: <GenerateStep />,
-    5: <ProposalStep />,
+    1: <RulesGate />,
+    2: <MonthStep />,
+    3: <StaffStep />,
+    4: <RequestStep />,
+    5: <GenerateStep />,
     6: <AdjustStep />,
   }[active];
 
@@ -57,7 +57,7 @@ export default function Dashboard() {
               {def.desc}
             </p>
           </div>
-          {active !== 2 && <ViolationBadge />}
+          {active !== 3 && <ViolationBadge />}
         </header>
 
         <div className="mt-2 md:mt-8">

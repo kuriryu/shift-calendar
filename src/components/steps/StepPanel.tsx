@@ -30,7 +30,7 @@ export default function StepPanel({
   const setStep = useAppStore((s) => s.setStep);
   const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
   const prev = step > 1 ? STEPS[step - 2] : null;
-  const next = step < 6 ? STEPS[step] : null;
+  const next = step < STEPS.length ? STEPS[step] : null;
   const showFooter = Boolean(prev) || (!hideNext && Boolean(next));
 
   return (

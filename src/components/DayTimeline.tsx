@@ -7,10 +7,12 @@ import { businessHoursOf, timeOptionsOf } from "@/lib/coverage";
 import Icon from "@/components/Icon";
 import AssignmentAddForm from "@/components/AssignmentAddForm";
 import AssignmentEditPopover, {
-  positionEditPopover,
+  anchorFromEvent,
+  centerAnchor,
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
+import EagernessBadge, { useEagernessLabels } from "@/components/EagernessBadge";
 import { navCircleButtonClassName } from "@/components/FieldControl";
 import { toMinutes } from "@/lib/time";
 import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
@@ -29,6 +31,7 @@ export default function DayTimeline({ date }: { date: string }) {
   const clearHighlight = useAppStore((s) => s.clearHighlight);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const reorderStaff = useAppStore((s) => s.reorderStaff);
+  const eagerness = useEagernessLabels();
 
   const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
   const [hoursStaff, setHoursStaff] = useState<Staff | null>(null);
@@ -71,8 +74,12 @@ export default function DayTimeline({ date }: { date: string }) {
   const openEdit = (e: React.MouseEvent, a: ShiftAssignment) => {
     const staffMember = staffById.get(a.staffId);
     if (!staffMember) return;
-    const { x, y } = positionEditPopover(e);
-    setEdit({ assignment: a, staff: staffMember, date, x, y });
+    setEdit({
+      assignment: a,
+      staff: staffMember,
+      date,
+      anchor: anchorFromEvent(e),
+    });
   };
 
   const onStaffDragStart = (e: React.DragEvent, id: string) => {
@@ -149,6 +156,7 @@ export default function DayTimeline({ date }: { date: string }) {
               <li key={s.id} className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-sm bg-slate-100" aria-hidden />
                 {s.name}
+                <EagernessBadge label={eagerness.get(s.id) ?? null} />
               </li>
             ))}
           {visibleStaff.length > 8 && (
@@ -165,9 +173,9 @@ export default function DayTimeline({ date }: { date: string }) {
         ref={chartRef}
         className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
       >
-       <div className="min-w-[40rem]">
+       <div className="min-w-[48rem]">
         {/* 時間軸 */}
-        <div className="relative ml-36 h-6">
+        <div className="relative ml-60 h-6">
           {hours.map((m) => (
             <span
               key={m}
@@ -179,7 +187,7 @@ export default function DayTimeline({ date }: { date: string }) {
           ))}
         </div>
 
-        <div className="relative ml-36">
+        <div className="relative ml-60">
           {/* ピーク時間帯の背景 */}
           {settings.peakHours.map((r, i) => (
             <div
@@ -233,7 +241,7 @@ export default function DayTimeline({ date }: { date: string }) {
                     isHl ? "violation-highlight bg-slate-100" : ""
                   } ${dragId === s.id ? "opacity-60" : ""}`}
                 >
-                  <div className="absolute -left-36 flex w-32 items-center gap-0.5 pr-1">
+                  <div className="absolute -left-60 flex w-56 items-center gap-1 pr-2">
                     <span
                       className="inline-flex shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
                       title="ドラッグで並べ替え"
@@ -244,11 +252,14 @@ export default function DayTimeline({ date }: { date: string }) {
                     <button
                       type="button"
                       onClick={() => setHoursStaff(s)}
-                      aria-label={`${s.name}の稼働時間を表示`}
-                      className="min-w-0 flex-1 truncate text-left text-xs font-medium text-slate-800 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600"
+                      aria-label={`${s.name}の稼働時間を表示${
+                        eagerness.get(s.id) ? `。${eagerness.get(s.id)}` : ""
+                      }`}
+                      className="min-w-0 truncate text-left text-xs font-medium text-slate-800 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600"
                     >
                       {s.name}
                     </button>
+                    <EagernessBadge label={eagerness.get(s.id) ?? null} />
                   </div>
                   {a ? (
                     <button
@@ -256,7 +267,11 @@ export default function DayTimeline({ date }: { date: string }) {
                       aria-label={`${s.name} ${a.startTime}〜${a.endTime}${
                         a.breakMinutes > 0 ? `、休憩${a.breakMinutes}分` : ""
                       }。タップで編集`}
-                      className="absolute h-7 rounded-md bg-slate-100 text-left text-[11px] font-semibold text-slate-800 shadow-sm hover:opacity-85"
+                      className={`absolute h-7 rounded-md border border-slate-200 text-left text-[11px] font-semibold text-slate-800 shadow-sm transition-colors ${
+                        edit?.assignment.id === a.id
+                          ? "bg-slate-100"
+                          : "bg-white hover:bg-slate-100"
+                      }`}
                       style={{
                         left: `${pct(sMin)}%`,
                         width: `${pct(eMin) - pct(sMin)}%`,
@@ -317,8 +332,7 @@ export default function DayTimeline({ date }: { date: string }) {
                     assignment: a,
                     staff: hoursStaff,
                     date,
-                    x: typeof window !== "undefined" ? window.innerWidth / 2 : 200,
-                    y: typeof window !== "undefined" ? window.innerHeight / 3 : 120,
+                    anchor: centerAnchor(),
                   });
                 }
               : undefined

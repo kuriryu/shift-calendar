@@ -3,6 +3,7 @@
 import Icon from "@/components/Icon";
 import { dayLabel, daysOfMonth, weeksOfMonth, weekKeyOf } from "@/lib/dates";
 import { workMinutesOf } from "@/lib/time";
+import EagernessBadge, { useEagernessLabels } from "@/components/EagernessBadge";
 import type { ShiftAssignment, Staff } from "@/types";
 
 function formatHours(minutes: number): string {
@@ -26,6 +27,7 @@ export default function StaffHoursModal({
   /** その日にシフトがある場合の編集導線 */
   onEditToday?: () => void;
 }) {
+  const eagerness = useEagernessLabels();
   const month = date.slice(0, 7);
   const monthDays = new Set(daysOfMonth(month));
   const week = weeksOfMonth(month).find(
@@ -64,7 +66,10 @@ export default function StaffHoursModal({
           id={`hours-title-${staff.id}`}
           className="text-base font-bold text-slate-900"
         >
-          {staff.name}
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {staff.name}
+            <EagernessBadge label={eagerness.get(staff.id) ?? null} />
+          </span>
         </h3>
         <p className="mt-1 text-xs text-slate-500">
           {dayLabel(date)} 時点の稼働（休憩を除く実働）

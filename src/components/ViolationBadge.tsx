@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useMergeRefs } from "@floating-ui/react";
 import Icon from "@/components/Icon";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDismissable } from "@/hooks/useDismissable";
+import { useViewportPopover } from "@/hooks/useViewportPopover";
 import type { Violation } from "@/types";
 
 /**
@@ -16,6 +18,9 @@ export default function ViolationBadge() {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
   const panelRef = useDismissable<HTMLDivElement>(open, close);
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
+  const { refs, floatingStyles, isPositioned } = useViewportPopover(open ? anchor : null, "bottom-end");
+  const panelNodeRef = useMergeRefs([panelRef, refs.setFloating]);
 
   const errors = violations.filter((v) => v.severity === "error");
   const warnings = violations.filter((v) => v.severity === "warning");
@@ -29,6 +34,7 @@ export default function ViolationBadge() {
   return (
     <div className="relative">
       <button
+        ref={setAnchor}
         onClick={() => setOpen(!open)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -71,10 +77,11 @@ export default function ViolationBadge() {
         <>
           <div className="fixed inset-0 z-40" onClick={close} aria-hidden />
           <div
-            ref={panelRef}
+            ref={panelNodeRef}
             role="dialog"
             aria-label="条件チェックの詳細"
-            className="absolute left-0 top-11 z-50 w-[22rem] max-w-[calc(100vw-3rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl sm:left-auto sm:right-0"
+            className="z-50 w-[22rem] max-w-[calc(100vw-3rem)] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+            style={{ ...floatingStyles, visibility: isPositioned ? "visible" : "hidden" }}
           >
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm font-semibold text-slate-800">条件チェックの詳細</p>

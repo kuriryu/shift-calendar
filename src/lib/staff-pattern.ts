@@ -1,11 +1,5 @@
 import type { ShiftRequest, Staff, TimeRange } from "@/types";
-import { weekdayOf } from "@/lib/dates";
-
-/** 土・日なら true（金曜は平日） */
-export function isWeekendDay(date: string): boolean {
-  const w = weekdayOf(date);
-  return w === 0 || w === 6;
-}
+import { isWeekendDay, weekdayOf } from "@/lib/dates";
 
 /**
  * その日の基本パターンを返す。

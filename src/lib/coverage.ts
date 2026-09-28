@@ -52,17 +52,16 @@ export type SlotRequirement = {
   edge: boolean;
 };
 
-/** その日の30分スロット一覧と必要人数（開店・閉店スロットは edgeRequired を下限にする） */
+/** その日の30分スロット一覧と必要人数（開店・閉店スロットは edgeRequired ぴったり） */
 export function slotPlanOf(date: string, settings: ShopSettings): SlotRequirement[] {
   const { open, close } = businessHoursOf(date, settings);
   const slots = slotsBetween(open, close);
   const last = slots[slots.length - 1];
   return slots.map((start) => {
     const edge = start === open || start === last;
-    const base = requiredAtSlot(start, settings);
     return {
       start,
-      required: edge ? Math.max(base, settings.edgeRequired) : base,
+      required: edge ? settings.edgeRequired : requiredAtSlot(start, settings),
       edge,
     };
   });

@@ -46,20 +46,18 @@ export default function SidebarCalendar() {
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
-  const draft = useAppStore((s) => s.draft);
   const violations = useAppStore((s) => s.violations);
 
   if (!mounted) {
     return <div className="h-60 px-2" aria-hidden />;
   }
 
-  const hasDraft = draft?.month === month;
   const confirmed = assignments.length > 0;
   const done: Record<StepId, boolean> = {
     1: true,
-    2: staff.length > 0,
-    3: requests.length > 0,
-    4: confirmed || hasDraft,
+    2: true,
+    3: staff.length > 0,
+    4: requests.length > 0,
     5: confirmed,
     6: confirmed,
   };
@@ -69,12 +67,6 @@ export default function SidebarCalendar() {
   const requestCounts = new Map<string, number>();
   for (const r of requests) {
     requestCounts.set(r.date, (requestCounts.get(r.date) ?? 0) + 1);
-  }
-  const draftCounts = new Map<string, number>();
-  if (draft?.month === month) {
-    for (const a of draft.assignments) {
-      draftCounts.set(a.date, (draftCounts.get(a.date) ?? 0) + 1);
-    }
   }
 
   const staffTotal = staff.length;
@@ -87,13 +79,10 @@ export default function SidebarCalendar() {
     source.some((a) => a.date === date && visibleStaffIds.has(a.staffId));
 
   const markOf = (date: string): { mark: DayMark; count: number } => {
+    if (active <= 4) return { mark: "none", count: 0 };
     if (active >= 6 && confirmed) {
       if (!hasVisibleShift(date, assignments)) return { mark: "none", count: 0 };
       return { mark: statusOf(date, violations), count: 1 };
-    }
-    if (active === 5 && hasDraft && draft) {
-      if (!hasVisibleShift(date, draft.assignments)) return { mark: "none", count: 0 };
-      return { mark: statusOf(date, draft.violations), count: draftCounts.get(date) ?? 0 };
     }
     if (staffTotal === 0) return { mark: "none", count: 0 };
     const n = requestCounts.get(date) ?? 0;
@@ -114,10 +103,8 @@ export default function SidebarCalendar() {
   ];
 
   const today = formatDate(new Date());
-  const locked = active === 1 || active === 2;
-  const showRequestLegend = (active === 3 || active === 4) && staffTotal > 0;
-  const showStatusLegend =
-    (active >= 6 && confirmed) || (active === 5 && hasDraft);
+  const locked = active <= 5;
+  const showStatusLegend = active >= 6 && confirmed;
 
   return (
     <div className={`flex flex-col gap-3 px-1 ${locked ? "opacity-55" : ""}`}>
@@ -129,9 +116,15 @@ export default function SidebarCalendar() {
 
       {locked && (
         <p className="rounded-md bg-white px-2 py-2 text-xs font-medium leading-4 text-slate-500">
-          {active === 2
-            ? "スタッフ登録中は、カレンダーの日付は選べません"
-            : "対象月の選択中は、カレンダーの日付は選べません"}
+          {active === 1
+            ? "条件設定中は、カレンダーの日付は選べません"
+            : active === 3
+              ? "スタッフ登録中は、カレンダーの日付は選べません"
+              : active === 4
+                ? "希望入力中は、カレンダーの日付は選べません"
+                : active === 5
+                  ? "自動生成中は、カレンダーの日付は選べません"
+                  : "対象月の選択中は、カレンダーの日付は選べません"}
         </p>
       )}
 
@@ -148,19 +141,6 @@ export default function SidebarCalendar() {
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
             問題なし
-          </span>
-        </p>
-      )}
-
-      {showRequestLegend && (
-        <p className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-[10px] leading-snug text-slate-400">
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full border border-blue-600" />
-            入力中
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />
-            全員入力済み
           </span>
         </p>
       )}
@@ -231,7 +211,7 @@ export default function SidebarCalendar() {
         )}
       </div>
 
-      {active === 2 && (
+      {active === 3 && (
         <p className="px-1 text-[11px] leading-snug text-slate-400">
           スタッフを登録すると、希望入力で候補が表示されます
         </p>

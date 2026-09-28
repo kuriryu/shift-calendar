@@ -46,6 +46,7 @@ export default function StaffManager() {
             <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
               <th className="px-4 py-3 font-semibold">名前</th>
               <th className="px-4 py-3 font-semibold">属性</th>
+              <th className="px-4 py-3 font-semibold">1日の上限</th>
               <th className="px-4 py-3 font-semibold">週の上限</th>
               <th className="px-4 py-3 font-semibold">基本パターン</th>
               <th className="px-4 py-3 font-semibold">固定休</th>
@@ -74,6 +75,9 @@ export default function StaffManager() {
                         <RoleBadge role={s.role} size="sm" />
                       </td>
                       <td className="px-4 py-3 text-slate-600">
+                        {(s.maxHoursPerDay ?? 0) > 0 ? `${s.maxHoursPerDay}時間` : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
                         {s.maxHoursPerWeek > 0 ? `${s.maxHoursPerWeek}h` : "—"}
                       </td>
                       <td className="px-4 py-3 text-slate-600">
@@ -83,6 +87,9 @@ export default function StaffManager() {
                             : null,
                           s.weekendPattern
                             ? `休 ${s.weekendPattern.start}–${s.weekendPattern.end}`
+                            : null,
+                          s.freeTimeRange
+                            ? `Free ${s.freeTimeRange.start}–${s.freeTimeRange.end}`
                             : null,
                           !s.weekdayPattern &&
                           !s.weekendPattern &&

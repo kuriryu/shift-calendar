@@ -12,6 +12,7 @@ import {
   slotPlanOf,
 } from "./coverage";
 import {
+  exceedsDailyHourLimit,
   minutesToHoursLabel,
   toMinutes,
   toTimeString,
@@ -54,29 +55,29 @@ export function validateMonth(
         severity: "error",
         rule: "EMPLOYEE_PRESENT",
         date,
-        message: `${dayLabel(date)}: 社員が1人も配置されていません`,
+        message: `${dayLabel(date)}: 契約社員が1人も配置されていません`,
       });
     }
 
-    // 人員不足（連続スロットをまとめて報告）
-    // - 開店・閉店（締め作業）スロットの不足 → エラー
-    // - それ以外の時間帯の不足 → 警告（原則人数）
-    // - 休憩起因の一時的な不足 → エラー（休憩中も原則人数を守る）
+    // 必要人数との不一致（連続スロットをまとめて報告）
+    // 通常・ピーク・開店閉店は、指定人数より多くても少なくてもエラー
+    // 休憩だけで一時的に下回る場合もエラー
     const plan = slotPlanOf(date, settings);
-    let deficitStart: number | null = null;
-    let deficitMin = 0;
-    let deficitRequired = 0;
-    let breakCaused = true;
+    type HeadcountKind = "break" | "under" | "over";
+    let runStart: number | null = null;
+    let runKind: HeadcountKind = "under";
+    let runShown = 0;
+    let runRequired = 0;
     let touchesEdge = false;
 
     const flush = (endSlot: number) => {
-      if (deficitStart === null) return;
+      if (runStart === null) return;
       const timeRange = {
-        start: toTimeString(deficitStart),
+        start: toTimeString(runStart),
         end: toTimeString(endSlot),
       };
       const range = `${timeRange.start}–${timeRange.end}`;
-      if (breakCaused) {
+      if (runKind === "break") {
         violations.push({
           id: vid(),
           severity: "error",
@@ -85,49 +86,50 @@ export function validateMonth(
           timeRange,
           message: `${dayLabel(date)} ${range}: 休憩により一時的に必要人数を下回ります`,
         });
-      } else if (touchesEdge) {
+      } else {
         violations.push({
           id: vid(),
           severity: "error",
           rule: "MIN_STAFF",
           date,
           timeRange,
-          message: `${dayLabel(date)} ${range}: 開店・閉店時の人員不足（${deficitMin}/${deficitRequired}名）`,
-        });
-      } else {
-        violations.push({
-          id: vid(),
-          severity: "warning",
-          rule: "MIN_STAFF",
-          date,
-          timeRange,
-          message: `${dayLabel(date)} ${range}: 人員が原則人数を下回ります（${deficitMin}/${deficitRequired}名）`,
+          message: touchesEdge
+            ? `${dayLabel(date)} ${range}: 開店・閉店の人数が一致しません（${runShown}/${runRequired}名）`
+            : `${dayLabel(date)} ${range}: 必要人数と一致しません（${runShown}/${runRequired}名）`,
         });
       }
-      deficitStart = null;
+      runStart = null;
     };
 
     for (const slot of plan) {
       const covered = dayAsg.filter((a) => coversSlot(a, slot.start)).length;
-      if (covered < slot.required) {
-        const withBreaks = dayAsg.filter((a) =>
-          coversSlotIncludingBreak(a, slot.start),
-        ).length;
-        const isBreakCaused = withBreaks >= slot.required;
-        if (deficitStart === null) {
-          deficitStart = slot.start;
-          deficitMin = covered;
-          deficitRequired = slot.required;
-          breakCaused = isBreakCaused;
-          touchesEdge = slot.edge;
-        } else {
-          deficitMin = Math.min(deficitMin, covered);
-          deficitRequired = Math.max(deficitRequired, slot.required);
-          breakCaused = breakCaused && isBreakCaused;
-          touchesEdge = touchesEdge || slot.edge;
-        }
-      } else {
+      const withBreaks = dayAsg.filter((a) =>
+        coversSlotIncludingBreak(a, slot.start),
+      ).length;
+      let kind: HeadcountKind | null = null;
+      if (covered < slot.required && withBreaks >= slot.required) kind = "break";
+      else if (covered < slot.required) kind = "under";
+      else if (covered > slot.required) kind = "over";
+
+      if (kind === null) {
         flush(slot.start);
+        continue;
+      }
+      const worse =
+        kind === "over" ? covered > runShown : covered < runShown;
+      if (runStart === null || kind !== runKind) {
+        flush(slot.start);
+        runStart = slot.start;
+        runKind = kind;
+        runShown = covered;
+        runRequired = slot.required;
+        touchesEdge = slot.edge;
+      } else {
+        if (worse) {
+          runShown = covered;
+          runRequired = slot.required;
+        }
+        touchesEdge = touchesEdge || slot.edge;
       }
     }
     flush(plan.length > 0 ? plan[plan.length - 1].start + 30 : 0);
@@ -162,6 +164,21 @@ export function validateMonth(
           });
         }
       }
+      if (req?.type === "free" && staff.freeTimeRange) {
+        const ok =
+          toMinutes(a.startTime) >= toMinutes(staff.freeTimeRange.start) &&
+          toMinutes(a.endTime) <= toMinutes(staff.freeTimeRange.end);
+        if (!ok) {
+          violations.push({
+            id: vid(),
+            severity: "error",
+            rule: "TIME_LIMIT_CONFLICT",
+            date,
+            staffId: a.staffId,
+            message: `${dayLabel(date)}: ${staff.name} の勤務がFreeの時間（${staff.freeTimeRange.start}–${staff.freeTimeRange.end}）を外れています`,
+          });
+        }
+      }
     }
   }
 
@@ -191,6 +208,25 @@ export function validateMonth(
           date: a.date,
           staffId: staff.id,
           message: `${dayLabel(a.date)}: ${staff.name} の連勤が ${streak} 日（上限 ${staff.maxConsecutiveDays} 日）`,
+        });
+      }
+    }
+
+    // 1日の実働上限（休憩を除く）。未設定の人は見ない
+    if ((staff.maxHoursPerDay ?? 0) > 0) {
+      const dayMinutes = new Map<string, number>();
+      for (const a of mine) {
+        dayMinutes.set(a.date, (dayMinutes.get(a.date) ?? 0) + workMinutesOf(a));
+      }
+      for (const [date, minutes] of dayMinutes) {
+        if (!exceedsDailyHourLimit(minutes, staff.maxHoursPerDay)) continue;
+        violations.push({
+          id: vid(),
+          severity: "error",
+          rule: "DAILY_HOURS",
+          date,
+          staffId: staff.id,
+          message: `${dayLabel(date)}: ${staff.name} の1日の上限を超えています（${minutesToHoursLabel(minutes)} / ${staff.maxHoursPerDay}時間）`,
         });
       }
     }

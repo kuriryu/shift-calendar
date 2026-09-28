@@ -13,7 +13,7 @@ export default function StaffStep() {
   const [creating, setCreating] = useState(false);
 
   return (
-    <StepPanel step={2} nextDisabled={staff.length === 0}>
+    <StepPanel step={3} nextDisabled={staff.length === 0}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
         <dl className="grid flex-1 grid-cols-3 gap-2 sm:gap-4">
           {ROLE_ORDER.map((role) => {

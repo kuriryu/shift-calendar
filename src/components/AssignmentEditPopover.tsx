@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useMergeRefs, type VirtualElement } from "@floating-ui/react";
 import Icon from "@/components/Icon";
 import FieldControl, { FieldSelect } from "@/components/FieldControl";
 import { useAppStore } from "@/stores/useAppStore";
 import { useDismissable } from "@/hooks/useDismissable";
-import { toMinutes } from "@/lib/time";
+import { useViewportPopover } from "@/hooks/useViewportPopover";
+import {
+  DAILY_HOUR_LIMIT_ALERT,
+  exceedsDailyHourLimit,
+  toMinutes,
+  workMinutesOf,
+} from "@/lib/time";
 import { dayLabel } from "@/lib/dates";
 import type { ShiftAssignment, Staff } from "@/types";
 
@@ -16,15 +23,23 @@ export type AssignmentEditTarget = {
   assignment: ShiftAssignment;
   staff: Staff;
   date: string;
-  x: number;
-  y: number;
+  /** この要素の上下、画面に収まる側へ開く */
+  anchor: HTMLElement | VirtualElement;
 };
 
-export function positionEditPopover(e: React.MouseEvent): { x: number; y: number } {
-  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+export function anchorFromEvent(event: React.MouseEvent): HTMLElement {
+  return event.currentTarget as HTMLElement;
+}
+
+/** 基準になるボタンが無いとき、画面上部を仮の起点にする */
+export function centerAnchor(): VirtualElement {
   return {
-    x: Math.min(rect.left, window.innerWidth - 300),
-    y: Math.min(rect.bottom + 8, window.innerHeight - 480),
+    getBoundingClientRect() {
+      const width = 280;
+      const x = Math.max(8, window.innerWidth / 2 - width / 2);
+      const y = Math.max(8, window.innerHeight * 0.2);
+      return new DOMRect(x, y, width, 1);
+    },
   };
 }
 
@@ -40,6 +55,8 @@ export default function AssignmentEditPopover({
   const updateAssignment = useAppStore((s) => s.updateAssignment);
   const removeAssignment = useAppStore((s) => s.removeAssignment);
   const editRef = useDismissable<HTMLDivElement>(true, onClose);
+  const { refs, floatingStyles, isPositioned } = useViewportPopover(edit.anchor);
+  const popoverRef = useMergeRefs([editRef, refs.setFloating]);
 
   const [start, setStart] = useState(edit.assignment.startTime);
   const [end, setEnd] = useState(edit.assignment.endTime);
@@ -66,6 +83,15 @@ export default function AssignmentEditPopover({
   const validBreakStart = breakStartOptions.includes(breakStart)
     ? breakStart
     : (breakStartOptions[0] ?? "");
+  const workMinutes =
+    start < end
+      ? workMinutesOf({
+          startTime: start,
+          endTime: end,
+          breakMinutes: breakMinNum,
+        })
+      : 0;
+  const overDailyLimit = exceedsDailyHourLimit(workMinutes, edit.staff.maxHoursPerDay);
 
   const fieldId = edit.assignment.id;
 
@@ -73,11 +99,11 @@ export default function AssignmentEditPopover({
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
       <div
-        ref={editRef}
+        ref={popoverRef}
         role="dialog"
         aria-label={`${edit.staff.name} ${dayLabel(edit.date)} のシフトを編集`}
-        className="fixed z-50 w-[17.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-6 pb-8 shadow-xl"
-        style={{ left: edit.x, top: edit.y }}
+        className="z-50 w-[17.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-6 pb-8 shadow-xl"
+        style={{ ...floatingStyles, visibility: isPositioned ? "visible" : "hidden" }}
       >
         <header className="mb-5">
           <p className="text-base font-bold tracking-tight text-slate-900">
@@ -127,6 +153,11 @@ export default function AssignmentEditPopover({
               </FieldSelect>
             </FieldControl>
           </div>
+          {overDailyLimit && (
+            <p role="alert" className="text-xs font-medium text-red-600">
+              {DAILY_HOUR_LIMIT_ALERT}
+            </p>
+          )}
         </section>
 
         <section className="mt-6 space-y-3" aria-labelledby={`edit-break-${fieldId}`}>
@@ -173,7 +204,7 @@ export default function AssignmentEditPopover({
           <button
             type="button"
             onClick={() => {
-              if (start < end) {
+              if (start < end && !overDailyLimit) {
                 updateAssignment({
                   ...edit.assignment,
                   startTime: start,
@@ -186,7 +217,7 @@ export default function AssignmentEditPopover({
                 onClose();
               }
             }}
-            disabled={start >= end}
+            disabled={start >= end || overDailyLimit}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             <Icon name="done" size={18} />

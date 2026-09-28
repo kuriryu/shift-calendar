@@ -7,6 +7,7 @@ import SidebarCalendar from "@/components/SidebarCalendar";
 import StaffFilter from "@/components/StaffFilter";
 import Icon from "@/components/Icon";
 import { LOGIN_ENABLED } from "@/lib/auth/feature";
+import SharedStateSync from "@/components/SharedStateSync";
 import { useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -281,6 +282,7 @@ export default function AppShell({
 
   return (
     <div className="flex h-dvh min-h-0 flex-1 flex-col overflow-hidden md:h-auto md:min-h-full md:overflow-visible md:flex-row">
+      <SharedStateSync />
       {isMobile && (
         <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-2">
           <button

@@ -32,7 +32,7 @@ export default function MonthStep() {
   };
 
   return (
-    <StepPanel step={1}>
+    <StepPanel step={2}>
       <div className="flex flex-col items-center gap-3 md:gap-5">
         <div
           className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600 md:h-14 md:w-14 md:rounded-2xl"

@@ -7,14 +7,22 @@ import type {
 } from "@/types";
 import { daysOfMonth, formatDate, parseDate, weekKeyOf, weekdayOf } from "./dates";
 import { businessHoursOf, coversSlot, slotPlanOf } from "./coverage";
-import { toMinutes, toTimeString, workMinutesOf } from "./time";
+import {
+  SLOT_MINUTES,
+  exceedsDailyHourLimit,
+  toMinutes,
+  toTimeString,
+  workMinutesOf,
+} from "./time";
 import { parseSpecialNote } from "./notes";
 import { patternOf } from "./staff-pattern";
+import { eagernessByStaff } from "./request-priority";
 
 // 段階的ヒューリスティック:
 // 1. 日単位で割当（前日までの累積状態を参照）
-// 2. 社員（早番・遅番）→ 不足スロットをパート・学生で埋める
-// 3. 残った違反は validator が警告として可視化
+// 2. 希望時間の合計が多い人から順に枠を埋める。三角は最後に、空きが残った枠だけ
+// 3. 社員（早番・遅番）→ 各時間帯が必要人数ちょうどになるようパート・学生で埋める
+// 4. 人数が一致しない時間帯は validator がエラーとして可視化
 
 const EMPLOYEE_SHIFT_MIN = 540; // 拘束9h = 実働8h + 休憩1h
 const PART_TARGET_MIN = 240; // パート 4h 目安
@@ -35,6 +43,8 @@ type Candidate = {
   staff: Staff;
   windowStart: number;
   windowEnd: number;
+  /** 三角。他の人で埋まらないときだけ入れる */
+  reluctant: boolean;
 };
 
 function yesterdayOf(dateStr: string): string {
@@ -59,12 +69,20 @@ function availabilityWindow(
       start: toMinutes(request.timeRange.start),
       end: toMinutes(request.timeRange.end),
     };
+  } else if (request?.type === "free") {
+    const range = staff.freeTimeRange;
+    win = range
+      ? { start: toMinutes(range.start), end: toMinutes(range.end) }
+      : { start: open, end: close };
+    win.start = Math.max(win.start, open);
+    win.end = Math.min(win.end, close);
   } else if (!request) {
     const pat = patternOf(staff, date);
     win = pat
       ? { start: toMinutes(pat.start), end: toMinutes(pat.end) }
       : { start: open, end: close };
   } else {
+    // 出勤可能と三角は営業時間いっぱい。三角は後の段階で、空きが残った枠だけに入る
     win = { start: open, end: close };
   }
   // 特別な要望の時間制約で絞り込む
@@ -109,6 +127,18 @@ export function computeBreak(
   };
 }
 
+function alignUp(minutes: number): number {
+  return Math.ceil(minutes / SLOT_MINUTES) * SLOT_MINUTES;
+}
+
+function alignDown(minutes: number): number {
+  return Math.floor(minutes / SLOT_MINUTES) * SLOT_MINUTES;
+}
+
+function overlapMinutes(a0: number, a1: number, b0: number, b1: number): number {
+  return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+}
+
 function makeAssignment(
   staff: Staff,
   date: string,
@@ -142,6 +172,13 @@ export function generateMonth(
   const days = daysOfMonth(month);
   const requestMap = new Map<string, ShiftRequest>();
   for (const r of requests) requestMap.set(`${r.staffId}:${r.date}`, r);
+  const requestMinutes = new Map(
+    [...eagernessByStaff(month, staffList, requests, settings)].map(([id, row]) => [
+      id,
+      row.minutes,
+    ]),
+  );
+  const requestRank = (id: string) => requestMinutes.get(id) ?? 0;
 
   const state = new Map<string, StaffState>();
   for (const s of staffList) {
@@ -193,14 +230,66 @@ export function generateMonth(
       if (note?.maxDaysPerWeek != null && st.weekDays >= note.maxDaysPerWeek)
         continue;
       if (s.maxConsecutiveDays > 0 && st.streak >= s.maxConsecutiveDays) continue;
-      const win = availabilityWindow(s, date, requestMap.get(`${s.id}:${date}`), open, close, note);
+      const request = requestMap.get(`${s.id}:${date}`);
+      const win = availabilityWindow(s, date, request, open, close, note);
       if (!win) continue;
       if (win.end - win.start < 60) continue;
-      candidates.push({ staff: s, windowStart: win.start, windowEnd: win.end });
+      candidates.push({
+        staff: s,
+        windowStart: win.start,
+        windowEnd: win.end,
+        reluctant: request?.type === "triangle",
+      });
     }
 
     const dayAssignments: ShiftAssignment[] = [];
     const assignedToday = new Set<string>();
+    const plan = slotPlanOf(date, settings);
+    const coverageOf = (slotStart: number) =>
+      dayAssignments.filter((a) => coversSlot(a, slotStart)).length;
+
+    /** すでに必要人数へ達しているスロットを勤務時間に含めない範囲を探す */
+    const bestWindow = (
+      c: Candidate,
+      targetMin: number,
+      preferStart: number,
+      preferEnd: number,
+      preferredBreakMin?: number,
+      anchor?: number,
+    ): { start: number; end: number; gained: number } | null => {
+      const lo = Math.max(alignUp(c.windowStart), open);
+      const hi = Math.min(alignDown(c.windowEnd), close);
+      let best: { start: number; end: number; gained: number; prefer: number } | null =
+        null;
+      for (let start = lo; start < hi; start += SLOT_MINUTES) {
+        const maxEnd = Math.min(hi, start + targetMin);
+        for (let end = start + SLOT_MINUTES; end <= maxEnd; end += SLOT_MINUTES) {
+          const draft = makeAssignment(c.staff, date, start, end, preferredBreakMin);
+          if (exceedsDailyHourLimit(workMinutesOf(draft), c.staff.maxHoursPerDay)) continue;
+          const gained: number[] = [];
+          let fits = true;
+          for (const slot of plan) {
+            if (!coversSlot(draft, slot.start)) continue;
+            if (coverageOf(slot.start) >= slot.required) {
+              fits = false;
+              break;
+            }
+            gained.push(slot.start);
+          }
+          if (!fits || gained.length === 0) continue;
+          if (anchor != null && !gained.includes(anchor)) continue;
+          const prefer = overlapMinutes(start, end, preferStart, preferEnd);
+          if (
+            !best ||
+            gained.length > best.gained ||
+            (gained.length === best.gained && prefer > best.prefer)
+          ) {
+            best = { start, end, gained: gained.length, prefer };
+          }
+        }
+      }
+      return best ? { start: best.start, end: best.end, gained: best.gained } : null;
+    };
 
     const tryAssign = (
       c: Candidate,
@@ -211,6 +300,7 @@ export function generateMonth(
       const st = state.get(c.staff.id)!;
       const a = makeAssignment(c.staff, date, startMin, endMin, preferredBreakMin);
       const workMin = workMinutesOf(a);
+      if (exceedsDailyHourLimit(workMin, c.staff.maxHoursPerDay)) return false;
       if (
         c.staff.maxHoursPerWeek > 0 &&
         st.weekMinutes + workMin > c.staff.maxHoursPerWeek * 60
@@ -226,92 +316,150 @@ export function generateMonth(
       return true;
     };
 
-    // ── ① 社員: 早番・遅番を最大2名確保 ──
-    const employees = candidates
+    const willing = candidates.filter((c) => !c.reluctant);
+    const backup = candidates.filter((c) => c.reluctant);
+
+    // ── ① 社員: 早番・遅番を最大2名確保。三角の社員はここでは置かない ──
+    const employees = willing
       .filter((c) => c.staff.role === "employee")
       .sort((a, b) => {
-        // 公休目安に対して遅れている人を優先的に休ませたいので、
-        // 働かせる優先度は「出勤日数が少ない → 連勤が浅い」順
+        // 希望時間が多い人を先に置く。同じなら出勤が少ない人、連勤が浅い人
+        const byRequest = requestRank(b.staff.id) - requestRank(a.staff.id);
+        if (byRequest !== 0) return byRequest;
         const sa = state.get(a.staff.id)!;
         const sb = state.get(b.staff.id)!;
         return sa.workDays - sb.workDays || sa.streak - sb.streak;
       });
 
-    // 3名いれば1名は公休に回す（公休目安に対して遅れている人を優先）
+    // 3名いれば1名は公休。希望が少ない人を休みにし、同じなら公休が遅れている人
     let workers = employees;
     if (employees.length >= 3) {
       const sorted = [...employees].sort((a, b) => {
+        const byRequest = requestRank(a.staff.id) - requestRank(b.staff.id);
+        if (byRequest !== 0) return byRequest;
         const sa = state.get(a.staff.id)!;
         const sb = state.get(b.staff.id)!;
         const needA = settings.employeeDaysOffTarget - sa.offDays;
         const needB = settings.employeeDaysOffTarget - sb.offDays;
-        return needB - needA; // 休み必要度が高い人が先頭＝休ませる
+        return needB - needA;
       });
       const rester = sorted[0];
       workers = employees.filter((c) => c.staff.id !== rester.staff.id);
     }
 
+    const placeExact = (
+      c: Candidate,
+      targetMin: number,
+      preferStart: number,
+      preferEnd: number,
+      preferredBreakMin?: number,
+      anchor?: number,
+    ) => {
+      const win = bestWindow(
+        c,
+        targetMin,
+        preferStart,
+        preferEnd,
+        preferredBreakMin,
+        anchor,
+      );
+      if (!win) return false;
+      return tryAssign(c, win.start, win.end, preferredBreakMin);
+    };
+
     const [earlyEmp, lateEmp] = workers;
     if (earlyEmp) {
-      tryAssign(earlyEmp, open, open + EMPLOYEE_SHIFT_MIN);
+      placeExact(earlyEmp, EMPLOYEE_SHIFT_MIN, open, open + EMPLOYEE_SHIFT_MIN);
     }
     if (lateEmp) {
-      // 早番と休憩が重ならないよう1時間ずらす（14:00に2人同時休憩→一時割れを防ぐ）
+      // 早番と休憩が重ならないよう1時間ずらす
       const earlyBreak = dayAssignments.find(
         (a) => a.staffId === earlyEmp?.staff.id,
       )?.breakStartTime;
       const preferred = earlyBreak ? toMinutes(earlyBreak) + 60 : undefined;
-      tryAssign(lateEmp, close - EMPLOYEE_SHIFT_MIN, close, preferred);
+      placeExact(
+        lateEmp,
+        EMPLOYEE_SHIFT_MIN,
+        close - EMPLOYEE_SHIFT_MIN,
+        close,
+        preferred,
+      );
     }
 
-    // ── ② 不足スロットをパート・学生で埋める ──
-    const plan = slotPlanOf(date, settings);
-    const coverageOf = (slotStart: number) =>
-      dayAssignments.filter((a) => coversSlot(a, slotStart)).length;
+    const targetMinutes = (c: Candidate) => {
+      if (c.staff.role === "employee") return EMPLOYEE_SHIFT_MIN;
+      if (c.staff.role === "student") return STUDENT_TARGET_MIN;
+      return PART_TARGET_MIN;
+    };
 
-    const others = candidates.filter(
-      (c) => c.staff.role !== "employee" && !assignedToday.has(c.staff.id),
-    );
-
-    for (const slot of plan) {
+    /** まだ足りない時間帯を、必要人数を超えない範囲で埋める */
+    const fillGaps = (pool: Candidate[], preferRequest: boolean) => {
+      const unmet = new Set<number>();
       let guard = 0;
-      while (coverageOf(slot.start) < slot.required && guard++ < 10) {
-        const pool = others.filter(
-          (c) =>
-            !assignedToday.has(c.staff.id) &&
-            c.windowStart <= slot.start &&
-            slot.start + 30 <= c.windowEnd,
-        );
-        if (pool.length === 0) break;
+      while (guard++ < plan.length * Math.max(pool.length, 1) + 5) {
+        const anchor = plan
+          .filter((slot) => !unmet.has(slot.start) && coverageOf(slot.start) < slot.required)
+          .sort(
+            (a, b) =>
+              b.required -
+              coverageOf(b.start) -
+              (a.required - coverageOf(a.start)) || a.start - b.start,
+          )[0];
+        if (!anchor) break;
 
-        pool.sort((a, b) => {
-          const sa = state.get(a.staff.id)!;
-          const sb = state.get(b.staff.id)!;
-          const capA =
-            a.staff.maxHoursPerWeek > 0
-              ? a.staff.maxHoursPerWeek * 60
-              : Number.POSITIVE_INFINITY;
-          const capB =
-            b.staff.maxHoursPerWeek > 0
-              ? b.staff.maxHoursPerWeek * 60
-              : Number.POSITIVE_INFINITY;
-          const remainA = capA - sa.weekMinutes;
-          const remainB = capB - sb.weekMinutes;
-          return remainB - remainA || sa.streak - sb.streak;
-        });
+        const ranked = pool
+          .filter((c) => !assignedToday.has(c.staff.id))
+          .map((c) => {
+            const target = targetMinutes(c);
+            const win = bestWindow(
+              c,
+              target,
+              anchor.start,
+              anchor.start + target,
+              undefined,
+              anchor.start,
+            );
+            return win ? { c, win } : null;
+          })
+          .filter((row): row is NonNullable<typeof row> => row !== null)
+          .sort((a, b) => {
+            if (preferRequest) {
+              const byRequest = requestRank(b.c.staff.id) - requestRank(a.c.staff.id);
+              if (byRequest !== 0) return byRequest;
+            }
+            if (b.win.gained !== a.win.gained) return b.win.gained - a.win.gained;
+            if (preferRequest) {
+              const remain = (c: Candidate) => {
+                const st = state.get(c.staff.id)!;
+                const cap =
+                  c.staff.maxHoursPerWeek > 0
+                    ? c.staff.maxHoursPerWeek * 60
+                    : Number.POSITIVE_INFINITY;
+                return cap - st.weekMinutes;
+              };
+              return remain(b.c) - remain(a.c);
+            }
+            return state.get(a.c.staff.id)!.workDays - state.get(b.c.staff.id)!.workDays;
+          });
 
-        const pick = pool[0];
-        const target =
-          pick.staff.role === "student" ? STUDENT_TARGET_MIN : PART_TARGET_MIN;
-        const startMin = Math.max(pick.windowStart, open, slot.start - 60);
-        const endMin = Math.min(pick.windowEnd, startMin + target);
-        if (endMin - startMin < 60) break;
-        if (!tryAssign(pick, startMin, endMin)) {
-          // 週上限に引っかかった → この候補は今日は使わない
-          assignedToday.add(pick.staff.id);
+        const pick = ranked[0];
+        if (!pick) {
+          unmet.add(anchor.start);
+          continue;
+        }
+        if (!tryAssign(pick.c, pick.win.start, pick.win.end)) {
+          assignedToday.add(pick.c.staff.id);
         }
       }
-    }
+    };
+
+    // ── ② まだ足りない時間帯を、希望しているパート・学生で埋める ──
+    fillGaps(
+      willing.filter((c) => c.staff.role !== "employee"),
+      true,
+    );
+    // ── ③ それでも空いている枠だけ、三角の人で埋める ──
+    fillGaps(backup, false);
 
     // 公休カウント（社員のみ）: 今日出勤しなかった社員
     for (const s of staffList) {

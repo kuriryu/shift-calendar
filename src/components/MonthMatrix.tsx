@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
-import { daysOfMonth, isWeekendOrFri, weekdayLabel } from "@/lib/dates";
+import { daysOfMonth, isWeekendDay, weekdayLabel } from "@/lib/dates";
 import type { ShiftAssignment, Staff, Violation } from "@/types";
 import RoleBadge from "@/components/RoleBadge";
 import { ROLE_ORDER } from "@/lib/roles";
@@ -142,7 +142,7 @@ export default function MonthMatrix({
                 ? "bg-red-100"
                 : warnDates.has(date)
                   ? "bg-amber-50"
-                  : isWeekendOrFri(date)
+                  : isWeekendDay(date)
                     ? "bg-sky-50"
                     : "";
               const status = errorDates.has(date)
@@ -211,7 +211,7 @@ export default function MonthMatrix({
                     ? "bg-red-50"
                     : warnDates.has(date)
                       ? "bg-amber-50/50"
-                      : isWeekendOrFri(date)
+                      : isWeekendDay(date)
                         ? "bg-sky-50/40"
                         : "";
                   return (
@@ -228,7 +228,7 @@ export default function MonthMatrix({
 
       {assignments.length === 0 && (
         <div className="border-t border-slate-100 px-4 py-8 text-center text-sm text-slate-500">
-          シフトがまだ作成されていません。ステップ3で希望を入れてから、ステップ4で自動生成してください。
+          シフトがまだ作成されていません。ステップ4で希望を入れてから、ステップ5で自動生成してください。
         </div>
       )}
     </div>

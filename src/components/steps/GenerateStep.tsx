@@ -17,6 +17,7 @@ export default function GenerateStep() {
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const generateDraft = useAppStore((s) => s.generateDraft);
+  const confirmDraft = useAppStore((s) => s.confirmDraft);
   const setStep = useAppStore((s) => s.setStep);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -26,7 +27,8 @@ export default function GenerateStep() {
 
   const run = () => {
     generateDraft();
-    setStep(5);
+    confirmDraft();
+    setStep(6);
   };
 
   const conditions: {
@@ -41,29 +43,37 @@ export default function GenerateStep() {
     },
     {
       icon: "groups",
-      text: `開店・閉店（締め作業）時は ${settings.edgeRequired}人以上`,
+      text: `開店・閉店（締め作業）時は ${settings.edgeRequired}人`,
       severity: "error",
     },
     {
       icon: "group",
-      text: `原則 ${settings.normalRequired}人体制、ピーク時（${settings.peakHours
+      text: `通常は ${settings.normalRequired}人、ピーク時（${settings.peakHours
         .map((p) => `${p.start}〜${p.end}`)
         .join("・") || "なし"}）は ${settings.peakRequired}人`,
-      severity: "warning",
+      severity: "error",
     },
     {
       icon: "badge",
-      text: "社員は毎日1人以上配置",
+      text: "契約社員は毎日1人以上配置",
       severity: "error",
     },
     {
       icon: "bedtime",
-      text: `社員の月間休日は ${settings.employeeDaysOffTarget}日を目標`,
+      text: `契約社員の月間休日は ${settings.employeeDaysOffTarget}日を目標`,
       severity: "warning",
     },
     {
+      icon: "timer",
+      text:
+        settings.totalLaborHoursLimit > 0
+          ? `全体の労働時間は月${settings.totalLaborHoursLimit}時間まで`
+          : "全体の労働時間の上限は未設定",
+      severity: "check",
+    },
+    {
       icon: "rule",
-      text: "連勤上限・週の上限時間・希望休との矛盾もチェック",
+      text: "1日の上限時間・連勤上限・週の上限時間・希望休との矛盾もチェック",
       severity: "check",
     },
   ];
@@ -76,7 +86,7 @@ export default function GenerateStep() {
 
   return (
     <StepPanel
-      step={4}
+      step={5}
       nextLabel="生成"
       onNext={() => setConfirmOpen(true)}
       nextDisabled={!canGenerate}
@@ -108,7 +118,7 @@ export default function GenerateStep() {
                 >
                   スタッフ {staff.length}名
                 </p>
-                <p className="text-xs text-slate-500">社員 {employees}名を含む</p>
+                <p className="text-xs text-slate-500">契約社員 {employees}名を含む</p>
               </div>
             </li>
             <li
@@ -153,7 +163,7 @@ export default function GenerateStep() {
                 <div className="min-w-0 text-sm text-amber-900">
                   <p className="font-semibold">既存シフト {assignments.length}件</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-amber-800/80">
-                    再生成しても、次のステップで「確定」するまで既存のシフトは変わりません。
+                    生成すると、いまのシフトは新しい内容に置き換わり、調整へ進みます。
                   </p>
                 </div>
               </li>
@@ -207,7 +217,7 @@ export default function GenerateStep() {
 
       <div className="flex flex-col items-center gap-2 py-4">
         <p className="px-0.5 py-1.5 text-center text-xs leading-relaxed text-slate-400">
-          生成後、確認画面で内容と懸念事項をチェックしてから確定します
+          生成すると、この月のシフトができて調整へ進みます
         </p>
         {!canGenerate && (
           <p role="alert" className="text-sm text-red-600">

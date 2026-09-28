@@ -4,9 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ControlledActionDialog } from "smarthr-ui";
 import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
 import { timeOptionsOf } from "@/lib/coverage";
-import { toMinutes } from "@/lib/time";
+import {
+  DAILY_HOUR_LIMIT_ALERT,
+  exceedsDailyHourLimit,
+  toMinutes,
+  workMinutesOf,
+} from "@/lib/time";
+import { computeBreak } from "@/lib/generator";
 import { BREAK_OPTIONS } from "@/components/AssignmentEditPopover";
 import FieldControl, { FieldSelect } from "@/components/FieldControl";
+import { useEagernessLabels } from "@/components/EagernessBadge";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { Staff } from "@/types";
 import { dayLabel } from "@/lib/dates";
@@ -26,6 +33,7 @@ export default function AssignmentAddForm({
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const timeOptions = useMemo(() => timeOptionsOf(settings), [settings]);
+  const eagerness = useEagernessLabels();
 
   const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState("");
@@ -79,6 +87,23 @@ export default function AssignmentAddForm({
       setError("この人は同じ日にすでにシフトがあります。");
       return false;
     }
+    const person = candidates.find((s) => s.id === staffId);
+    const resolvedBreak =
+      breakMinNum !== null ? breakMinNum : computeBreak(start, end).breakMinutes;
+    if (
+      person &&
+      exceedsDailyHourLimit(
+        workMinutesOf({
+          startTime: start,
+          endTime: end,
+          breakMinutes: resolvedBreak,
+        }),
+        person.maxHoursPerDay,
+      )
+    ) {
+      setError(DAILY_HOUR_LIMIT_ALERT);
+      return false;
+    }
     setSubmitting(true);
     setError("");
     addAssignment({
@@ -100,11 +125,30 @@ export default function AssignmentAddForm({
     return true;
   };
 
+  const selectedPerson = candidates.find((s) => s.id === staffId);
+  const resolvedBreak =
+    breakMinNum !== null
+      ? breakMinNum
+      : start < end
+        ? computeBreak(start, end).breakMinutes
+        : 0;
+  const overDailyLimit =
+    !!selectedPerson &&
+    start < end &&
+    exceedsDailyHourLimit(
+      workMinutesOf({
+        startTime: start,
+        endTime: end,
+        breakMinutes: resolvedBreak,
+      }),
+      selectedPerson.maxHoursPerDay,
+    );
+
   const fields = (
     <div className="flex flex-col gap-3">
-      {error && (
+      {(error || overDailyLimit) && (
         <p className="text-xs text-red-700" role="alert">
-          {error}
+          {overDailyLimit ? DAILY_HOUR_LIMIT_ALERT : error}
         </p>
       )}
       <div className="flex flex-wrap items-end gap-3">
@@ -123,6 +167,7 @@ export default function AssignmentAddForm({
             {candidates.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
+                {eagerness.get(s.id) ? `（${eagerness.get(s.id)}）` : ""}
               </option>
             ))}
           </FieldSelect>
@@ -219,7 +264,7 @@ export default function AssignmentAddForm({
         {!isMobile && (
           <button
             type="submit"
-            disabled={submitting || !staffId || start >= end}
+            disabled={submitting || !staffId || start >= end || overDailyLimit}
             className="box-border h-11 min-h-11 shrink-0 rounded-md bg-blue-600 px-5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
           >
             {submitting ? "追加中…" : "追加"}

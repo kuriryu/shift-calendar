@@ -1,63 +1,81 @@
 "use client";
 
-import type { Role, ShiftRequest, Staff } from "@/types";
-import { ROLE_META } from "@/lib/roles";
+import type { ShiftRequest, Staff, TimeRange } from "@/types";
 import Icon from "@/components/Icon";
-import { FieldSelect, navCircleButtonClassName } from "@/components/FieldControl";
+import { navCircleButtonClassName } from "@/components/FieldControl";
 import { useMounted } from "@/hooks/useMounted";
 import { useDismissable } from "@/hooks/useDismissable";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useViewportPopover } from "@/hooks/useViewportPopover";
+import { useCallback, useState } from "react";
+import { useMergeRefs } from "@floating-ui/react";
 import { EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
-import { businessHoursOf, timeOptionsOf } from "@/lib/coverage";
+import { timeOptionsOf } from "@/lib/coverage";
 import {
-  dayLabel,
   daysOfMonth,
-  isWeekendOrFri,
+  formatDate,
+  isWeekendDay,
+  monthLabel,
   weekdayLabel,
   weekdayOf,
-  weekKeyOf,
-  weeksOfMonth,
 } from "@/lib/dates";
-import {
-  hasAnyPattern,
-  patternOf,
-  recommendationRequestOf,
-} from "@/lib/staff-pattern";
-import { toMinutes } from "@/lib/time";
+import { hasAnyPattern, patternOf, recommendationRequestOf } from "@/lib/staff-pattern";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
-
-type RequestView = "time" | "week" | "month";
-
-function shortTime(t: string): string {
-  const [h, m] = t.split(":").map(Number);
-  return m === 0 ? String(h) : `${h}.5`;
-}
 
 type PopoverState = {
   staff: Staff;
   date: string;
-  x: number;
-  y: number;
+  anchor: HTMLElement;
 };
 
-function requestLabel(r: ShiftRequest | null): string {
+function compactTime(t: string): string {
+  const [h, m] = t.split(":");
+  return m === "00" ? String(Number(h)) : `${Number(h)}:${m}`;
+}
+
+function requestLabel(r: ShiftRequest | null, freeTime?: TimeRange): string {
   if (!r) return "未入力";
   if (r.type === "off") return "休み";
+  if (r.type === "triangle") return "三角";
+  if (r.type === "free") {
+    return freeTime ? `Free ${freeTime.start}〜${freeTime.end}` : "Free";
+  }
   if (r.type === "time_limited" && r.timeRange) {
     return `${r.timeRange.start}〜${r.timeRange.end}`;
   }
   return "出勤可能";
 }
 
+function chipText(r: ShiftRequest, freeTime?: TimeRange): string {
+  if (r.type === "off") return "休";
+  if (r.type === "triangle") return "△";
+  if (r.type === "free") {
+    return freeTime
+      ? `${compactTime(freeTime.start)}–${compactTime(freeTime.end)}`
+      : "Free";
+  }
+  if (r.type === "time_limited" && r.timeRange) {
+    return `${compactTime(r.timeRange.start)}–${compactTime(r.timeRange.end)}`;
+  }
+  return "○";
+}
+
+function requestChip(r: ShiftRequest | null, ghost: boolean): string {
+  if (!r) return "text-slate-300";
+  if (ghost) return "border border-dashed border-slate-300 text-slate-400";
+  if (r.type === "off") return "bg-slate-200 text-slate-700";
+  if (r.type === "triangle") return "bg-amber-100 text-amber-800";
+  if (r.type === "free") return "bg-violet-100 text-violet-800";
+  if (r.type === "time_limited") return "bg-sky-100 text-sky-800";
+  return "bg-emerald-100 text-emerald-700";
+}
+
 export default function RequestMatrix() {
   const mounted = useMounted();
   const staff = useAppStore((s) => s.staff);
   const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
-  const reorderStaff = useAppStore((s) => s.reorderStaff);
   const settings = useAppStore((s) => s.settings);
   const month = useAppStore((s) => s.selectedMonth);
-  const selectedDate = useAppStore((s) => s.selectedDate);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const requests = useAppStore(
     (s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS,
@@ -65,25 +83,15 @@ export default function RequestMatrix() {
   const setRequest = useAppStore((s) => s.setRequest);
   const clearRequest = useAppStore((s) => s.clearRequest);
   const adoptRecommendations = useAppStore((s) => s.adoptRecommendations);
-  const sortStaffByName = useAppStore((s) => s.sortStaffByName);
-  const sortStaffByRole = useAppStore((s) => s.sortStaffByRole);
 
+  const [personId, setPersonId] = useState<string | null>(null);
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const closePopover = useCallback(() => setPopover(null), []);
   const popoverRef = useDismissable<HTMLDivElement>(popover !== null, closePopover);
+  const { refs, floatingStyles, isPositioned } = useViewportPopover(popover?.anchor ?? null);
+  const popoverNodeRef = useMergeRefs([popoverRef, refs.setFloating]);
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("13:00");
-  const [view, setView] = useState<RequestView>("month");
-  const [staffSort, setStaffSort] = useState<"role" | "name">("role");
-  const [dragId, setDragId] = useState<string | null>(null);
-  const lastOverRef = useRef<string | null>(null);
-
-  const weeks = useMemo(() => weeksOfMonth(month), [month]);
-  const weekIndex = Math.max(
-    0,
-    weeks.findIndex((w) => w.key === weekKeyOf(selectedDate) || w.dates.includes(selectedDate)),
-  );
-  const currentWeek = weeks[weekIndex] ?? weeks[0];
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
@@ -91,56 +99,21 @@ export default function RequestMatrix() {
 
   const timeOptions = timeOptionsOf(settings);
   const days = daysOfMonth(month);
-  const requestMap = new Map(requests.map((r) => [`${r.staffId}:${r.date}`, r]));
   const hidden = new Set(hiddenStaffIds);
   const visibleStaff = staff.filter((s) => !hidden.has(s.id));
   const noStaff = staff.length === 0;
   const allFilteredOut = !noStaff && visibleStaff.length === 0;
-  const dayDate = selectedDate.startsWith(month) ? selectedDate : days[0];
-  const dayIndex = Math.max(0, days.indexOf(dayDate));
-  const { open: openMin, close: closeMin } = businessHoursOf(dayDate, settings);
-  const span = Math.max(1, closeMin - openMin);
-
-  const requestCounts = new Map<string, number>();
-  for (const r of requests) {
-    if (hidden.has(r.staffId)) continue;
-    requestCounts.set(r.date, (requestCounts.get(r.date) ?? 0) + 1);
-  }
-  const requestMarkOf = (date: string): "none" | "partial" | "complete" => {
-    if (visibleStaff.length === 0) return "none";
-    const n = requestCounts.get(date) ?? 0;
-    if (n === 0) return "none";
-    if (n >= visibleStaff.length) return "complete";
-    return "partial";
-  };
-
-  const onStaffDragStart = (e: React.DragEvent, id: string) => {
-    setDragId(id);
-    lastOverRef.current = null;
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", id);
-  };
-  const onStaffDragOver = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const id = dragId || e.dataTransfer.getData("text/plain");
-    if (!id || id === targetId) return;
-    if (lastOverRef.current === targetId) return;
-    lastOverRef.current = targetId;
-    // ホバー中にリアルタイムで入れ替え
-    reorderStaff(id, targetId);
-  };
-  const onStaffDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    const id = e.dataTransfer.getData("text/plain") || dragId;
-    if (id && id !== targetId) reorderStaff(id, targetId);
-    setDragId(null);
-    lastOverRef.current = null;
-  };
-  const onStaffDragEnd = () => {
-    setDragId(null);
-    lastOverRef.current = null;
-  };
+  const personIndex = Math.max(
+    0,
+    visibleStaff.findIndex((s) => s.id === personId),
+  );
+  const person = visibleStaff[personIndex] ?? null;
+  const requestMap = new Map(
+    requests
+      .filter((r) => r.staffId === person?.id)
+      .map((r) => [r.date, r]),
+  );
+  const today = formatDate(new Date());
 
   const firstWeekday = weekdayOf(days[0]);
   const leadBlanks = firstWeekday === 0 ? 6 : firstWeekday - 1;
@@ -152,38 +125,24 @@ export default function RequestMatrix() {
     ...Array.from({ length: tailBlanks }, () => null),
   ];
 
-  const goDay = (delta: number) => {
-    const next = days[dayIndex + delta];
-    if (next) setSelectedDate(next);
+  const selectPerson = (id: string) => {
+    setPersonId(id);
+    closePopover();
   };
 
-  const openPopover = (e: React.MouseEvent, s: Staff, date: string) => {
-    const existing = requestMap.get(`${s.id}:${date}`);
+  const openPopover = (e: React.MouseEvent, date: string) => {
+    if (!person) return;
+    setSelectedDate(date);
+    const existing = requestMap.get(date);
     if (existing?.type === "time_limited" && existing.timeRange) {
       setStart(existing.timeRange.start);
       setEnd(existing.timeRange.end);
     } else {
-      const pat = patternOf(s, date);
+      const pat = patternOf(person, date);
       setStart(pat?.start ?? timeOptions[0]);
       setEnd(pat?.end ?? timeOptions[Math.min(8, timeOptions.length - 1)]);
     }
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const x = Math.min(rect.left, window.innerWidth - 260);
-    const y = Math.min(rect.bottom + 4, window.innerHeight - 340);
-    setPopover({ staff: s, date, x, y });
-  };
-
-  const onCellClick = (e: React.MouseEvent, s: Staff, date: string) => {
-    setSelectedDate(date);
-    const existing = requestMap.get(`${s.id}:${date}`);
-    if (!existing) {
-      const rec = recommendationRequestOf(s, date);
-      if (rec) {
-        setRequest(rec);
-        return;
-      }
-    }
-    openPopover(e, s, date);
+    setPopover({ staff: person, date, anchor: e.currentTarget as HTMLElement });
   };
 
   const apply = (req: ShiftRequest | null) => {
@@ -193,281 +152,11 @@ export default function RequestMatrix() {
     closePopover();
   };
 
-  const ghostCell = (s: Staff, date: string) => {
-    const rec = recommendationRequestOf(s, date);
-    if (rec?.type === "off") {
-      return (
-        <span className="inline-flex h-6 w-full items-center justify-center rounded border border-dashed border-slate-300 text-[10px] text-slate-400">
-          休
-        </span>
-      );
-    }
-    if (rec?.type === "time_limited" && rec.timeRange) {
-      return (
-        <span className="inline-flex h-6 w-full items-center justify-center rounded border border-dashed border-slate-300 text-[10px] text-slate-400">
-          {shortTime(rec.timeRange.start)}-{shortTime(rec.timeRange.end)}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex h-6 w-full items-center justify-center text-[10px] text-slate-300">
-        ・
-      </span>
-    );
-  };
-
-  const cellOf = (s: Staff, date: string) => {
-    const r = requestMap.get(`${s.id}:${date}`);
-    if (!r) return ghostCell(s, date);
-    if (r.type === "off") {
-      return (
-        <span className="inline-flex h-6 w-full items-center justify-center rounded bg-slate-200 text-[10px] font-semibold text-slate-700">
-          休
-        </span>
-      );
-    }
-    if (r.type === "time_limited" && r.timeRange) {
-      return (
-        <span className="inline-flex h-6 w-full items-center justify-center rounded bg-sky-100 text-[10px] font-medium text-sky-800">
-          {shortTime(r.timeRange.start)}-{shortTime(r.timeRange.end)}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex h-6 w-full items-center justify-center rounded bg-emerald-100 text-[10px] font-semibold text-emerald-700">
-        ○
-      </span>
-    );
-  };
-
-  const staffRowHeader = (s: Staff, role: Role) => {
-    const hasRec = hasAnyPattern(s) || (s.unavailableWeekdays?.length ?? 0) > 0;
-    return (
-      <div className="grid grid-cols-[1.25rem_minmax(0,1fr)_2.5rem_auto] items-center gap-1.5">
-        <span
-          className="inline-flex cursor-grab touch-none text-slate-300 active:cursor-grabbing"
-          title="ドラッグで並べ替え"
-          aria-hidden
-        >
-          <Icon name="drag_indicator" size={16} />
-        </span>
-        <span className="truncate text-left text-xs font-medium text-slate-700">{s.name}</span>
-        <span className="flex w-12 items-center gap-0.5 truncate text-[9px] text-slate-400">
-          <Icon name={ROLE_META[role].icon} size={11} />
-          {ROLE_META[role].label}
-        </span>
-        <span className="flex items-center justify-end gap-0.5">
-          {hasRec ? (
-            <button
-              onClick={() => adoptRecommendations(s.id)}
-              className="rounded border border-blue-200 bg-blue-50 px-1 py-0.5 text-[9px] text-blue-700 hover:bg-blue-100"
-              aria-label={`${s.name} の候補をすべて採用`}
-              title="候補をすべて採用"
-            >
-              候補
-            </button>
-          ) : null}
-        </span>
-      </div>
-    );
-  };
-
-  const matrixTable = (dateCols: string[], caption: string) => (
-    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-      <table className="border-collapse text-center">
-        <caption className="sr-only">{caption}</caption>
-        <thead>
-          <tr className="border-b border-slate-200 bg-slate-50">
-            <th
-              scope="col"
-              className="sticky left-0 z-10 min-w-[15rem] bg-slate-50 px-3 py-2.5 text-left text-xs font-semibold text-slate-600"
-            >
-              スタッフ
-            </th>
-            {dateCols.map((date) => (
-              <th
-                key={date}
-                scope="col"
-                className={`min-w-11 px-0.5 py-1.5 ${
-                  isWeekendOrFri(date) ? "bg-sky-50" : ""
-                } ${date === selectedDate ? "bg-blue-50" : ""}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedDate(date)}
-                  className="flex w-full flex-col items-center rounded py-0.5 hover:bg-white/70"
-                  aria-label={`${Number(date.slice(8))}日(${weekdayLabel(date)})を選択`}
-                >
-                  <span className="text-xs font-semibold text-slate-700">
-                    {Number(date.slice(8))}
-                  </span>
-                  <span className="text-[9px] text-slate-400">{weekdayLabel(date)}</span>
-                </button>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {visibleStaff.map((s) => (
-            <tr
-              key={s.id}
-              draggable
-              onDragStart={(e) => onStaffDragStart(e, s.id)}
-              onDragOver={(e) => onStaffDragOver(e, s.id)}
-              onDrop={(e) => onStaffDrop(e, s.id)}
-              onDragEnd={onStaffDragEnd}
-              className={`border-b border-slate-100 transition-transform ${
-                dragId === s.id ? "opacity-60 ring-2 ring-inset ring-blue-300" : ""
-              }`}
-            >
-              <th
-                scope="row"
-                className="sticky left-0 z-10 bg-white px-3 py-1.5 text-left font-normal"
-              >
-                {staffRowHeader(s, s.role)}
-              </th>
-              {dateCols.map((date) => {
-                const r = requestMap.get(`${s.id}:${date}`) ?? null;
-                const rec = r ? null : recommendationRequestOf(s, date);
-                const label = `${s.name} ${Number(date.slice(8))}日(${weekdayLabel(date)}): ${
-                  r
-                    ? requestLabel(r)
-                    : rec
-                      ? `候補 ${requestLabel(rec)}（タップで確定）`
-                      : "未入力"
-                }`;
-                return (
-                  <td
-                    key={date}
-                    className={`p-0 ${isWeekendOrFri(date) ? "bg-sky-50/40" : ""} ${
-                      date === selectedDate ? "bg-blue-50/60" : ""
-                    }`}
-                  >
-                    <button
-                      onClick={(e) => onCellClick(e, s, date)}
-                      aria-label={label}
-                      className="block w-full px-0.5 py-1 hover:bg-blue-50"
-                    >
-                      {cellOf(s, date)}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-
-  const goWeek = (delta: number) => {
-    const next = weeks[weekIndex + delta];
-    if (!next) return;
-    const prefer =
-      next.dates.find((d) => d === selectedDate) ??
-      next.dates.find((d) => Number(d.slice(8)) === Number(selectedDate.slice(8))) ??
-      next.dates[0];
-    setSelectedDate(prefer);
-  };
-
-  const hasAnyRecommendation = visibleStaff.some(
-    (s) => hasAnyPattern(s) || (s.unavailableWeekdays?.length ?? 0) > 0,
-  );
-
-  const hourMarks: number[] = [];
-  for (let m = openMin; m <= closeMin; m += 60) hourMarks.push(m);
+  const hasPattern =
+    !!person && (hasAnyPattern(person) || (person.unavailableWeekdays?.length ?? 0) > 0);
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
-        <div
-          className="flex items-center gap-1 rounded-lg bg-slate-100 p-1.5"
-          role="group"
-          aria-label="希望入力の表示切替"
-        >
-          {(
-            [
-              { id: "time" as const, label: "時間", icon: "schedule" },
-              { id: "week" as const, label: "週", icon: "view_week" },
-              { id: "month" as const, label: "月", icon: "calendar_month" },
-            ] as const
-          ).map((v) => (
-            <button
-              key={v.id}
-              onClick={() => setView(v.id)}
-              aria-pressed={view === v.id}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
-                view === v.id
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <Icon name={v.icon} size={16} />
-              {v.label}
-            </button>
-          ))}
-        </div>
-        <ul
-          className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500"
-          aria-label="セルの凡例"
-        >
-          <li className="flex items-center gap-1.5">
-            <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded bg-slate-200 px-1 text-[10px] font-semibold text-slate-700">
-              休
-            </span>
-            休み
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700">
-              ○
-            </span>
-            出勤可能
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-flex h-5 items-center justify-center rounded bg-sky-100 px-1.5 text-[10px] font-medium text-sky-800">
-              9-13
-            </span>
-            時間帯
-          </li>
-          <li className="flex items-center gap-1.5">
-            <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded border border-dashed border-slate-300 px-1 text-[10px] text-slate-400">
-              休
-            </span>
-            候補（未確定）
-          </li>
-        </ul>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="shrink-0 font-medium">並び順</span>
-            <FieldSelect
-              id="request-staff-sort"
-              value={staffSort}
-              aria-label="スタッフの並び順"
-              className="w-auto min-w-[7.5rem]"
-              onChange={(e) => {
-                const value = e.target.value as "role" | "name";
-                setStaffSort(value);
-                if (value === "name") sortStaffByName();
-                else sortStaffByRole();
-              }}
-            >
-              <option value="role">属性別</option>
-              <option value="name">名前別</option>
-            </FieldSelect>
-          </label>
-          {hasAnyRecommendation && (
-            <button
-              onClick={() => adoptRecommendations()}
-              disabled={noStaff}
-              className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-            >
-              <Icon name="done_all" size={14} />
-              全員の候補を採用
-            </button>
-          )}
-        </div>
-      </div>
-
       {noStaff ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-6 py-14 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 ring-1 ring-slate-200">
@@ -475,7 +164,7 @@ export default function RequestMatrix() {
           </span>
           <p className="text-sm font-medium text-slate-600">スタッフが登録されていません</p>
           <p className="max-w-xs text-xs leading-relaxed text-slate-400">
-            ステップ2でスタッフを登録すると、ここに希望入力表が表示されます。
+            ステップ3でスタッフを登録すると、その人の月カレンダーで希望を入力できます。
           </p>
         </div>
       ) : allFilteredOut ? (
@@ -488,315 +177,154 @@ export default function RequestMatrix() {
             サイドバーのスタッフ絞り込みを確認してください。
           </p>
         </div>
-      ) : view === "time" ? (
-        <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
-          <div className="flex items-center justify-center gap-3">
+      ) : person ? (
+        <>
+          <div className="flex w-full items-center justify-center gap-2">
             <button
               type="button"
-              onClick={() => goDay(-1)}
-              disabled={dayIndex <= 0}
-              aria-label="前の日"
+              onClick={() => selectPerson(visibleStaff[personIndex - 1].id)}
+              disabled={personIndex <= 0}
+              aria-label="前の人"
               className={navCircleButtonClassName}
             >
               <Icon name="chevron_left" size={20} />
             </button>
-            <h3 className="min-w-[9rem] text-center text-sm font-semibold text-slate-800" aria-live="polite">
-              {dayLabel(dayDate)}（{weekdayLabel(dayDate)}）
-            </h3>
+            <div className="min-w-[8rem] text-center" aria-live="polite">
+              <p className="text-sm font-semibold text-slate-900">{person.name}</p>
+            </div>
             <button
               type="button"
-              onClick={() => goDay(1)}
-              disabled={dayIndex >= days.length - 1}
-              aria-label="次の日"
+              onClick={() => selectPerson(visibleStaff[personIndex + 1].id)}
+              disabled={personIndex >= visibleStaff.length - 1}
+              aria-label="次の人"
               className={navCircleButtonClassName}
             >
               <Icon name="chevron_right" size={20} />
             </button>
           </div>
-          <div className="relative mb-1 h-5" style={{ marginLeft: "11.5rem" }}>
-            {hourMarks.map((m) => (
-              <span
-                key={m}
-                className="absolute -translate-x-1/2 text-[10px] text-slate-400"
-                style={{ left: `${((m - openMin) / span) * 100}%` }}
+          {hasPattern && (
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => adoptRecommendations(person.id)}
+                className="flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
-                {Math.floor(m / 60)}
-              </span>
-            ))}
-          </div>
-          <ul className="space-y-1">
+                <Icon name="done_all" size={14} />
+                この人の候補を採用
+              </button>
+            </div>
+          )}
+
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            role="tablist"
+            aria-label="希望を入力する人"
+          >
             {visibleStaff.map((s) => {
-              const r = requestMap.get(`${s.id}:${dayDate}`) ?? null;
-              const rec = r ? null : recommendationRequestOf(s, dayDate);
-              const show = r ?? rec;
-              const isGhost = !r && !!rec;
-              const range =
-                show?.type === "time_limited" && show.timeRange
-                  ? show.timeRange
-                  : show?.type === "available"
-                    ? { start: settings.openTime, end: toTimeApprox(closeMin) }
-                    : null;
-              const label = `${s.name}: ${
-                r
-                  ? requestLabel(r)
-                  : rec
-                    ? `候補 ${requestLabel(rec)}（タップで確定）`
-                    : "未入力"
-              }`;
+              const selected = s.id === person.id;
               return (
-                <li
+                <button
                   key={s.id}
-                  draggable
-                  onDragStart={(e) => onStaffDragStart(e, s.id)}
-                  onDragOver={(e) => onStaffDragOver(e, s.id)}
-                  onDrop={(e) => onStaffDrop(e, s.id)}
-                  onDragEnd={onStaffDragEnd}
-                  className={`grid grid-cols-[1.25rem_7.5rem_4rem_minmax(0,1fr)] items-center gap-2 py-0.5 transition-opacity ${
-                    dragId === s.id ? "opacity-60" : ""
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => selectPerson(s.id)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                    selected
+                      ? "bg-blue-600 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
-                  <span
-                    className="inline-flex cursor-grab touch-none text-slate-300 active:cursor-grabbing"
-                    title="ドラッグで並べ替え"
-                    aria-hidden
-                  >
-                    <Icon name="drag_indicator" size={16} />
-                  </span>
-                  <span className="truncate text-left text-xs font-medium text-slate-700">
-                    {s.name}
-                  </span>
-                  <span className="flex items-center gap-0.5 truncate text-[9px] text-slate-400">
-                    <Icon name={ROLE_META[s.role].icon} size={11} />
-                    {ROLE_META[s.role].label}
-                  </span>
-                  <button
-                    onClick={(e) => onCellClick(e, s, dayDate)}
-                    aria-label={label}
-                    className="relative h-9 w-full rounded-md bg-slate-50 hover:bg-blue-50/60"
-                  >
-                    {show?.type === "off" && (
-                      <span
-                        className={`absolute inset-y-1 left-2 right-2 flex items-center justify-center rounded text-xs font-semibold ${
-                          isGhost
-                            ? "border border-dashed border-slate-300 text-slate-400"
-                            : "bg-slate-200 text-slate-700"
-                        }`}
-                      >
-                        休み
-                      </span>
-                    )}
-                    {range && (
-                      <span
-                        className={`absolute top-1 bottom-1 flex items-center overflow-hidden rounded px-2 text-[10px] font-medium ${
-                          isGhost
-                            ? "border border-dashed border-sky-300 text-sky-600"
-                            : show?.type === "available"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-sky-100 text-sky-800"
-                        }`}
-                        style={{
-                          left: `${((toMinutes(range.start) - openMin) / span) * 100}%`,
-                          width: `${Math.max(
-                            4,
-                            ((toMinutes(range.end) - toMinutes(range.start)) / span) * 100,
-                          )}%`,
-                        }}
-                      >
-                        {show?.type === "available"
-                          ? "○ 出勤可能"
-                          : `${range.start}–${range.end}`}
-                      </span>
-                    )}
-                    {!show && (
-                      <span className="absolute inset-0 flex items-center justify-center text-[11px] text-slate-300">
-                        未入力
-                      </span>
-                    )}
-                  </button>
-                </li>
+                  {s.name}
+                </button>
               );
             })}
-          </ul>
-        </div>
-      ) : view === "week" && currentWeek ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={() => goWeek(-1)}
-              disabled={weekIndex <= 0}
-              aria-label="前の週"
-              className={navCircleButtonClassName}
-            >
-              <Icon name="chevron_left" size={20} />
-            </button>
-            <p className="min-w-[8rem] text-center text-sm font-semibold text-slate-800" aria-live="polite">
-              {currentWeek.label}
-            </p>
-            <button
-              onClick={() => goWeek(1)}
-              disabled={weekIndex >= weeks.length - 1}
-              aria-label="次の週"
-              className={navCircleButtonClassName}
-            >
-              <Icon name="chevron_right" size={20} />
-            </button>
           </div>
-          {matrixTable(currentWeek.dates, `${currentWeek.label} の希望入力`)}
-        </div>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="mb-3 flex flex-wrap gap-x-3 gap-y-1 text-[10px] leading-snug text-slate-400">
-              <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-1.5 w-1.5 rounded-full border border-blue-400" />
-                入力中
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-600" />
-                全員入力済み
-              </span>
-            </p>
-            <div className="grid grid-cols-7">
+
+          <section
+            aria-label={`${person.name}の${monthLabel(month)}の希望`}
+            className="rounded-xl border border-slate-200 bg-white p-4"
+          >
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+              <h3 className="text-base font-semibold text-slate-900">{monthLabel(month)}</h3>
+              <ul
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-slate-500"
+                aria-label="日付の凡例"
+              >
+                <li className="flex items-center gap-1.5">
+                  <span className="inline-flex h-5 items-center rounded bg-slate-200 px-1.5 text-[10px] font-semibold text-slate-700">
+                    休
+                  </span>
+                  休み
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="inline-flex h-5 items-center rounded bg-emerald-100 px-1.5 text-[10px] font-semibold text-emerald-700">
+                    ○
+                  </span>
+                  出勤可能
+                </li>
+                <li className="flex items-center gap-1.5" title="あまり入りたくない。人がいなければ入る">
+                  <span className="inline-flex h-5 items-center rounded bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800">
+                    △
+                  </span>
+                  三角
+                </li>
+                <li
+                  className="flex items-center gap-1.5"
+                  title="1日中入れる。時間帯はスタッフ情報で指定できる"
+                >
+                  <span className="inline-flex h-5 items-center rounded bg-violet-100 px-1.5 text-[10px] font-semibold text-violet-800">
+                    Free
+                  </span>
+                  1日中
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="inline-block h-5 w-5 rounded bg-sky-100" aria-hidden />
+                  時間帯
+                </li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1">
               {WEEKDAY_HEADERS.map((w) => (
                 <span
                   key={w}
-                  className="py-1 text-center text-[10px] font-medium text-slate-400"
+                  className="py-1 text-center text-[11px] font-medium text-slate-400"
                 >
                   {w}
                 </span>
               ))}
-              {monthCells.map((d, i) =>
-                d === null ? (
-                  <span key={`blank-${i}`} className="h-11" />
+              {monthCells.map((date, i) =>
+                date === null ? (
+                  <span key={`blank-${i}`} className="min-h-16 sm:min-h-24" />
                 ) : (
-                  (() => {
-                    const mark = requestMarkOf(d);
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setSelectedDate(d)}
-                        aria-label={`${Number(d.slice(8))}日${
-                          mark === "partial"
-                            ? "（入力中）"
-                            : mark === "complete"
-                              ? "（入力完了）"
-                              : ""
-                        }${d === dayDate ? " 選択中" : ""}`}
-                        aria-pressed={d === dayDate}
-                        className="group flex h-11 flex-col items-center justify-center"
-                      >
-                        <span
-                          className={`flex h-8 w-8 items-center justify-center rounded-full text-xs transition-colors ${
-                            d === dayDate
-                              ? "bg-blue-600 font-semibold text-white"
-                              : "text-slate-700 group-hover:bg-slate-100"
-                          }`}
-                        >
-                          {Number(d.slice(8))}
-                        </span>
-                        <span
-                          className={`mt-0.5 h-1.5 w-1.5 rounded-full ${
-                            mark === "none"
-                              ? ""
-                              : d === dayDate
-                                ? "bg-white"
-                                : mark === "partial"
-                                  ? "border border-blue-400 bg-transparent"
-                                  : "bg-blue-600"
-                          }`}
-                        />
-                      </button>
-                    );
-                  })()
+                  <DayCell
+                    key={date}
+                    date={date}
+                    today={today}
+                    saved={requestMap.get(date) ?? null}
+                    freeTime={person.freeTimeRange}
+                    recommendation={
+                      requestMap.has(date) ? null : recommendationRequestOf(person, date)
+                    }
+                    onClick={(e) => openPopover(e, date)}
+                  />
                 ),
               )}
             </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4">
-            <div className="mb-5 flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold text-slate-700">
-                {dayLabel(dayDate)}（{weekdayLabel(dayDate)}）の希望
-              </p>
-            </div>
-            <ul className="max-h-[28rem] space-y-2 overflow-y-auto">
-              {visibleStaff.map((s) => {
-                const r = requestMap.get(`${s.id}:${dayDate}`) ?? null;
-                const rec = r ? null : recommendationRequestOf(s, dayDate);
-                const hasRec =
-                  hasAnyPattern(s) || (s.unavailableWeekdays?.length ?? 0) > 0;
-                return (
-                  <li
-                    key={s.id}
-                    draggable
-                    onDragStart={(e) => onStaffDragStart(e, s.id)}
-                    onDragOver={(e) => onStaffDragOver(e, s.id)}
-                    onDrop={(e) => onStaffDrop(e, s.id)}
-                    onDragEnd={onStaffDragEnd}
-                    className={`rounded-lg border border-slate-100 px-2 py-2 transition-opacity ${
-                      dragId === s.id ? "opacity-60" : ""
-                    }`}
-                  >
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <span
-                        className="inline-flex shrink-0 cursor-grab touch-none text-slate-300 active:cursor-grabbing"
-                        title="ドラッグで並べ替え"
-                        aria-hidden
-                      >
-                        <Icon name="drag_indicator" size={16} />
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => onCellClick(e, s, dayDate)}
-                        className="min-w-0 flex-1 text-left hover:bg-slate-50"
-                        aria-label={`${s.name}: ${
-                          r
-                            ? requestLabel(r)
-                            : rec
-                              ? `候補 ${requestLabel(rec)}`
-                              : "未入力"
-                        }`}
-                      >
-                        <span className="flex items-center gap-1 truncate text-xs font-medium text-slate-800">
-                          {s.name}
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-normal text-slate-400">
-                            <Icon name={ROLE_META[s.role].icon} size={11} />
-                            {ROLE_META[s.role].label}
-                          </span>
-                        </span>
-                        <span className="mt-0.5 block">{cellOf(s, dayDate)}</span>
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1">
-                      {hasRec && (
-                        <button
-                          type="button"
-                          onClick={() => adoptRecommendations(s.id)}
-                          className="rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-700 hover:bg-blue-100"
-                          aria-label={`${s.name} の候補をすべて採用`}
-                        >
-                          候補
-                        </button>
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
-      )}
+          </section>
+        </>
+      ) : null}
 
       {popover && (
         <>
           <div className="fixed inset-0 z-40" onClick={closePopover} aria-hidden />
           <div
-            ref={popoverRef}
+            ref={popoverNodeRef}
             role="dialog"
             aria-label={`${popover.staff.name} ${Number(popover.date.slice(8))}日の希望`}
-            className="fixed z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-5 pb-2 shadow-xl"
-            style={{ left: popover.x, top: popover.y }}
+            className="z-50 w-[20.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-5 pb-2 shadow-xl"
+            style={{ ...floatingStyles, visibility: isPositioned ? "visible" : "hidden" }}
           >
             <header className="space-y-1">
               <p className="text-base font-bold tracking-tight text-slate-900">
@@ -832,6 +360,43 @@ export default function RequestMatrix() {
                 <Icon name="event_busy" size={22} className="text-slate-500" />
                 <span className="text-xs font-semibold">休み</span>
               </button>
+              <button
+                type="button"
+                onClick={() =>
+                  apply({
+                    staffId: popover.staff.id,
+                    date: popover.date,
+                    type: "triangle",
+                  })
+                }
+                aria-label="三角"
+                className="col-span-2 flex flex-col items-center gap-1 rounded-xl bg-amber-50 px-3 py-4 text-amber-900 ring-1 ring-amber-100 transition-colors hover:bg-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500"
+              >
+                <span className="text-lg font-semibold leading-none text-amber-700" aria-hidden>
+                  △
+                </span>
+                <span className="text-[10px] font-normal text-amber-800/80">
+                  あまり入りたくない。人がいなければ入る
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  apply({
+                    staffId: popover.staff.id,
+                    date: popover.date,
+                    type: "free",
+                  })
+                }
+                className="col-span-2 flex flex-col items-center gap-1 rounded-xl bg-violet-50 px-3 py-4 text-violet-900 ring-1 ring-violet-100 transition-colors hover:bg-violet-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500"
+              >
+                <span className="text-xs font-semibold">Free</span>
+                <span className="text-[10px] font-normal text-violet-800/80">
+                  {popover.staff.freeTimeRange
+                    ? `${popover.staff.freeTimeRange.start}〜${popover.staff.freeTimeRange.end} で入れる`
+                    : "1日中入れます"}
+                </span>
+              </button>
             </div>
 
             <section className="mt-6 rounded-xl bg-blue-50/70 px-4 pb-2 pt-4" aria-label="時間帯を指定">
@@ -858,10 +423,7 @@ export default function RequestMatrix() {
                     ))}
                   </select>
                 </div>
-                <span
-                  className="pb-3 text-lg font-medium text-blue-300"
-                  aria-hidden
-                >
+                <span className="pb-3 text-lg font-medium text-blue-300" aria-hidden>
                   〜
                 </span>
                 <div className="space-y-2">
@@ -883,7 +445,7 @@ export default function RequestMatrix() {
                 </div>
               </div>
 
-              <div className="mt-2">
+              <div className="mt-4">
                 <button
                   type="button"
                   onClick={() =>
@@ -918,8 +480,53 @@ export default function RequestMatrix() {
   );
 }
 
-function toTimeApprox(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+function DayCell({
+  date,
+  today,
+  saved,
+  freeTime,
+  recommendation,
+  onClick,
+}: {
+  date: string;
+  today: string;
+  saved: ShiftRequest | null;
+  freeTime?: TimeRange;
+  recommendation: ShiftRequest | null;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const shown = saved ?? recommendation;
+  const ghost = !saved && !!recommendation;
+  const label = saved
+    ? requestLabel(saved, freeTime)
+    : recommendation
+      ? `候補 ${requestLabel(recommendation, freeTime)}`
+      : "未入力";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${Number(date.slice(8))}日（${weekdayLabel(date)}）: ${label}`}
+      className={`flex min-h-16 flex-col items-stretch rounded-lg border p-1.5 text-left transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:min-h-24 sm:p-2 ${
+        isWeekendDay(date) ? "border-slate-200 bg-slate-100" : "border-slate-100 bg-white"
+      } ${date === today ? "ring-1 ring-blue-400" : ""}`}
+    >
+      <span
+        className={`text-xs font-semibold tabular-nums ${
+          date === today ? "text-blue-600" : "text-slate-700"
+        }`}
+      >
+        {Number(date.slice(8))}
+      </span>
+      {shown ? (
+        <span
+          className={`mt-1 inline-flex items-center justify-center rounded px-1 py-0.5 text-[10px] font-semibold leading-tight sm:text-[11px] ${requestChip(shown, ghost)}`}
+        >
+          {chipText(shown, freeTime)}
+        </span>
+      ) : (
+        <span className="mt-auto text-[10px] text-slate-300">未入力</span>
+      )}
+    </button>
+  );
 }

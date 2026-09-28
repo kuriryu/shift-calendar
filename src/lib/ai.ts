@@ -18,7 +18,7 @@ const FAILURE_REPLY = `その指示は理解できませんでした。例:
 ・「10日のAさんとBさんを交代して」
 ・「15日のAさんを9:00-13:00に変更して」
 ・「15日のAさんを休みにして」
-・「15日のラストを社員に変更して」`;
+・「15日のラストを契約社員に変更して」`;
 
 function normalize(text: string): string {
   return text
@@ -127,7 +127,7 @@ export function parseCommand(
     return {
       ok: true,
       command: { kind: "close_to_employee", date },
-      summary: "閉店枠を社員に変更",
+      summary: "閉店枠を契約社員に変更",
     };
   }
 

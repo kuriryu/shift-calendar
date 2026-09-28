@@ -24,8 +24,14 @@ import { ROLE_ORDER } from "@/lib/roles";
 import { generateMonth } from "@/lib/generator";
 import { validateMonth } from "@/lib/validator";
 import { computeBreak, placeBreakStart } from "@/lib/generator";
-import { toMinutes } from "@/lib/time";
+import {
+  DAILY_HOUR_LIMIT_ALERT,
+  exceedsDailyHourLimit,
+  toMinutes,
+  workMinutesOf,
+} from "@/lib/time";
 import { parseCommand } from "@/lib/ai";
+import type { SharedSnapshot } from "@/lib/shared-snapshot";
 
 const DEFAULT_MONTH = nextMonthOf();
 
@@ -67,6 +73,25 @@ function fillEmptyFromPatterns(
       if (has.has(`${st.id}:${date}`)) continue;
       const rec = recommendationRequestOf(st, date);
       if (rec) added.push(rec);
+    }
+  }
+  if (added.length === 0) return { next: existing, added: 0 };
+  return { next: [...existing, ...added], added: added.length };
+}
+
+/** 希望がまだ無い日は休みとして入れる。入っている希望は変えない。 */
+function fillEmptyWithOff(
+  existing: ShiftRequest[],
+  staffList: Staff[],
+  month: string,
+): { next: ShiftRequest[]; added: number } {
+  const days = daysOfMonth(month);
+  const has = new Set(existing.map((r) => `${r.staffId}:${r.date}`));
+  const added: ShiftRequest[] = [];
+  for (const st of staffList) {
+    for (const date of days) {
+      if (has.has(`${st.id}:${date}`)) continue;
+      added.push({ staffId: st.id, date, type: "off" });
     }
   }
   if (added.length === 0) return { next: existing, added: 0 };
@@ -186,6 +211,8 @@ type AppState = {
   clearAllRequests: () => void;
   fillTestRequests: () => void;
   generate: () => void;
+  /** 希望未入力の日を休みで埋める */
+  ensureDefaultOffs: () => void;
   /** 仮生成（ストアには反映しない） */
   generateDraft: () => void;
   /** 仮生成結果を確定してストアに反映 */
@@ -199,6 +226,8 @@ type AppState = {
   resetSettings: () => void;
   /** 違反リストを再計算（LocalStorage 復元直後などに使う） */
   recompute: () => void;
+  /** 共通の保存データでスタッフ・条件・希望・シフトを置き換える */
+  applyShared: (doc: SharedSnapshot) => void;
   updateAssignment: (a: ShiftAssignment) => void;
   removeAssignment: (id: string) => void;
   addAssignment: (
@@ -440,13 +469,28 @@ export const useAppStore = create<AppState>()(
           set((s) => {
             const month = s.selectedMonth;
             const existing = s.requests[month] ?? [];
-            const { next, added } = fillEmptyFromPatterns(
-              existing,
-              s.staff,
-              month,
-              staffId,
+            const days = daysOfMonth(month);
+            const byKey = new Map(
+              existing.map((r) => [`${r.staffId}:${r.date}`, r]),
             );
+            const targets = staffId
+              ? s.staff.filter((st) => st.id === staffId)
+              : s.staff;
+            let added = 0;
+            for (const st of targets) {
+              for (const date of days) {
+                const rec = recommendationRequestOf(st, date);
+                if (!rec || rec.type === "off") continue;
+                const key = `${st.id}:${date}`;
+                const current = byKey.get(key);
+                if (current && current.type !== "off") continue;
+                if (requestsMatch(current, rec)) continue;
+                byKey.set(key, rec);
+                added++;
+              }
+            }
             if (added === 0) return {};
+            const next = [...byKey.values()];
             const requests = { ...s.requests, [month]: next };
             return {
               requests,
@@ -540,11 +584,24 @@ export const useAppStore = create<AppState>()(
 
         discardDraft: () => set({ draft: null }),
 
+        ensureDefaultOffs: () =>
+          set((s) => {
+            const month = s.selectedMonth;
+            const { next, added } = fillEmptyWithOff(
+              s.requests[month] ?? [],
+              s.staff,
+              month,
+            );
+            if (added === 0) return {};
+            const requests = { ...s.requests, [month]: next };
+            return { requests, ...revalidate({ ...s, requests }) };
+          }),
+
         setStep: (step) =>
           set((s) => {
-            if (step !== 3) return { currentStep: step };
+            if (step !== 4) return { currentStep: step };
             const month = s.selectedMonth;
-            const { next } = fillEmptyFromPatterns(
+            const { next } = fillEmptyWithOff(
               s.requests[month] ?? [],
               s.staff,
               month,
@@ -597,6 +654,28 @@ export const useAppStore = create<AppState>()(
           })),
 
         recompute: () => set((s) => revalidate(s)),
+
+        applyShared: (doc) =>
+          set((s) => {
+            const settings = { ...DEFAULT_SETTINGS, ...doc.settings };
+            const monthAssignments = doc.assignments[s.selectedMonth] ?? [];
+            return {
+              staff: doc.staff,
+              settings,
+              requests: doc.requests,
+              assignments: doc.assignments,
+              violations:
+                monthAssignments.length === 0
+                  ? []
+                  : validateMonth(
+                      s.selectedMonth,
+                      doc.staff,
+                      doc.requests[s.selectedMonth] ?? [],
+                      monthAssignments,
+                      settings,
+                    ),
+            };
+          }),
 
         updateAssignment: (a) =>
           set((s) => {
@@ -728,7 +807,16 @@ export const useAppStore = create<AppState>()(
             if (!a) {
               return `${cmd.date.slice(8)}日 に対象スタッフのシフトが見つかりませんでした。`;
             }
+            const person = s.staff.find((st) => st.id === cmd.staffId);
             const brk = computeBreak(cmd.start, cmd.end);
+            const proposed = workMinutesOf({
+              startTime: cmd.start,
+              endTime: cmd.end,
+              breakMinutes: brk.breakMinutes,
+            });
+            if (exceedsDailyHourLimit(proposed, person?.maxHoursPerDay)) {
+              return DAILY_HOUR_LIMIT_ALERT;
+            }
             const updated = list.map((x) =>
               x.id === a.id
                 ? { ...x, startTime: cmd.start, endTime: cmd.end, ...brk, source: "ai" as const }
@@ -763,7 +851,7 @@ export const useAppStore = create<AppState>()(
               (st) => st.role === "employee" && !assignedIds.has(st.id),
             );
             if (!freeEmployee) {
-              return `${cmd.date.slice(8)}日 は社員3名ともシフトに入っているため、ラスト枠を空いている社員に変更できませんでした。`;
+              return `${cmd.date.slice(8)}日 は契約社員3名ともシフトに入っているため、ラスト枠を空いている契約社員に変更できませんでした。`;
             }
             const updated = list.map((x) =>
               x.id === latest.id
@@ -885,7 +973,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "shift-app-v1",
-      version: 8,
+      version: 9,
       // 復元直後に違反リストを再計算（violations は永続化していないため）
       onRehydrateStorage: () => (state) => {
         state?.recompute();

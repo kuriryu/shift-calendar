@@ -35,6 +35,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# ログインした人全員で共有する保存データ
+/data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
