@@ -55,12 +55,17 @@ export default function GenerateStep() {
     },
     {
       icon: "badge",
-      text: "契約社員は毎日1人以上配置",
+      text: "正社員は毎日1人以上配置",
       severity: "error",
     },
     {
       icon: "bedtime",
-      text: `契約社員の月間休日は ${settings.employeeDaysOffTarget}日を目標`,
+      text: `正社員の月間休日は ${settings.employeeDaysOffTarget}日を目標`,
+      severity: "warning",
+    },
+    {
+      icon: "hourglass_bottom",
+      text: `1回の勤務は最低${settings.minShiftHours ?? 4}時間。短い勤務は警告`,
       severity: "warning",
     },
     {
@@ -118,7 +123,7 @@ export default function GenerateStep() {
                 >
                   スタッフ {staff.length}名
                 </p>
-                <p className="text-xs text-slate-500">契約社員 {employees}名を含む</p>
+                <p className="text-xs text-slate-500">正社員 {employees}名を含む</p>
               </div>
             </li>
             <li

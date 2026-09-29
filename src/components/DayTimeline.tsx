@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
+import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { businessHoursOf, timeOptionsOf } from "@/lib/coverage";
 import Icon from "@/components/Icon";
@@ -12,7 +12,7 @@ import AssignmentEditPopover, {
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
-import EagernessBadge, { useEagernessLabels } from "@/components/EagernessBadge";
+import { hopeChip, isShiftHope } from "@/components/DayRequestList";
 import { navCircleButtonClassName } from "@/components/FieldControl";
 import { toMinutes } from "@/lib/time";
 import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
@@ -31,7 +31,10 @@ export default function DayTimeline({ date }: { date: string }) {
   const clearHighlight = useAppStore((s) => s.clearHighlight);
   const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const reorderStaff = useAppStore((s) => s.reorderStaff);
-  const eagerness = useEagernessLabels();
+  const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS);
+  const requestByStaff = new Map(
+    requests.filter((r) => r.date === date).map((r) => [r.staffId, r]),
+  );
 
   const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
   const [hoursStaff, setHoursStaff] = useState<Staff | null>(null);
@@ -62,9 +65,10 @@ export default function DayTimeline({ date }: { date: string }) {
   const total = closeMin - openMin;
   const staffById = new Map(staff.map((s) => [s.id, s]));
 
-  // 行は全スタッフ（絞り込み反映・ストア順）。未割当のスタッフは空行で表示する
+  // 行はシフト希望を出した人だけ（三角・Freeを含む）。休みは出さない
   const hidden = new Set(hiddenStaffIds);
-  const visibleStaff = staff.filter((s) => !hidden.has(s.id));
+  const listedStaff = staff.filter((s) => !hidden.has(s.id));
+  const visibleStaff = listedStaff.filter((s) => isShiftHope(requestByStaff.get(s.id)));
   const assignmentByStaff = new Map(assignments.map((a) => [a.staffId, a]));
   const unassigned = visibleStaff.filter((s) => !assignmentByStaff.has(s.id));
 
@@ -156,7 +160,6 @@ export default function DayTimeline({ date }: { date: string }) {
               <li key={s.id} className="flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-sm bg-slate-100" aria-hidden />
                 {s.name}
-                <EagernessBadge label={eagerness.get(s.id) ?? null} />
               </li>
             ))}
           {visibleStaff.length > 8 && (
@@ -225,6 +228,8 @@ export default function DayTimeline({ date }: { date: string }) {
           <ul aria-label={`${dayLabel(date)} のシフト`}>
             {visibleStaff.map((s) => {
               const a = assignmentByStaff.get(s.id);
+              const hope = requestByStaff.get(s.id);
+              const chip = hope ? hopeChip(hope, s.freeTimeRange) : null;
               const sMin = a ? toMinutes(a.startTime) : 0;
               const eMin = a ? toMinutes(a.endTime) : 0;
               const isHl = highlightStaffId === s.id;
@@ -252,14 +257,18 @@ export default function DayTimeline({ date }: { date: string }) {
                     <button
                       type="button"
                       onClick={() => setHoursStaff(s)}
-                      aria-label={`${s.name}の稼働時間を表示${
-                        eagerness.get(s.id) ? `。${eagerness.get(s.id)}` : ""
-                      }`}
+                      aria-label={`${s.name}の希望と稼働時間を表示`}
                       className="min-w-0 truncate text-left text-xs font-medium text-slate-800 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-blue-600"
                     >
                       {s.name}
                     </button>
-                    <EagernessBadge label={eagerness.get(s.id) ?? null} />
+                    {chip && (
+                      <span
+                        className={`max-w-24 shrink-0 truncate rounded px-1 py-0.5 text-[10px] font-semibold leading-none ${chip.className}`}
+                      >
+                        {chip.text}
+                      </span>
+                    )}
                   </div>
                   {a ? (
                     <button
@@ -291,6 +300,10 @@ export default function DayTimeline({ date }: { date: string }) {
                         />
                       )}
                     </button>
+                  ) : chip ? (
+                    <span className="pl-2 text-[11px] font-medium text-slate-600">
+                      希望: {chip.text}
+                    </span>
                   ) : (
                     <span className="sr-only">{s.name}: この日はシフトなし</span>
                   )}
@@ -301,7 +314,9 @@ export default function DayTimeline({ date }: { date: string }) {
 
           {visibleStaff.length === 0 && (
             <p className="py-8 text-center text-sm text-slate-400">
-              表示するスタッフがいません（サイドバーの絞り込みを確認してください）
+              {listedStaff.length === 0
+                ? "表示するスタッフがいません（サイドバーの絞り込みを確認してください）"
+                : "この日にシフト希望を出している人はいません"}
             </p>
           )}
         </div>

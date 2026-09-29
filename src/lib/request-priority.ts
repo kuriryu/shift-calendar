@@ -3,7 +3,7 @@ import { businessHoursOf } from "./coverage";
 import { daysOfMonth } from "./dates";
 import { toMinutes } from "./time";
 
-/** 週あたりこの日数以上の希望なら、調整画面でやる気バッジを出す */
+/** 週あたりこの日数以上なら、希望が多い人のラベルを付ける */
 const EAGER_DAYS_PER_WEEK = 4;
 
 export type RequestEagerness = {

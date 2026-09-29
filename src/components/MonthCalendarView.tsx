@@ -7,8 +7,8 @@ import AssignmentEditPopover, {
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
-import EagernessBadge, { useEagernessLabels } from "@/components/EagernessBadge";
-import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
+import { hopeChip, isShiftHope } from "@/components/DayRequestList";
+import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { timeOptionsOf } from "@/lib/coverage";
 import {
@@ -42,8 +42,7 @@ export default function MonthCalendarView({
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
-  const eagerness = useEagernessLabels();
-
+  const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS);
   const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
   const [hoursTarget, setHoursTarget] = useState<{
     staff: Staff;
@@ -95,11 +94,16 @@ export default function MonthCalendarView({
     });
   };
 
+  const requestByKey = new Map(
+    requests.map((r) => [`${r.staffId}:${r.date}`, r]),
+  );
+  const hoped = (staffId: string, date: string) =>
+    isShiftHope(requestByKey.get(`${staffId}:${date}`));
   const assignedOnSelected = new Set(
     assignments.filter((a) => a.date === selectedDate).map((a) => a.staffId),
   );
   const addCandidates = staff.filter(
-    (s) => !hidden.has(s.id) && !assignedOnSelected.has(s.id),
+    (s) => !hidden.has(s.id) && !assignedOnSelected.has(s.id) && hoped(s.id, selectedDate),
   );
 
   return (
@@ -128,11 +132,16 @@ export default function MonthCalendarView({
             ) : (
               (() => {
                 const dayAssignments = assignments
-                  .filter((a) => a.date === d && !hidden.has(a.staffId))
+                  .filter((a) => a.date === d && !hidden.has(a.staffId) && hoped(a.staffId, d))
                   .sort((a, b) => a.startTime.localeCompare(b.startTime));
+                const assignedIds = new Set(dayAssignments.map((a) => a.staffId));
+                const waiting = staff.filter(
+                  (s) => !hidden.has(s.id) && !assignedIds.has(s.id) && hoped(s.id, d),
+                );
+                const shownWaiting = waiting.slice(0, Math.max(0, 3 - dayAssignments.length));
                 const selected = d === selectedDate;
                 const isToday = d === today;
-                const extra = dayAssignments.length - 3;
+                const extra = dayAssignments.length + waiting.length - 3;
                 return (
                   <div
                     key={d}
@@ -141,7 +150,7 @@ export default function MonthCalendarView({
                     <button
                       type="button"
                       onClick={() => select(d)}
-                      aria-label={`${Number(d.slice(8))}日 出勤${dayAssignments.length}名${
+                      aria-label={`${Number(d.slice(8))}日 希望${dayAssignments.length + waiting.length}名${
                         selected ? " 選択中" : ""
                       }${isToday ? " 今日" : ""}`}
                       aria-pressed={selected}
@@ -163,17 +172,24 @@ export default function MonthCalendarView({
                               ? "bg-slate-100"
                               : "bg-white hover:bg-slate-100"
                           }`}
-                          title={`${s?.name ?? a.staffId}${
-                            eagerness.get(a.staffId) ? ` ${eagerness.get(a.staffId)}` : ""
-                          } ${a.startTime}–${a.endTime}。タップで稼働時間`}
-                          aria-label={`${s?.name ?? a.staffId}${
-                            eagerness.get(a.staffId) ? `、${eagerness.get(a.staffId)}` : ""
-                          } ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
+                          title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
+                          aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで希望と稼働時間を表示`}
                         >
-                          <EagernessBadge label={eagerness.get(a.staffId) ?? null} compact />
                           {s?.name ?? a.staffId} {shortTime(a.startTime)}–
                           {shortTime(a.endTime)}
                         </button>
+                      );
+                    })}
+                    {shownWaiting.map((s) => {
+                      const request = requestByKey.get(`${s.id}:${d}`)!;
+                      const chip = hopeChip(request, s.freeTimeRange);
+                      return (
+                        <span
+                          key={s.id}
+                          className="truncate rounded border border-dashed border-slate-200 px-1 py-0.5 text-left text-[9px] font-medium text-slate-700"
+                        >
+                          {s.name} {chip.text}
+                        </span>
                       );
                     })}
                     {extra > 0 && (

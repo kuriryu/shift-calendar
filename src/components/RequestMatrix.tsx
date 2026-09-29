@@ -95,6 +95,7 @@ export default function RequestMatrix() {
 
   const [personId, setPersonId] = useState<string | null>(null);
   const [stamp, setStamp] = useState<Stamp | null>(null);
+  const [pendingDate, setPendingDate] = useState<string | null>(null);
   const [timeOpen, setTimeOpen] = useState(false);
   const [timeAnchor, setTimeAnchor] = useState<HTMLElement | null>(null);
   const closeTime = useCallback(() => setTimeOpen(false), []);
@@ -151,14 +152,30 @@ export default function RequestMatrix() {
   };
 
   const confirmTime = () => {
-    if (start >= end) return;
+    if (!person || start >= end) return;
+    const range = { start, end };
     setStamp({ kind: "time_limited", start, end });
+    if (pendingDate) {
+      setSelectedDate(pendingDate);
+      setRequest({
+        staffId: person.id,
+        date: pendingDate,
+        type: "time_limited",
+        timeRange: range,
+      });
+      setPendingDate(null);
+    }
     closeTime();
   };
 
   const paint = (date: string) => {
-    if (!person || !stamp || timeOpen) return;
+    if (!person || timeOpen) return;
     setSelectedDate(date);
+    if (!stamp) {
+      setPendingDate(date);
+      return;
+    }
+    setPendingDate(null);
     if (stamp.kind === "time_limited") {
       setRequest({
         staffId: person.id,
@@ -288,6 +305,7 @@ export default function RequestMatrix() {
                         aria-pressed={selected}
                         onClick={() => {
                           closeTime();
+                          setPendingDate(null);
                           setStamp({ kind: item.kind });
                         }}
                         className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
@@ -371,8 +389,8 @@ export default function RequestMatrix() {
           >
             <header className="space-y-1">
               <p className="text-base font-bold tracking-tight text-slate-900">時間帯を指定</p>
-              <p className="text-sm text-slate-500">
-                決めたあと、日付をタップするとその時間帯になります。
+                <p className="text-sm text-slate-500">
+                決めた時間は、このあとにタップする日付にもそのまま入ります。
               </p>
             </header>
 
@@ -416,15 +434,17 @@ export default function RequestMatrix() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={confirmTime}
-              disabled={start >= end}
-              className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-            >
-              <Icon name="done" size={18} />
-              この時間帯にする
-            </button>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={confirmTime}
+                disabled={start >= end}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                <Icon name="done" size={18} />
+                この時間帯にする
+              </button>
+            </div>
           </div>
         </>
       )}

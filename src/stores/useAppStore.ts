@@ -851,7 +851,7 @@ export const useAppStore = create<AppState>()(
               (st) => st.role === "employee" && !assignedIds.has(st.id),
             );
             if (!freeEmployee) {
-              return `${cmd.date.slice(8)}日 は契約社員3名ともシフトに入っているため、ラスト枠を空いている契約社員に変更できませんでした。`;
+              return `${cmd.date.slice(8)}日 は正社員3名ともシフトに入っているため、ラスト枠を空いている正社員に変更できませんでした。`;
             }
             const updated = list.map((x) =>
               x.id === latest.id
@@ -879,7 +879,7 @@ export const useAppStore = create<AppState>()(
 
         updateSettings: (partial) =>
           set((s) => {
-            const settings = { ...s.settings, ...partial };
+            const settings = { ...DEFAULT_SETTINGS, ...s.settings, ...partial };
             return {
               settings,
               activities: [
@@ -973,7 +973,7 @@ export const useAppStore = create<AppState>()(
     },
     {
       name: "shift-app-v1",
-      version: 9,
+      version: 10,
       // 復元直後に違反リストを再計算（violations は永続化していないため）
       onRehydrateStorage: () => (state) => {
         state?.recompute();

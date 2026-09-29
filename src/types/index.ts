@@ -87,6 +87,7 @@ export type ViolationRule =
   | "WEEKLY_MIN_HOURS"
   | "WEEKLY_MIN_DAYS"
   | "DAYS_OFF_TARGET"
+  | "MIN_SHIFT_HOURS"
   | "REQUEST_OFF_CONFLICT"
   | "TIME_LIMIT_CONFLICT";
 
@@ -114,6 +115,8 @@ export type ShopSettings = {
   employeeMinDaysPerWeek: number; // 社員の週最低出勤日数
   /** この月の全体の労働時間の上限（時間）。0 は上限なし */
   totalLaborHoursLimit: number;
+  /** 1日の最低時間。下回る勤務は警告（閉店前の短い勤務などは入れる） */
+  minShiftHours: number;
 };
 
 export const OPEN_TIME = "09:00";
@@ -135,6 +138,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   employeeMinHoursPerWeek: 32,
   employeeMinDaysPerWeek: 4,
   totalLaborHoursLimit: 0,
+  minShiftHours: 4,
 };
 
 /** シフト作成フローのステップ番号 */
@@ -151,7 +155,7 @@ export type HighlightTarget = {
 };
 
 export const ROLE_LABELS: Record<Role, string> = {
-  employee: "契約社員",
+  employee: "正社員",
   part_time: "パート",
   student: "学生",
 };

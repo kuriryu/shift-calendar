@@ -8,9 +8,9 @@ import AssignmentEditPopover, {
   type AssignmentEditTarget,
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
-import EagernessBadge, { useEagernessLabels } from "@/components/EagernessBadge";
 import { navCircleButtonClassName } from "@/components/FieldControl";
-import { EMPTY_ASSIGNMENTS, useAppStore } from "@/stores/useAppStore";
+import { hopeChip, isShiftHope } from "@/components/DayRequestList";
+import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useMounted } from "@/hooks/useMounted";
 import { timeOptionsOf } from "@/lib/coverage";
 import {
@@ -54,8 +54,7 @@ export default function WeekCalendarView({
   const assignments = useAppStore(
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
-  const eagerness = useEagernessLabels();
-
+  const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS);
   const [edit, setEdit] = useState<AssignmentEditTarget | null>(null);
   const [hoursTarget, setHoursTarget] = useState<{
     staff: Staff;
@@ -115,11 +114,16 @@ export default function WeekCalendarView({
     });
   };
 
+  const requestByKey = new Map(
+    requests.map((r) => [`${r.staffId}:${r.date}`, r]),
+  );
+  const hoped = (staffId: string, date: string) =>
+    isShiftHope(requestByKey.get(`${staffId}:${date}`));
   const assignedOnSelected = new Set(
     assignments.filter((a) => a.date === selectedDate).map((a) => a.staffId),
   );
   const addCandidates = staff.filter(
-    (s) => !hidden.has(s.id) && !assignedOnSelected.has(s.id),
+    (s) => !hidden.has(s.id) && !assignedOnSelected.has(s.id) && hoped(s.id, selectedDate),
   );
 
   return (
@@ -158,8 +162,12 @@ export default function WeekCalendarView({
         <div className="grid min-w-[42rem] grid-cols-7">
           {weekDates.map((date, i) => {
             const dayAssignments = assignments
-              .filter((a) => a.date === date && !hidden.has(a.staffId))
+              .filter((a) => a.date === date && !hidden.has(a.staffId) && hoped(a.staffId, date))
               .sort((a, b) => a.startTime.localeCompare(b.startTime));
+            const assignedIds = new Set(dayAssignments.map((a) => a.staffId));
+            const waiting = staff.filter(
+              (s) => !hidden.has(s.id) && !assignedIds.has(s.id) && hoped(s.id, date),
+            );
             const selected = date === selectedDate;
             return (
               <div
@@ -194,21 +202,28 @@ export default function WeekCalendarView({
                               ? "bg-slate-100"
                               : "bg-white hover:bg-slate-100"
                           }`}
-                          title={`${s?.name ?? a.staffId}${
-                            eagerness.get(a.staffId) ? ` ${eagerness.get(a.staffId)}` : ""
-                          } ${a.startTime}–${a.endTime}。タップで稼働時間`}
-                          aria-label={`${s?.name ?? a.staffId}${
-                            eagerness.get(a.staffId) ? `、${eagerness.get(a.staffId)}` : ""
-                          } ${a.startTime}〜${a.endTime}。タップで稼働時間を表示`}
+                          title={`${s?.name ?? a.staffId} ${a.startTime}–${a.endTime}。タップで稼働時間`}
+                          aria-label={`${s?.name ?? a.staffId} ${a.startTime}〜${a.endTime}。タップで希望と稼働時間を表示`}
                         >
-                          <EagernessBadge label={eagerness.get(a.staffId) ?? null} compact />
                           {s?.name ?? a.staffId} {shortTime(a.startTime)}–
                           {shortTime(a.endTime)}
                         </button>
                       </li>
                     );
                   })}
-                  {dayAssignments.length === 0 && (
+                  {waiting.map((s) => {
+                    const request = requestByKey.get(`${s.id}:${date}`)!;
+                    const chip = hopeChip(request, s.freeTimeRange);
+                    return (
+                      <li
+                        key={s.id}
+                        className="truncate rounded border border-dashed border-slate-200 px-1 py-1 text-[10px] font-medium text-slate-700"
+                      >
+                        {s.name} {chip.text}
+                      </li>
+                    );
+                  })}
+                  {dayAssignments.length === 0 && waiting.length === 0 && (
                     <li className="px-1 py-2 text-center text-[10px] text-slate-800">
                       —
                     </li>

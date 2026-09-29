@@ -109,13 +109,16 @@ button.primary-button {
   width: 100%;
 }
 
-/* 月の上限は時刻セレクトと同じ 8px の内側余白にする */
-.settings-fields input[type="number"] {
+/* 月の上限は時刻セレクトと同じ高さ。単位は枠の中に置く */
+.settings-fields .labor-hours-field input[inputmode="numeric"] {
   box-sizing: border-box;
-  height: 42px;
-  padding: 8px;
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: 16px;
   line-height: 20px;
+  box-shadow: none;
 }
 
 /* モーダルの見出し／フッター区切り線を非表示 */

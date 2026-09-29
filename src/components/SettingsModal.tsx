@@ -30,7 +30,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50/60 p-5">
+    <section className="flex h-full min-w-0 flex-col rounded-xl border border-slate-200 bg-slate-50/60 p-5">
       <h3 className="mb-4 flex h-9 items-center gap-2 px-0.5 text-sm font-semibold text-slate-800">
         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
           <Icon name={icon} size={16} />
@@ -59,7 +59,7 @@ function SettingRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid h-12 grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-3 px-0.5">
+    <div className="grid h-12 min-w-0 grid-cols-[minmax(0,8.5rem)_minmax(6.5rem,1fr)] items-center gap-3 px-0.5">
       <div className="min-w-0">
         <p className="truncate text-xs font-medium leading-4 text-slate-600">{label}</p>
         {hint && <p className="mt-0.5 truncate text-[10px] leading-3 text-slate-400">{hint}</p>}
@@ -241,7 +241,7 @@ export function SettingsForm({
             </SettingRow>
           </SectionCard>
 
-          <SectionCard icon="badge" title="契約社員">
+          <SectionCard icon="badge" title="正社員">
             <SettingRow label="月間休日" hint="目標">
               <Stepper
                 value={form.employeeDaysOffTarget}
@@ -258,7 +258,7 @@ export function SettingsForm({
                 min={0}
                 max={60}
                 unit="時間"
-                ariaLabel="契約社員の週最低労働時間"
+                ariaLabel="正社員の週最低労働時間"
                 onChange={(n) => setField("employeeMinHoursPerWeek", n)}
               />
             </SettingRow>
@@ -268,7 +268,7 @@ export function SettingsForm({
                 min={0}
                 max={7}
                 unit="日"
-                ariaLabel="契約社員の週最低出勤日数"
+                ariaLabel="正社員の週最低出勤日数"
                 onChange={(n) => setField("employeeMinDaysPerWeek", n)}
               />
             </SettingRow>
@@ -347,26 +347,41 @@ export function SettingsForm({
             )}
           </SectionCard>
 
+          <SectionCard icon="hourglass_bottom" title="1日の最低時間">
+            <SettingRow label="1回の勤務" hint="短いと警告">
+              <Stepper
+                value={form.minShiftHours ?? 4}
+                min={1}
+                max={12}
+                unit="時間"
+                ariaLabel="1日の最低時間"
+                onChange={(n) => setField("minShiftHours", n)}
+              />
+            </SettingRow>
+          </SectionCard>
+
           <SectionCard icon="timer" title="全体の労働時間">
             <SettingRow label="月の上限" hint="0は上限なし">
-              <div className="w-36 max-w-36 min-w-36 shrink-0">
+              <div className="labor-hours-field flex h-[42px] w-36 max-w-full items-center gap-1 rounded-md border border-slate-200 bg-white px-2">
                 <input
-                  type="number"
-                  min={0}
-                  max={9999}
-                  step={1}
+                  type="text"
                   inputMode="numeric"
+                  autoComplete="off"
                   aria-label="全体の労働時間の月の上限"
-                  value={form.totalLaborHoursLimit ?? 0}
-                  onChange={(e) => {
-                    const n = Number(e.target.value);
-                    const next = Number.isFinite(n) ? Math.round(n) : 0;
-                    setField("totalLaborHoursLimit", Math.min(9999, Math.max(0, next)));
+                  value={String(form.totalLaborHoursLimit ?? 0)}
+                  onFocus={(e) => {
+                    if ((form.totalLaborHoursLimit ?? 0) === 0) e.currentTarget.select();
                   }}
-                  className="box-border w-full min-w-0 appearance-none rounded-md border border-slate-200 bg-white text-slate-700 tabular-nums"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "");
+                    const normalized = digits.replace(/^0+(?=\d)/, "");
+                    const next = normalized === "" ? 0 : Number(normalized);
+                    setField("totalLaborHoursLimit", Math.min(9999, next));
+                  }}
+                  className="box-border min-w-0 flex-1 appearance-none border-0 bg-transparent text-slate-700 tabular-nums outline-none"
                 />
+                <span className="shrink-0 text-xs text-slate-500">時間</span>
               </div>
-              <span className="ml-2 shrink-0 text-xs text-slate-500">時間</span>
             </SettingRow>
           </SectionCard>
       </div>

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useMergeRefs, type VirtualElement } from "@floating-ui/react";
 import Icon from "@/components/Icon";
+import { hopeSentence } from "@/components/DayRequestList";
 import FieldControl, { FieldSelect } from "@/components/FieldControl";
-import { useAppStore } from "@/stores/useAppStore";
+import { EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import { useDismissable } from "@/hooks/useDismissable";
 import { useViewportPopover } from "@/hooks/useViewportPopover";
 import {
@@ -54,6 +55,14 @@ export default function AssignmentEditPopover({
 }) {
   const updateAssignment = useAppStore((s) => s.updateAssignment);
   const removeAssignment = useAppStore((s) => s.removeAssignment);
+  const requests = useAppStore(
+    (s) => s.requests[edit.date.slice(0, 7)] ?? EMPTY_REQUESTS,
+  );
+  const hope = hopeSentence(
+    requests.find((r) => r.staffId === edit.staff.id && r.date === edit.date),
+    edit.staff.freeTimeRange,
+  );
+  const [removed, setRemoved] = useState(false);
   const editRef = useDismissable<HTMLDivElement>(true, onClose);
   const { refs, floatingStyles, isPositioned } = useViewportPopover(edit.anchor);
   const popoverRef = useMergeRefs([editRef, refs.setFloating]);
@@ -101,16 +110,44 @@ export default function AssignmentEditPopover({
       <div
         ref={popoverRef}
         role="dialog"
-        aria-label={`${edit.staff.name} ${dayLabel(edit.date)} のシフトを編集`}
-        className="z-50 w-[17.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-6 pb-8 shadow-xl"
-        style={{ ...floatingStyles, visibility: isPositioned ? "visible" : "hidden" }}
+        aria-label={
+          removed
+            ? `${edit.staff.name}のシフトを外しました`
+            : `${edit.staff.name} ${dayLabel(edit.date)} のシフトを編集`
+        }
+        className={`z-50 w-[17.5rem] rounded-2xl border border-slate-200 bg-white px-5 pt-6 pb-8 shadow-xl ${
+          removed ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" : ""
+        }`}
+        style={
+          removed
+            ? undefined
+            : { ...floatingStyles, visibility: isPositioned ? "visible" : "hidden" }
+        }
       >
         <header className="mb-5">
           <p className="text-base font-bold tracking-tight text-slate-900">
-            {edit.staff.name}
+            {removed ? "シフトを外しました" : edit.staff.name}
           </p>
-          <p className="mt-1 text-sm text-slate-500">{dayLabel(edit.date)}</p>
+          <p className="mt-1 text-sm text-slate-500">
+            {removed
+              ? `${edit.staff.name}の${dayLabel(edit.date)}`
+              : dayLabel(edit.date)}
+          </p>
+          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-slate-800">
+            {hope}
+          </p>
         </header>
+
+        {removed ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-3 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          >
+            閉じる
+          </button>
+        ) : (
+        <>
 
         <section className="space-y-3" aria-labelledby={`edit-hours-${fieldId}`}>
           <h3
@@ -227,7 +264,7 @@ export default function AssignmentEditPopover({
             type="button"
             onClick={() => {
               removeAssignment(edit.assignment.id);
-              onClose();
+              setRemoved(true);
             }}
             className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-red-50 px-3 py-3 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
           >
@@ -235,6 +272,8 @@ export default function AssignmentEditPopover({
             このシフトを削除
           </button>
         </div>
+        </>
+        )}
       </div>
     </>
   );

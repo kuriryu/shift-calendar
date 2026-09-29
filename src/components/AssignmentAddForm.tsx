@@ -13,7 +13,6 @@ import {
 import { computeBreak } from "@/lib/generator";
 import { BREAK_OPTIONS } from "@/components/AssignmentEditPopover";
 import FieldControl, { FieldSelect } from "@/components/FieldControl";
-import { useEagernessLabels } from "@/components/EagernessBadge";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import type { Staff } from "@/types";
 import { dayLabel } from "@/lib/dates";
@@ -33,7 +32,6 @@ export default function AssignmentAddForm({
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const timeOptions = useMemo(() => timeOptionsOf(settings), [settings]);
-  const eagerness = useEagernessLabels();
 
   const [open, setOpen] = useState(false);
   const [staffId, setStaffId] = useState("");
@@ -167,7 +165,6 @@ export default function AssignmentAddForm({
             {candidates.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
-                {eagerness.get(s.id) ? `（${eagerness.get(s.id)}）` : ""}
               </option>
             ))}
           </FieldSelect>

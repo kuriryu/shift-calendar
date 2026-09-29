@@ -55,7 +55,7 @@ export function validateMonth(
         severity: "error",
         rule: "EMPLOYEE_PRESENT",
         date,
-        message: `${dayLabel(date)}: 契約社員が1人も配置されていません`,
+        message: `${dayLabel(date)}: 正社員が1人も配置されていません`,
       });
     }
 
@@ -163,6 +163,19 @@ export function validateMonth(
             message: `${dayLabel(date)}: ${staff.name} の勤務が希望時間（${req.timeRange.start}–${req.timeRange.end}）を外れています`,
           });
         }
+      }
+      const minShiftHours = settings.minShiftHours ?? 4;
+      const span = toMinutes(a.endTime) - toMinutes(a.startTime);
+      if (minShiftHours > 0 && span < minShiftHours * 60) {
+        violations.push({
+          id: vid(),
+          severity: "warning",
+          rule: "MIN_SHIFT_HOURS",
+          date,
+          staffId: a.staffId,
+          timeRange: { start: a.startTime, end: a.endTime },
+          message: `${dayLabel(date)}: ${staff.name} の勤務が最低${minShiftHours}時間を下回っています（${a.startTime}–${a.endTime}）`,
+        });
       }
       if (req?.type === "free" && staff.freeTimeRange) {
         const ok =
