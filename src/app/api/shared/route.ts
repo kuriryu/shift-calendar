@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { parseSessionToken, SESSION_COOKIE } from "@/lib/auth/session";
 import { isSnapshotBody } from "@/lib/shared-snapshot";
-import { readSharedSnapshot, writeSharedSnapshot } from "@/lib/shared-state-file";
+import { readSharedSnapshot, writeSharedSnapshot } from "@/lib/shared-state";
 
 export const runtime = "nodejs";
 
