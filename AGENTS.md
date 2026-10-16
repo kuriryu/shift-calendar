@@ -8,6 +8,19 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## 実装はサブエージェント worker に任せる
+
+アプリの実装は、Task ツールで起動したサブエージェント worker が行う。
+
+対象は、機能追加、不具合修正、リファクタ、その他 `src/` やアプリの設定を変えるコード変更。
+
+- `subagent_type` は `generalPurpose`
+- `model` は `composer-2.5`（Composer 2.5）に固定する
+- worker には、変更内容、触る範囲、完了条件を渡す
+- 親エージェントは、要件の切り分け、worker の結果確認、動作確認、コミットを行う
+
+質問への回答、このファイルの更新、環境セットアップの確認は親エージェントが行う。
+
 ## Development
 
 Install dependencies with `npm ci`, then start the app with `npm run dev` (port 3000). No secrets are required for local development.
