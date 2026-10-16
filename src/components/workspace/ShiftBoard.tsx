@@ -8,6 +8,7 @@ import { hopeChip } from "@/components/DayRequestList";
 import { dayLabel, daysOfMonth, monthLabel, weekdayLabel } from "@/lib/dates";
 import { businessRange, requestedMinutesOf, assignedMinutesOf } from "@/lib/hope-hours";
 import { drawShiftJpeg, downloadJpeg, downloadPdf } from "@/lib/print-shift";
+import { sharePageUrl } from "@/lib/public-url";
 import { staffLabel } from "@/lib/store-book";
 import { minutesToJapaneseHours, workMinutesOf } from "@/lib/time";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
@@ -84,7 +85,7 @@ export default function ShiftBoard() {
   };
 
   const share = async () => {
-    const path = storeId ? `${location.origin}/share/${storeId}/${month}` : location.href;
+    const path = storeId ? sharePageUrl(storeId, month) : location.href;
     const text = `${storeName}の${monthLabel(month)}シフトです。\n${path}`;
     if (navigator.share) {
       await navigator.share({ title: `${storeName}のシフト`, text, url: path }).catch(() => undefined);

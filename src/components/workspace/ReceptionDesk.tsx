@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { hopePageUrl } from "@/lib/public-url";
 import { defaultReception } from "@/lib/store-book";
 import { useAppStore } from "@/stores/useAppStore";
 
@@ -16,8 +17,7 @@ export default function ReceptionDesk() {
   const [yearText, monthText] = month.split("-");
   const year = Number(yearText);
   const monthNumber = Number(monthText);
-  const path = storeId ? `/hope/${storeId}/${month}` : "";
-  const url = typeof location === "undefined" ? path : `${location.origin}${path}`;
+  const url = storeId ? hopePageUrl(storeId, month) : "";
   const selectMonth = (nextMonth: string) => {
     setMonth(nextMonth);
     setNotice(null);
@@ -66,7 +66,7 @@ export default function ReceptionDesk() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stores: useAppStore.getState().exportBooks() }),
     });
-    const issued = `${location.origin}/hope/${storeId}/${month}`;
+    const issued = hopePageUrl(storeId, month);
     await navigator.clipboard.writeText(issued).catch(() => undefined);
     setNotice("URLを更新しました");
   };

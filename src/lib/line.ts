@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { PUBLIC_SITE_URL } from "@/lib/public-url";
 
 export type LineConfig = {
   channelSecret: string;
@@ -34,8 +35,8 @@ export function requestOrigin(request: Request): string {
   if (configured) return configured.replace(/\/$/, "");
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") ?? "https";
-  if (host) return `${proto}://${host}`;
-  return new URL(request.url).origin;
+  if (!host || host.startsWith("localhost") || host.startsWith("127.0.0.1")) return PUBLIC_SITE_URL;
+  return `${proto}://${host}`;
 }
 
 export function recruitMessage(input: {
