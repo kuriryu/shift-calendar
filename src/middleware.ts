@@ -9,7 +9,10 @@ export async function middleware(request: NextRequest) {
   const isPublic =
     pathname === "/" ||
     pathname.startsWith("/login") ||
+    pathname.startsWith("/hope") ||
+    pathname.startsWith("/share") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/board") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     /\.(?:png|ico|svg|jpg|jpeg|webp|txt|xml)$/i.test(pathname);

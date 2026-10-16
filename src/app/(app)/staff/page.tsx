@@ -1,6 +1,7 @@
-import RedirectToStep from "@/components/RedirectToStep";
+"use client";
 
-// スタッフ管理はトップのステップ3に統合したためリダイレクト
+import StaffDesk from "@/components/workspace/StaffDesk";
+
 export default function StaffPage() {
-  return <RedirectToStep step={3} />;
+  return <StaffDesk />;
 }

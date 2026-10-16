@@ -1,6 +1,7 @@
-import { redirect } from "next/navigation";
+"use client";
 
-// シフト表はダッシュボードに統合したためリダイレクト
+import ShiftBoard from "@/components/workspace/ShiftBoard";
+
 export default function ShiftsPage() {
-  redirect("/");
+  return <ShiftBoard />;
 }

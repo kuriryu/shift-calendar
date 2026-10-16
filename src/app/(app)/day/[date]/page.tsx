@@ -1,11 +1,6 @@
-import RedirectToStep from "@/components/RedirectToStep";
+import { redirect } from "next/navigation";
 
-/** 旧URL (/day/YYYY-MM-DD) はトップの調整ステップ（時間ビュー）に統合されたためリダイレクト */
-export default async function DayPage({
-  params,
-}: {
-  params: Promise<{ date: string }>;
-}) {
-  const { date } = await params;
-  return <RedirectToStep step={6} date={date} />;
+/** 日付の編集はシフト表の中で行う */
+export default function DayPage() {
+  redirect("/shifts");
 }

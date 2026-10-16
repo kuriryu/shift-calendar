@@ -5,12 +5,15 @@ import { persist } from "zustand/middleware";
 import type {
   ActivityEntry,
   HighlightTarget,
+  ReceptionWindow,
   Role,
   ShiftAssignment,
   ShiftRequest,
+  ShopPlace,
   ShopSettings,
   Staff,
   StepId,
+  TimeRange,
   Violation,
 } from "@/types";
 import { DEFAULT_SETTINGS } from "@/types";
@@ -32,6 +35,12 @@ import {
 } from "@/lib/time";
 import { parseCommand } from "@/lib/ai";
 import type { SharedSnapshot } from "@/lib/shared-snapshot";
+import {
+  applyHopeToBook,
+  emptyBook,
+  mergeHopes,
+  type StoreBook,
+} from "@/lib/store-book";
 
 const DEFAULT_MONTH = nextMonthOf();
 
@@ -153,6 +162,50 @@ function buildTestRequests(staffList: Staff[], month: string): ShiftRequest[] {
   return requests;
 }
 
+function packFromState(state: {
+  staff: Staff[];
+  settings: ShopSettings;
+  requests: Record<string, ShiftRequest[]>;
+  assignments: Record<string, ShiftAssignment[]>;
+  receptions: Record<string, ReceptionWindow>;
+  hopeNotes: Record<string, { staffId: string; message: string }[]>;
+  budgetHours: number;
+  publishedMonths: string[];
+  selectedMonth: string;
+  selectedDate: string;
+  hopeStamps: Record<string, number>;
+}): StoreBook {
+  return {
+    staff: state.staff,
+    settings: state.settings,
+    requests: state.requests,
+    assignments: state.assignments,
+    receptions: state.receptions,
+    notes: state.hopeNotes,
+    budgetHours: state.budgetHours,
+    published: state.publishedMonths,
+    selectedMonth: state.selectedMonth,
+    selectedDate: state.selectedDate,
+    hopeStamps: state.hopeStamps,
+  };
+}
+
+function unpackBook(book: StoreBook) {
+  return {
+    staff: book.staff,
+    settings: book.settings,
+    requests: book.requests,
+    assignments: book.assignments,
+    receptions: book.receptions,
+    hopeNotes: book.notes,
+    budgetHours: book.budgetHours,
+    publishedMonths: book.published,
+    selectedMonth: book.selectedMonth,
+    selectedDate: book.selectedDate,
+    hopeStamps: book.hopeStamps,
+  };
+}
+
 type AppState = {
   staff: Staff[];
   settings: ShopSettings;
@@ -185,6 +238,15 @@ type AppState = {
   } | null;
   /** 違反箇所のハイライト */
   highlight: HighlightTarget | null;
+  stores: ShopPlace[];
+  activeStoreId: string | null;
+  storeBooks: Record<string, StoreBook>;
+  receptions: Record<string, ReceptionWindow>;
+  hopeNotes: Record<string, { staffId: string; message: string }[]>;
+  budgetHours: number;
+  publishedMonths: string[];
+  hopeStamps: Record<string, number>;
+  issueOpen: boolean;
 
   setMonth: (month: string) => void;
   setSelectedDate: (date: string) => void;
@@ -243,6 +305,24 @@ type AppState = {
   removeStaff: (staffId: string) => void;
   recordLogin: (email: string) => void;
   clearLoginHistory: () => void;
+  createStore: (name: string) => string;
+  selectStore: (id: string) => void;
+  closeStore: () => void;
+  setReception: (month: string, patch: Partial<ReceptionWindow>) => void;
+  setBudgetHours: (hours: number) => void;
+  setIssueOpen: (open: boolean) => void;
+  publishMonth: () => void;
+  reopenMonth: () => void;
+  submitHope: (input: {
+    storeId: string;
+    staffId: string;
+    month: string;
+    requests: ShiftRequest[];
+    note: string;
+    freeTime?: TimeRange;
+  }) => void;
+  mergeRemoteBook: (storeId: string, remote: StoreBook) => void;
+  exportBooks: () => Record<string, StoreBook & { name: string }>;
 };
 
 export const useAppStore = create<AppState>()(
@@ -303,6 +383,15 @@ export const useAppStore = create<AppState>()(
         adjustView: "day",
         draft: null,
         highlight: null,
+        stores: [],
+        activeStoreId: null,
+        storeBooks: {},
+        receptions: {},
+        hopeNotes: {},
+        budgetHours: 0,
+        publishedMonths: [],
+        hopeStamps: {},
+        issueOpen: false,
 
         setMonth: (month) =>
           set((s) => {
@@ -969,11 +1058,161 @@ export const useAppStore = create<AppState>()(
           set((s) => ({
             activities: s.activities.filter((a) => a.kind !== "login"),
           })),
+
+        createStore: (name) => {
+          const id = `st-${Date.now().toString(36)}`;
+          const month = get().selectedMonth || DEFAULT_MONTH;
+          set((s) => {
+            const storeBooks = { ...s.storeBooks };
+            if (s.activeStoreId) storeBooks[s.activeStoreId] = packFromState(s);
+            return {
+              stores: [...s.stores, { id, name: name.trim() }],
+              activeStoreId: id,
+              storeBooks,
+              issueOpen: false,
+              ...unpackBook(emptyBook(month)),
+              violations: [],
+            };
+          });
+          return id;
+        },
+
+        selectStore: (id) =>
+          set((s) => {
+            if (!s.stores.some((store) => store.id === id)) return {};
+            const storeBooks = { ...s.storeBooks };
+            if (s.activeStoreId) storeBooks[s.activeStoreId] = packFromState(s);
+            const book = storeBooks[id] ?? emptyBook(s.selectedMonth || DEFAULT_MONTH);
+            const unpacked = unpackBook(book);
+            const monthAssignments = unpacked.assignments[unpacked.selectedMonth] ?? [];
+            return {
+              activeStoreId: id,
+              storeBooks,
+              issueOpen: false,
+              ...unpacked,
+              violations:
+                monthAssignments.length === 0
+                  ? []
+                  : validateMonth(
+                      unpacked.selectedMonth,
+                      unpacked.staff,
+                      unpacked.requests[unpacked.selectedMonth] ?? [],
+                      monthAssignments,
+                      unpacked.settings,
+                    ),
+            };
+          }),
+
+        closeStore: () =>
+          set((s) => {
+            if (!s.activeStoreId) return {};
+            return {
+              activeStoreId: null,
+              issueOpen: false,
+              storeBooks: { ...s.storeBooks, [s.activeStoreId]: packFromState(s) },
+            };
+          }),
+
+        setReception: (month, patch) =>
+          set((s) => {
+            const current = s.receptions[month] ?? {
+              open: false,
+              from: `${month}-01`,
+              to: `${month}-28`,
+            };
+            return {
+              receptions: {
+                ...s.receptions,
+                [month]: { ...current, ...patch },
+              },
+            };
+          }),
+
+        setBudgetHours: (hours) =>
+          set((s) => ({
+            budgetHours: hours,
+            settings: { ...s.settings, totalLaborHoursLimit: hours },
+          })),
+
+        setIssueOpen: (open) => set({ issueOpen: open }),
+
+        publishMonth: () =>
+          set((s) => ({
+            publishedMonths: s.publishedMonths.includes(s.selectedMonth)
+              ? s.publishedMonths
+              : [...s.publishedMonths, s.selectedMonth],
+            issueOpen: false,
+          })),
+
+        reopenMonth: () =>
+          set((s) => ({
+            publishedMonths: s.publishedMonths.filter((month) => month !== s.selectedMonth),
+            issueOpen: true,
+          })),
+
+        submitHope: (input) =>
+          set((s) => {
+            const target =
+              s.activeStoreId === input.storeId
+                ? packFromState(s)
+                : (s.storeBooks[input.storeId] ?? emptyBook(input.month));
+            const next = applyHopeToBook(target, input);
+            if (s.activeStoreId === input.storeId) {
+              return {
+                ...unpackBook(next),
+                ...revalidate({
+                  selectedMonth: s.selectedMonth,
+                  assignments: next.assignments,
+                  requests: next.requests,
+                  settings: next.settings,
+                }),
+              };
+            }
+            return {
+              storeBooks: { ...s.storeBooks, [input.storeId]: next },
+            };
+          }),
+
+        mergeRemoteBook: (storeId, remote) =>
+          set((s) => {
+            const local =
+              s.activeStoreId === storeId
+                ? packFromState(s)
+                : (s.storeBooks[storeId] ?? emptyBook(remote.selectedMonth));
+            const merged = mergeHopes(local, remote);
+            if (!merged.changed) return {};
+            if (s.activeStoreId === storeId) {
+              return {
+                ...unpackBook(merged.book),
+                ...revalidate({
+                  selectedMonth: s.selectedMonth,
+                  assignments: s.assignments,
+                  requests: merged.book.requests,
+                  settings: s.settings,
+                }),
+              };
+            }
+            return { storeBooks: { ...s.storeBooks, [storeId]: merged.book } };
+          }),
+
+        exportBooks: () => {
+          const s = get();
+          const books = { ...s.storeBooks };
+          if (s.activeStoreId) books[s.activeStoreId] = packFromState(s);
+          const named: Record<string, StoreBook & { name: string }> = {};
+          for (const store of s.stores) {
+            named[store.id] = {
+              ...(books[store.id] ?? emptyBook(s.selectedMonth || DEFAULT_MONTH)),
+              name: store.name,
+            };
+          }
+          return named;
+        },
       };
     },
     {
       name: "shift-app-v1",
-      version: 10,
+      version: 11,
       // 復元直後に違反リストを再計算（violations は永続化していないため）
       onRehydrateStorage: () => (state) => {
         state?.recompute();
@@ -1001,17 +1240,40 @@ export const useAppStore = create<AppState>()(
             : s,
         );
 
+        const settings = { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) };
+        const requests = cleared ? {} : (p.requests ?? {});
+        const assignments = cleared ? {} : (p.assignments ?? {});
+        const hasLegacy = staff.length > 0 || Object.keys(requests).length > 0;
+        const legacyId = "st-legacy";
+        const legacyBook = emptyBook(selectedMonth);
+        legacyBook.staff = staff;
+        legacyBook.settings = settings;
+        legacyBook.requests = requests;
+        legacyBook.assignments = assignments;
+        legacyBook.selectedMonth = selectedMonth;
+        legacyBook.selectedDate = p.selectedDate ?? `${selectedMonth}-01`;
+        legacyBook.budgetHours = settings.totalLaborHoursLimit ?? 0;
+        const storeBooks: Record<string, StoreBook> = hasLegacy ? { [legacyId]: legacyBook } : {};
+
         return {
           staff,
-          settings: { ...DEFAULT_SETTINGS, ...(p.settings ?? {}) },
+          settings,
           selectedMonth,
           selectedDate: p.selectedDate ?? `${selectedMonth}-01`,
           sidebarCollapsed: p.sidebarCollapsed ?? false,
           hiddenStaffIds: cleared ? [] : (p.hiddenStaffIds ?? []),
-          requests: cleared ? {} : (p.requests ?? {}),
-          assignments: cleared ? {} : (p.assignments ?? {}),
+          requests,
+          assignments,
           activities: (p.activities ?? []).filter((a) => a.kind !== "login"),
           hourDefaultsMigrated: true,
+          stores: hasLegacy ? [{ id: legacyId, name: "これまでの店舗" }] : [],
+          activeStoreId: null,
+          storeBooks,
+          receptions: {},
+          hopeNotes: {},
+          budgetHours: settings.totalLaborHoursLimit ?? 0,
+          publishedMonths: [],
+          hopeStamps: {},
         };
       },
       partialize: (s) => ({
@@ -1025,6 +1287,14 @@ export const useAppStore = create<AppState>()(
         assignments: s.assignments,
         activities: s.activities,
         hourDefaultsMigrated: s.hourDefaultsMigrated,
+        stores: s.stores,
+        activeStoreId: s.activeStoreId,
+        storeBooks: s.storeBooks,
+        receptions: s.receptions,
+        hopeNotes: s.hopeNotes,
+        budgetHours: s.budgetHours,
+        publishedMonths: s.publishedMonths,
+        hopeStamps: s.hopeStamps,
       }),
     },
   ),

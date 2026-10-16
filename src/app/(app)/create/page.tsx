@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** 旧 /create は統合後のトップへ */
+/** 旧ウィザードは店舗ワークスペースへ移した */
 export default function CreateRedirectPage() {
-  redirect("/");
+  redirect("/dashboard");
 }
