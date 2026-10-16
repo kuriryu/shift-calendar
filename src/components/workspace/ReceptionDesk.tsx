@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { defaultReception, staffLabel } from "@/lib/store-book";
+import { useState } from "react";
+import { defaultReception } from "@/lib/store-book";
 import { useAppStore } from "@/stores/useAppStore";
 
 export default function ReceptionDesk() {
@@ -10,41 +10,23 @@ export default function ReceptionDesk() {
   const reception = useAppStore((s) => s.receptions[month]);
   const setReception = useAppStore((s) => s.setReception);
   const storeId = useAppStore((s) => s.activeStoreId);
-  const staff = useAppStore((s) => s.staff);
   const exportBooks = useAppStore((s) => s.exportBooks);
   const period = reception ?? defaultReception(month);
-  const [lineReady, setLineReady] = useState<boolean | null>(null);
-  const [addFriendUrl, setAddFriendUrl] = useState<string | null>(null);
-  const [delivery, setDelivery] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [yearText, monthText] = month.split("-");
   const year = Number(yearText);
   const monthNumber = Number(monthText);
   const path = storeId ? `/hope/${storeId}/${month}` : "";
   const url = typeof location === "undefined" ? path : `${location.origin}${path}`;
-  const linked = staff.filter((member) => member.lineUserId);
-  const unlinked = staff.filter((member) => !member.lineUserId);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/line/status")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { configured?: boolean; addFriendUrl?: string | null } | null) => {
-        if (cancelled || !data) return;
-        setLineReady(Boolean(data.configured));
-        setAddFriendUrl(data.addFriendUrl ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setLineReady(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const selectMonth = (nextMonth: string) => {
+    setMonth(nextMonth);
+    setNotice(null);
+  };
 
   const toggleReception = async () => {
     const nextOpen = !period.open;
     setReception(month, { open: nextOpen, from: period.from, to: period.to });
-    setDelivery(null);
+    setNotice(null);
     if (!nextOpen || !storeId) return;
     await fetch("/api/board", {
       method: "PUT",
@@ -62,28 +44,38 @@ export default function ReceptionDesk() {
       unlinked?: string[];
       error?: string;
     };
-    if (!res.ok && data.error) {
-      setDelivery(data.error);
-      return;
+    if (data.configured) {
+      const missing = data.unlinked ?? [];
+      const sent = data.sent ?? 0;
+      setNotice(
+        sent > 0
+          ? `${sent}人に公式アカウントから送りました。${missing.length ? `未連携: ${missing.join("、")}` : ""}`
+          : `連携済みのスタッフがいないため、送っていません。${missing.length ? `未連携: ${missing.join("、")}` : ""}`,
+      );
     }
-    if (!data.configured) {
-      setDelivery("公式アカウントが未接続のため、自動配信はまだできません。");
-      return;
-    }
-    const missing = data.unlinked ?? [];
-    const sent = data.sent ?? 0;
-    setDelivery(
-      sent > 0
-        ? `${sent}人に公式アカウントから送りました。${missing.length ? `未連携: ${missing.join("、")}` : ""}`
-        : `連携済みのスタッフがいないため、送っていません。${missing.length ? `未連携: ${missing.join("、")}` : ""}`,
-    );
+  };
+
+  const updateUrl = async () => {
+    if (!storeId) return;
+    const fallback = defaultReception(month);
+    const from = period.from.startsWith(month) ? period.from : fallback.from;
+    const to = period.to.startsWith(month) ? period.to : fallback.to;
+    setReception(month, { open: true, from, to });
+    await fetch("/api/board", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stores: useAppStore.getState().exportBooks() }),
+    });
+    const issued = `${location.origin}/hope/${storeId}/${month}`;
+    await navigator.clipboard.writeText(issued).catch(() => undefined);
+    setNotice("URLを更新しました");
   };
 
   return (
     <div className="h-full overflow-auto p-5 md:p-8">
       <h1 className="text-2xl font-bold text-slate-900">シフト希望受付</h1>
       <p className="mt-2 text-sm text-slate-500">
-        対象の年月を選び、受付期間を決めてから募集を開始します。開始すると、連携済みのスタッフへ公式アカウントから希望URLを送ります。
+        対象の年月を選び、受付期間を決めてから募集を開始します。年月を変えたら URLを更新すると、その月の希望リンクになります。
       </p>
 
       <div className="mt-6 grid max-w-xl gap-4 rounded-2xl bg-white p-5 shadow-sm">
@@ -93,7 +85,7 @@ export default function ReceptionDesk() {
             <select
               value={year}
               onChange={(event) =>
-                setMonth(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
+                selectMonth(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
               }
               className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
             >
@@ -109,7 +101,7 @@ export default function ReceptionDesk() {
             <select
               value={monthNumber}
               onChange={(event) =>
-                setMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
+                selectMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
               }
               className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
             >
@@ -153,32 +145,18 @@ export default function ReceptionDesk() {
           {period.open ? "受付を停止する" : "シフト希望の受付を開始する"}
         </button>
 
-        <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-          <p className="text-xs font-semibold text-slate-400">LINE公式アカウント</p>
-          {lineReady === false && (
-            <p className="mt-2">
-              チャネルが未接続です。接続後、受付開始と同時に連携済みのスタッフへ自動で届きます。
-            </p>
-          )}
-          {lineReady && (
-            <p className="mt-2">
-              接続済みです。連携 {linked.length} 人 / 未連携 {unlinked.map((member) => staffLabel(member)).join("、") || "なし"}
-            </p>
-          )}
-          {addFriendUrl && (
-            <a href={addFriendUrl} className="mt-2 inline-block font-semibold text-[#06C755]" target="_blank" rel="noreferrer">
-              友達追加して名前を送る
-            </a>
-          )}
-          {delivery && <p className="mt-2">{delivery}</p>}
+        <div className="rounded-xl bg-slate-50 p-4">
+          <p className="text-xs font-semibold text-slate-400">希望を送るURL</p>
+          <p className="mt-1 break-all text-sm text-slate-800">{url}</p>
+          <button
+            type="button"
+            onClick={() => void updateUrl()}
+            className="mt-3 h-11 rounded-full bg-[#06C755] px-4 text-sm font-semibold text-white"
+          >
+            URLを更新
+          </button>
+          {notice && <p className="mt-2 text-sm text-slate-700">{notice}</p>}
         </div>
-
-        {period.open && (
-          <div className="rounded-xl bg-slate-50 p-4">
-            <p className="text-xs font-semibold text-slate-400">発行済みのURL</p>
-            <p className="mt-1 break-all text-sm text-slate-800">{url}</p>
-          </div>
-        )}
       </div>
     </div>
   );

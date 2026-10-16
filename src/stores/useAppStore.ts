@@ -37,6 +37,7 @@ import { parseCommand } from "@/lib/ai";
 import type { SharedSnapshot } from "@/lib/shared-snapshot";
 import {
   applyHopeToBook,
+  defaultReception,
   emptyBook,
   mergeHopes,
   type StoreBook,
@@ -407,10 +408,22 @@ export const useAppStore = create<AppState>()(
               month,
             );
             const requests = { ...s.requests, [month]: next };
+            const existing = s.receptions[month];
+            const fallback = defaultReception(month);
+            const from = existing?.from.startsWith(month) ? existing.from : fallback.from;
+            const to = existing?.to.startsWith(month) ? existing.to : fallback.to;
+            const receptions =
+              existing && existing.from === from && existing.to === to
+                ? s.receptions
+                : {
+                    ...s.receptions,
+                    [month]: { open: existing?.open ?? false, from, to },
+                  };
             return {
               selectedMonth: month,
               selectedDate,
               requests,
+              receptions,
               ...revalidate({ ...s, selectedMonth: month, requests }),
             };
           }),
