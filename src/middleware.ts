@@ -13,6 +13,7 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/share") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/board") ||
+    pathname.startsWith("/api/line/webhook") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     /\.(?:png|ico|svg|jpg|jpeg|webp|txt|xml)$/i.test(pathname);

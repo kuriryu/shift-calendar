@@ -142,7 +142,8 @@ export default function StaffDesk() {
               <p className="font-semibold text-slate-900">{staffLabel(member)}</p>
               <p className="text-xs text-slate-500">
                 最低 {member.minHours || 0} 時間 /{" "}
-                {member.coverage === "alone" ? "一人で大丈夫" : "社員が必要"} / {ROLE_LABELS[member.role]}
+                {member.coverage === "alone" ? "一人で大丈夫" : "社員が必要"} / {ROLE_LABELS[member.role]} /{" "}
+                {member.lineUserId ? "LINE連携済み" : "LINE未連携"}
               </p>
             </div>
             <button type="button" onClick={() => startEdit(member)} className="text-sm text-blue-600">

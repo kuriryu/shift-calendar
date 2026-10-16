@@ -37,7 +37,15 @@ export async function PUT(request: Request) {
       stores[id] = incoming;
       continue;
     }
-    let book = { ...incoming, hopeStamps: { ...incoming.hopeStamps } };
+    let book = {
+      ...incoming,
+      hopeStamps: { ...incoming.hopeStamps },
+      staff: incoming.staff.map((member) => {
+        const previousMember = previous.staff.find((item) => item.id === member.id);
+        if (!previousMember) return member;
+        return { ...member, lineUserId: previousMember.lineUserId };
+      }),
+    };
     for (const [key, at] of Object.entries(previous.hopeStamps ?? {})) {
       if (at > (book.hopeStamps?.[key] ?? 0)) {
         const splitAt = key.indexOf("|");

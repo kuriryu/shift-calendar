@@ -146,6 +146,13 @@ export function mergeHopes(
     }
   }
 
+  staff = staff.map((member) => {
+    const remoteMember = remote.staff.find((item) => item.id === member.id);
+    if (!remoteMember || remoteMember.lineUserId === member.lineUserId) return member;
+    changed = true;
+    return { ...member, lineUserId: remoteMember.lineUserId };
+  });
+
   if (!changed) return { book: local, changed: false };
   return {
     changed: true,

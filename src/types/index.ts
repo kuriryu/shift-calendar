@@ -37,6 +37,8 @@ export type Staff = {
   minHours?: number;
   /** 一人で勤務できるか、社員が一緒にいないとだめか */
   coverage?: CoverageNeed;
+  /** LINE公式アカウントのユーザーID。募集開始時の自動配信先 */
+  lineUserId?: string;
 };
 
 export type CoverageNeed = "alone" | "needs_employee";
