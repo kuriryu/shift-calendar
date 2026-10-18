@@ -90,36 +90,20 @@ export default function StaffDesk() {
             <span>時間</span>
           </span>
         </label>
-        <fieldset>
-          <legend className="ds-label">勤務の条件</legend>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {(
-              [
-                ["alone", "一人で大丈夫"],
-                ["needs_employee", "社員が必要"],
-              ] as const
-            ).map(([value, label]) => (
-              <label
-                key={value}
-                className={`flex h-12 items-center justify-center rounded-xl border text-sm font-bold ${
-                  form.coverage === value
-                    ? "border-[var(--ds-action)] bg-[var(--ds-tint)] text-[var(--ds-navy)]"
-                    : "border-[var(--ds-line)] text-[var(--ds-body)]"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="coverage"
-                  value={value}
-                  checked={form.coverage === value}
-                  onChange={() => setForm({ ...form, coverage: value })}
-                  className="sr-only"
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <label className="ds-label" htmlFor="staff-coverage">
+          勤務の条件
+          <select
+            id="staff-coverage"
+            value={form.coverage}
+            onChange={(event) =>
+              setForm({ ...form, coverage: event.target.value as CoverageNeed })
+            }
+            className="ds-input mt-2"
+          >
+            <option value="alone">一人で大丈夫</option>
+            <option value="needs_employee">社員が必要</option>
+          </select>
+        </label>
         <label className="ds-label">
           属性
           <select
