@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { monthLabel } from "@/lib/dates";
 import { assignedMinutesOf, requestedMinutesOf } from "@/lib/hope-hours";
@@ -10,6 +10,78 @@ import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppS
 import type { HopeNote } from "@/types";
 
 const EMPTY_NOTES: HopeNote[] = [];
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return reduced;
+}
+
+/** 提出率を、円のパラメーターが伸びるモーションで見せる */
+function SubmissionGauge({ rate }: { rate: number }) {
+  const reduced = usePrefersReducedMotion();
+  const [shown, setShown] = useState(reduced ? rate : 0);
+  const radius = 34;
+  const circumference = 2 * Math.PI * radius;
+  const progress = Math.min(100, Math.max(0, shown));
+  const color = rate >= 100 ? "var(--ds-green)" : "var(--ds-action)";
+  const angle = -Math.PI / 2 + (progress / 100) * Math.PI * 2;
+  const knobX = 50 + radius * Math.cos(angle);
+  const knobY = 50 + radius * Math.sin(angle);
+
+  useEffect(() => {
+    if (reduced) {
+      setShown(rate);
+      return;
+    }
+    const start = performance.now();
+    const duration = 900;
+    let frame = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      setShown(Math.round(rate * eased));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [rate, reduced]);
+
+  return (
+    <div className="submission-gauge relative h-28 w-28 shrink-0" aria-hidden>
+      <svg viewBox="0 0 100 100" className="h-full w-full">
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="#e6e6e6" strokeWidth="9" />
+        {progress > 0 && (
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth="9"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress / 100)}
+            transform="rotate(-90 50 50)"
+          />
+        )}
+        <circle cx={knobX} cy={knobY} r="5.5" fill="#fff" stroke={color} strokeWidth="3" />
+      </svg>
+      <p className="absolute inset-0 grid place-items-center text-[1.65rem] font-bold leading-none tracking-tight text-[var(--ds-ink)] tabular-nums">
+        <span>
+          {progress}
+          <span className="ml-0.5 text-sm">%</span>
+        </span>
+      </p>
+    </div>
+  );
+}
 
 export default function DashboardHome() {
   const router = useRouter();
@@ -66,12 +138,17 @@ export default function DashboardHome() {
       </section>
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <article className="ds-card p-5">
-          <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
-          <p className="mt-2 text-4xl font-bold text-[var(--ds-ink)]">{rate}%</p>
-          <p className="mt-1 text-sm text-[var(--ds-muted)]">
-            {submitted} / {staff.length} 人
-          </p>
+        <article
+          className="ds-card flex items-center gap-4 p-5"
+          aria-label={`シフトの提出率 ${rate}%。${staff.length}人中${submitted}人`}
+        >
+          <SubmissionGauge rate={rate} />
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
+            <p className="mt-1 text-sm text-[var(--ds-muted)]">
+              {submitted} / {staff.length} 人
+            </p>
+          </div>
         </article>
         <article className="ds-card p-5">
           <label htmlFor="budget-hours" className="ds-label">
