@@ -22,6 +22,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
   const stores = useAppStore((s) => s.stores);
   const activeStoreId = useAppStore((s) => s.activeStoreId);
   const closeStore = useAppStore((s) => s.closeStore);
+  const showHero = useAppStore((s) => s.showHero);
   const selectStore = useAppStore((s) => s.selectStore);
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   const setMonth = useAppStore((s) => s.setMonth);
@@ -39,7 +40,8 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     closeStore();
-    router.replace("/login");
+    showHero();
+    router.replace("/");
     router.refresh();
   };
 
