@@ -134,7 +134,7 @@ export default function DashboardHome() {
         </button>
       </section>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-3">
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
         <article
           className="ds-card p-5"
           aria-label={`シフトの提出率 ${rate}%。${staff.length}人中${submitted}人`}
@@ -159,22 +159,22 @@ export default function DashboardHome() {
             <span>時間</span>
           </div>
         </article>
-        <article className="ds-card p-5">
-          <p className="text-sm font-bold text-[var(--ds-body)]">特別なリクエスト</p>
-          <ul className="mt-3 space-y-2 text-sm text-[var(--ds-ink)]">
-            {messages.length === 0 && <li>メッセージはありません</li>}
-            {messages.map((note) => {
-              const member = staff.find((item) => item.id === note.staffId);
-              return (
-                <li key={`${note.staffId}-${note.message}`}>
-                  <span className="font-semibold">{member ? staffLabel(member) : "スタッフ"}</span>
-                  <span className="mt-0.5 block text-slate-500">{note.message}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </article>
       </div>
+      <article className="ds-card mt-4 p-5">
+        <p className="text-sm font-bold text-[var(--ds-body)]">特別なリクエスト</p>
+        <ul className="mt-3 space-y-2 text-sm text-[var(--ds-ink)]">
+          {messages.length === 0 && <li>メッセージはありません</li>}
+          {messages.map((note) => {
+            const member = staff.find((item) => item.id === note.staffId);
+            return (
+              <li key={`${note.staffId}-${note.message}`}>
+                <span className="font-semibold">{member ? staffLabel(member) : "スタッフ"}</span>
+                <span className="mt-0.5 block text-slate-500">{note.message}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </article>
 
       <section className="ds-card mt-4 p-5">
         <h2 className="text-base font-bold text-[var(--ds-ink)]">希望時間が多い順</h2>
