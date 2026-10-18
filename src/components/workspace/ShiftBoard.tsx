@@ -135,7 +135,7 @@ export default function ShiftBoard() {
               type="button"
               disabled={errors.length > 0 || assignments.length === 0}
               onClick={complete}
-              className="h-11 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white disabled:opacity-40"
+              className="ds-btn w-full disabled:opacity-40"
             >
               完了
             </button>
@@ -146,7 +146,7 @@ export default function ShiftBoard() {
       <div className="min-w-0 flex-1 overflow-auto p-4 md:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">シフト表</h1>
+            <h1 className="ds-title">シフト表</h1>
             <p className="text-sm text-slate-500">{monthLabel(month)}</p>
           </div>
           {!published && (
@@ -154,7 +154,7 @@ export default function ShiftBoard() {
               type="button"
               onClick={generateShift}
               disabled={staff.length === 0}
-              className="h-11 rounded-full bg-slate-900 px-5 text-sm font-semibold text-white disabled:opacity-40"
+              className="ds-btn disabled:opacity-40"
             >
               シフトを生成
             </button>
@@ -162,20 +162,22 @@ export default function ShiftBoard() {
         </div>
 
         {published ? (
-          <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900">このシフトで確定しました</h2>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button type="button" onClick={() => window.print()} className="h-11 rounded-full bg-slate-900 px-4 text-sm font-semibold text-white">
-                印刷
+          <section className="ds-card mt-6 p-6">
+            <h2 className="text-xl font-bold text-[var(--ds-ink)]">このシフトで確定しました</h2>
+            <div className="mt-4 grid max-w-md gap-2">
+              <button type="button" onClick={() => window.print()} className="ds-btn w-full">
+                印刷する
               </button>
-              <button type="button" onClick={() => void exportFile("jpeg")} className="h-11 rounded-full bg-white px-4 text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
-                JPEG
-              </button>
-              <button type="button" onClick={() => void exportFile("pdf")} className="h-11 rounded-full bg-white px-4 text-sm font-semibold text-slate-800 ring-1 ring-slate-200">
-                PDF
-              </button>
-              <button type="button" onClick={() => void share()} className="h-11 rounded-full bg-[#06C755] px-4 text-sm font-semibold text-white">
-                共有
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => void exportFile("jpeg")} className="ds-btn-secondary">
+                  JPEG
+                </button>
+                <button type="button" onClick={() => void exportFile("pdf")} className="ds-btn-secondary">
+                  PDF
+                </button>
+              </div>
+              <button type="button" onClick={() => void share()} className="ds-btn-line w-full">
+                共有する
               </button>
               <button
                 type="button"
@@ -183,9 +185,9 @@ export default function ShiftBoard() {
                   reopenMonth();
                   router.push("/shifts");
                 }}
-                className="h-11 rounded-full bg-white px-4 text-sm font-semibold text-blue-700 ring-1 ring-blue-200"
+                className="ds-btn-neutral w-full"
               >
-                希望の修正が来たら生成画面に戻る
+                生成画面に戻る
               </button>
             </div>
             <div id="shift-print-sheet" className="mt-6">
@@ -203,7 +205,7 @@ export default function ShiftBoard() {
                   type="button"
                   onClick={() => setSelectedDate(day)}
                   className={`h-16 w-14 shrink-0 rounded-2xl text-sm ${
-                    day === date ? "bg-blue-600 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"
+                    day === date ? "bg-[var(--ds-action)] text-white" : "border border-[var(--ds-line)] bg-white text-[var(--ds-ink)]"
                   }`}
                 >
                   <span className="block font-bold">{Number(day.slice(8))}</span>
@@ -250,11 +252,11 @@ export default function ShiftBoard() {
               <li key={item.id}>{item.message}</li>
             ))}
           </ul>
-          <div className="mt-4 flex gap-2">
-            <button type="button" onClick={() => setModal(null)} className="h-11 flex-1 rounded-xl bg-slate-100 text-sm font-semibold">
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setModal(null)} className="ds-btn-neutral">
               戻る
             </button>
-            <button type="button" onClick={() => setModal("ok")} className="h-11 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white">
+            <button type="button" onClick={() => setModal("ok")} className="ds-btn">
               続ける
             </button>
           </div>
@@ -278,11 +280,11 @@ export default function ShiftBoard() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 flex gap-2">
-            <button type="button" onClick={() => setModal(null)} className="h-11 flex-1 rounded-xl bg-slate-100 text-sm font-semibold">
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setModal(null)} className="ds-btn-neutral">
               戻る
             </button>
-            <button type="button" onClick={finish} className="h-11 flex-1 rounded-xl bg-blue-600 text-sm font-semibold text-white">
+            <button type="button" onClick={finish} className="ds-btn">
               OK
             </button>
           </div>

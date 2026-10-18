@@ -1,8 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* LINE Design System: 本文 #111111、下地は明るいグレー、成功はフォレストグリーン */
+  --ds-ink: #111111;
+  --ds-body: #555555;
+  --ds-muted: #767676;
+  --ds-canvas: #f5f5f5;
+  --ds-line: #e6e6e6;
+  --ds-green: #06c755;
+  --ds-green-press: #05a648;
+  /* SmartHR Input: 枠線、フォーカス、16px */
+  --ds-border: #d6d3d0;
+  --ds-focus: #0077c7;
+  /* PayPay App Style Guide: Primary Blue、押下、カード */
+  --ds-action: #3895ff;
+  --ds-action-press: #1a78e6;
+  --ds-navy: #002970;
+  --ds-tint: #eaf3ff;
+  --background: var(--ds-canvas);
+  --foreground: var(--ds-ink);
 }
 
 @theme inline {
@@ -40,11 +56,7 @@ body {
   }
 }
 
-/* smarthr の input { padding-inline: unset } より優先し、共通入力枠は上下左右 12px */
-.field-control {
-  padding: 12px;
-  padding-inline: 12px;
-}
+/* SmartHR Input: 1行入力は高さ48px・左右12px。説明はプレースホルダに置かない */
 
 /* PrimaryButton のリンク文字色（smarthr の a { color: inherit } を上書き） */
 a.primary-button,
@@ -104,10 +116,175 @@ button.primary-button {
   animation: hero-tilt-float 8s ease-in-out infinite;
   transform-style: preserve-3d;
 }
-/* キーボード操作時のフォーカスリング（DADS Blue） */
+/* SmartHR Input: フォーカスは枠の色で明示する */
 :focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid var(--ds-focus);
   outline-offset: 2px;
+}
+
+.ds-page {
+  height: 100%;
+  overflow: auto;
+  padding: 20px 16px 32px;
+}
+@media (min-width: 768px) {
+  .ds-page {
+    padding: 32px;
+  }
+}
+.ds-title {
+  color: var(--ds-ink);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.ds-lead {
+  margin-top: 8px;
+  color: var(--ds-body);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.ds-card {
+  background: #fff;
+  border: 1px solid var(--ds-line);
+  border-radius: 12px;
+}
+.ds-label {
+  display: block;
+  color: var(--ds-ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.ds-help {
+  display: block;
+  margin-top: 4px;
+  color: var(--ds-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+.ds-input,
+.field-control {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--ds-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ds-ink);
+  font-size: 16px;
+  line-height: 1.4;
+}
+textarea.ds-input {
+  height: auto;
+  min-height: 96px;
+  padding: 12px;
+}
+.ds-input:focus,
+.field-control:focus {
+  outline: 2px solid var(--ds-focus);
+  outline-offset: 1px;
+  border-color: var(--ds-focus);
+}
+.ds-suffix .ds-input {
+  width: 8rem;
+}
+header .ds-input {
+  width: auto;
+  height: 40px;
+}
+header #header-store {
+  max-width: 10rem;
+}
+header #header-year {
+  width: 6.75rem;
+}
+header #header-month {
+  width: 5.25rem;
+}
+.ds-suffix {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ds-suffix > span {
+  color: var(--ds-body);
+  font-size: 14px;
+  font-weight: 700;
+}
+.ds-btn,
+.primary-button {
+  display: inline-flex;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 26px;
+  background: var(--ds-action);
+  padding: 0 24px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+.ds-btn:hover,
+.primary-button:hover {
+  background: var(--ds-action-press);
+}
+.ds-btn:disabled,
+.primary-button:disabled {
+  background: #b9d7ff;
+  color: #fff;
+}
+.ds-btn-secondary {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--ds-action);
+  border-radius: 24px;
+  background: #fff;
+  padding: 0 20px;
+  color: var(--ds-action);
+  font-size: 16px;
+  font-weight: 700;
+}
+.ds-btn-secondary:hover {
+  background: var(--ds-tint);
+}
+.ds-btn-neutral {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 24px;
+  background: #f0f0f0;
+  padding: 0 20px;
+  color: var(--ds-body);
+  font-size: 16px;
+  font-weight: 700;
+}
+.ds-btn-line {
+  display: inline-flex;
+  height: 48px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 24px;
+  background: var(--ds-green);
+  padding: 0 20px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ds-btn-line:hover {
+  background: var(--ds-green-press);
+}
+.ds-nav-active {
+  background: var(--ds-tint);
+  color: var(--ds-navy);
+  font-weight: 700;
 }
 
 /* 違反箇所のハイライト（数秒間の点滅） */
@@ -202,7 +379,7 @@ button.primary-button {
 .generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
 .change-request-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main,
 .assignment-add-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main {
-  background-color: #2563eb !important;
+  background-color: #3895ff !important;
 }
 /* プロフィールメニューは top layer。ブラウザ標準の popover 初期値を上書きする */
 .profile-layer {
@@ -224,5 +401,5 @@ button.primary-button {
 .generate-confirm-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .change-request-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover,
 .assignment-add-dialog .smarthr-ui-Dialog-actionArea button.shr-bg-main:hover {
-  background-color: #1d4ed8 !important;
+  background-color: #1a78e6 !important;
 }

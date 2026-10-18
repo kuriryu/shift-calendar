@@ -27,6 +27,7 @@ export default function AppShell({ children }: { email: string | null; children:
   const activeStoreId = useAppStore((s) => s.activeStoreId);
   const recordLogin = useAppStore((s) => s.recordLogin);
   const [authenticated, setAuthenticated] = useState(false);
+  const [storeReady, setStoreReady] = useState(false);
 
   useEffect(() => {
     if (!LOGIN_ENABLED) return;
@@ -51,11 +52,17 @@ export default function AppShell({ children }: { email: string | null; children:
   }, [authenticated, recordLogin]);
 
   useEffect(() => {
+    if (!hydrated) return;
+    useAppStore.getState().ensureDefaultStore();
+    setStoreReady(true);
+  }, [hydrated]);
+
+  useEffect(() => {
     if (!hydrated || activeStoreId || pathname === "/") return;
     router.replace("/");
   }, [activeStoreId, hydrated, pathname, router]);
 
-  if (!mounted || !hydrated) {
+  if (!mounted || !hydrated || !storeReady) {
     return <div className="min-h-dvh bg-slate-50" />;
   }
 

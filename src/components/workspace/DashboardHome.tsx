@@ -48,51 +48,52 @@ export default function DashboardHome() {
   };
 
   return (
-    <div className="h-full overflow-auto p-5 md:p-8">
-      <section className="rounded-3xl bg-slate-900 px-6 py-6 text-white">
-        <p className="text-sm text-slate-300">{monthLabel(month)}のシフト生成</p>
-        <h1 className="mt-1 text-2xl font-bold">希望が集まったら、ここから生成します</h1>
-        <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">
+    <div className="ds-page">
+      <section className="ds-card px-6 py-6">
+        <p className="text-sm font-bold text-[var(--ds-action)]">{monthLabel(month)}のシフト生成</p>
+        <h1 className="ds-title mt-1">希望が集まったら、ここから生成します</h1>
+        <p className="ds-lead max-w-xl">
           提出された希望をもとにシフトを作り、そのあと時間と休憩だけを直します。
         </p>
         <button
           type="button"
           onClick={generateShift}
           disabled={staff.length === 0}
-          className="mt-5 h-11 rounded-full bg-white px-5 text-sm font-semibold text-slate-900 disabled:opacity-40"
+          className="ds-btn mt-5"
         >
           シフトを生成
         </button>
       </section>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
-        <article className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">シフトの提出率</p>
-          <p className="mt-2 text-4xl font-bold text-slate-900">{rate}%</p>
-          <p className="mt-1 text-sm text-slate-500">
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <article className="ds-card p-5">
+          <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
+          <p className="mt-2 text-4xl font-bold text-[var(--ds-ink)]">{rate}%</p>
+          <p className="mt-1 text-sm text-[var(--ds-muted)]">
             {submitted} / {staff.length} 人
           </p>
         </article>
-        <article className="rounded-2xl bg-white p-5 shadow-sm">
-          <label htmlFor="budget-hours" className="text-sm text-slate-500">
+        <article className="ds-card p-5">
+          <label htmlFor="budget-hours" className="ds-label">
             予算の時間
+            <span className="ds-help">この月に使える労働時間です。</span>
           </label>
-          <div className="mt-2 flex items-end gap-2">
+          <div className="ds-suffix mt-2">
             <input
               id="budget-hours"
               type="number"
               min={0}
+              inputMode="numeric"
               value={budgetHours || ""}
-              placeholder="0"
               onChange={(event) => setBudgetHours(Number(event.target.value) || 0)}
-              className="w-28 border-b border-slate-300 bg-transparent text-4xl font-bold outline-none"
+              className="ds-input w-32"
             />
-            <span className="pb-1 text-sm text-slate-500">時間</span>
+            <span>時間</span>
           </div>
         </article>
-        <article className="rounded-2xl bg-white p-5 shadow-sm">
-          <p className="text-sm text-slate-500">特別なリクエスト</p>
-          <ul className="mt-3 space-y-2 text-sm text-slate-700">
+        <article className="ds-card p-5">
+          <p className="text-sm font-bold text-[var(--ds-body)]">特別なリクエスト</p>
+          <ul className="mt-3 space-y-2 text-sm text-[var(--ds-ink)]">
             {messages.length === 0 && <li>メッセージはありません</li>}
             {messages.map((note) => {
               const member = staff.find((item) => item.id === note.staffId);
@@ -107,8 +108,8 @@ export default function DashboardHome() {
         </article>
       </div>
 
-      <section className="mt-5 rounded-2xl bg-white p-5 shadow-sm">
-        <h2 className="text-base font-bold text-slate-900">希望時間が多い順</h2>
+      <section className="ds-card mt-4 p-5">
+        <h2 className="text-base font-bold text-[var(--ds-ink)]">希望時間が多い順</h2>
         <ol className="mt-4 divide-y divide-slate-100">
           {ranked.length === 0 && <li className="py-6 text-sm text-slate-400">スタッフがまだいません</li>}
           {ranked.map(({ member, minutes, assigned }, index) => (

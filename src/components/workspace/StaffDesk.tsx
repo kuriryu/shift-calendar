@@ -58,35 +58,40 @@ export default function StaffDesk() {
   };
 
   return (
-    <div className="h-full overflow-auto p-5 md:p-8">
-      <h1 className="text-2xl font-bold text-slate-900">スタッフ</h1>
-      <p className="mt-2 text-sm text-slate-500">
+    <div className="ds-page">
+      <h1 className="ds-title">スタッフ</h1>
+      <p className="ds-lead">
         苗字、最低時間、一人で入れるかを先に登録します。希望提出ではこの苗字だけを選びます。
       </p>
 
-      <form onSubmit={onSubmit} className="mt-6 grid max-w-xl gap-3 rounded-2xl bg-white p-5 shadow-sm">
-        <label className="text-sm text-slate-500">
+      <form onSubmit={onSubmit} className="ds-card mt-6 grid max-w-xl gap-4 p-5">
+        <label className="ds-label">
           苗字
+          <span className="ds-help">希望提出で選ぶ名前です。</span>
           <input
             value={form.familyName}
             onChange={(event) => setForm({ ...form, familyName: event.target.value })}
-            className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
+            className="ds-input mt-2"
             required
           />
         </label>
-        <label className="text-sm text-slate-500">
+        <label className="ds-label">
           最低時間
-          <input
-            type="number"
-            min={0}
-            value={form.minHours}
-            onChange={(event) => setForm({ ...form, minHours: event.target.value })}
-            placeholder="月の最低時間"
-            className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
-          />
+          <span className="ds-help">1か月あたりの最低労働時間です。</span>
+          <span className="ds-suffix mt-2">
+            <input
+              type="number"
+              min={0}
+              inputMode="numeric"
+              value={form.minHours}
+              onChange={(event) => setForm({ ...form, minHours: event.target.value })}
+              className="ds-input w-32"
+            />
+            <span>時間</span>
+          </span>
         </label>
-        <fieldset className="text-sm text-slate-500">
-          <legend>勤務の条件</legend>
+        <fieldset>
+          <legend className="ds-label">勤務の条件</legend>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {(
               [
@@ -96,10 +101,10 @@ export default function StaffDesk() {
             ).map(([value, label]) => (
               <label
                 key={value}
-                className={`flex h-11 items-center justify-center rounded-xl border text-sm font-medium ${
+                className={`flex h-12 items-center justify-center rounded-xl border text-sm font-bold ${
                   form.coverage === value
-                    ? "border-blue-600 bg-blue-50 text-blue-700"
-                    : "border-slate-200 text-slate-600"
+                    ? "border-[var(--ds-action)] bg-[var(--ds-tint)] text-[var(--ds-navy)]"
+                    : "border-[var(--ds-line)] text-[var(--ds-body)]"
                 }`}
               >
                 <input
@@ -115,12 +120,12 @@ export default function StaffDesk() {
             ))}
           </div>
         </fieldset>
-        <label className="text-sm text-slate-500">
+        <label className="ds-label">
           属性
           <select
             value={form.role}
             onChange={(event) => setForm({ ...form, role: event.target.value as Role })}
-            className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
+            className="ds-input mt-2 w-40"
           >
             {(Object.keys(ROLE_LABELS) as Role[]).map((role) => (
               <option key={role} value={role}>
@@ -129,12 +134,12 @@ export default function StaffDesk() {
             ))}
           </select>
         </label>
-        <button type="submit" className="h-11 rounded-xl bg-blue-600 text-sm font-semibold text-white">
+        <button type="submit" className="ds-btn w-full">
           {editing ? "更新する" : "登録する"}
         </button>
       </form>
 
-      <ul className="mt-6 max-w-xl divide-y divide-slate-100 rounded-2xl bg-white shadow-sm">
+      <ul className="ds-card mt-4 max-w-xl divide-y divide-[var(--ds-line)]">
         {staff.length === 0 && <li className="px-5 py-8 text-sm text-slate-400">まだ登録がありません</li>}
         {staff.map((member) => (
           <li key={member.id} className="flex items-center gap-3 px-5 py-4">
@@ -146,10 +151,10 @@ export default function StaffDesk() {
                 {member.lineUserId ? "LINE連携済み" : "LINE未連携"}
               </p>
             </div>
-            <button type="button" onClick={() => startEdit(member)} className="text-sm text-blue-600">
+            <button type="button" onClick={() => startEdit(member)} className="text-sm font-bold text-[var(--ds-action)]">
               編集
             </button>
-            <button type="button" onClick={() => removeStaff(member.id)} className="text-sm text-slate-400">
+            <button type="button" onClick={() => removeStaff(member.id)} className="text-sm font-bold text-[#e0002e]">
               削除
             </button>
           </li>

@@ -303,19 +303,19 @@ function HopeForm({
 
   if (done) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center px-6 text-center">
-        <p className="text-sm font-semibold text-blue-600">{book.name}</p>
-        <h1 className="mt-2 text-2xl font-bold text-slate-900">送信しました</h1>
-        <p className="mt-2 text-sm text-slate-500">{monthLabel(month)}の希望を受け付けました。</p>
+      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center bg-[var(--ds-green)] px-6 text-center text-white">
+        <p className="text-sm font-bold">{book.name}</p>
+        <h1 className="mt-2 text-2xl font-bold">送信しました</h1>
+        <p className="mt-2 text-sm">{monthLabel(month)}の希望を受け付けました。</p>
       </main>
     );
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-md bg-slate-50 pb-10">
-      <header className="bg-white px-5 pb-4 pt-6">
-        <p className="text-xs font-semibold text-blue-600">{book.name}</p>
-        <h1 className="text-xl font-bold text-slate-900">{monthLabel(month)}のシフト希望</h1>
+    <main className="mx-auto min-h-dvh w-full max-w-md bg-[var(--ds-canvas)] pb-10">
+      <header className="bg-white px-4 pb-4 pt-6">
+        <p className="text-xs font-bold text-[var(--ds-green)]">{book.name}</p>
+        <h1 className="text-xl font-bold text-[var(--ds-ink)]">{monthLabel(month)}のシフト希望</h1>
         <StepBar step={step} />
       </header>
 
@@ -328,7 +328,7 @@ function HopeForm({
                 <button
                   type="button"
                   onClick={() => chooseName(person.id)}
-                  className="h-14 w-full rounded-2xl bg-white text-lg font-semibold text-slate-900 shadow-sm"
+                  className="h-14 w-full rounded-xl border border-[var(--ds-line)] bg-white text-lg font-bold text-[var(--ds-ink)]"
                 >
                   {staffLabel(person)}
                 </button>
@@ -342,7 +342,7 @@ function HopeForm({
         <section className="px-4 py-4">
           <ul className="space-y-3">
             {days.map((date) => (
-              <li key={date} className="rounded-2xl bg-white p-3 shadow-sm">
+              <li key={date} className="ds-card p-3">
                 <p className="text-sm font-bold text-slate-800">
                   {Number(date.slice(8))}日（{weekdayLabel(date)}）
                 </p>
@@ -362,7 +362,7 @@ function HopeForm({
                         type="button"
                         onClick={() => pick(date, kind)}
                         className={`h-12 rounded-xl text-sm font-bold ${
-                          selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"
+                          selected ? "bg-[var(--ds-action)] text-white" : "bg-[#f0f0f0] text-[var(--ds-body)]"
                         }`}
                       >
                         {label}
@@ -374,9 +374,15 @@ function HopeForm({
                   <p className="mt-2 text-xs text-slate-500">{choiceLabel(choices[date], freeRange)}</p>
                 )}
                 {timeDate === date && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <input type="time" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} className="h-10 flex-1 rounded-lg border px-2" />
-                    <input type="time" value={draftEnd} onChange={(event) => setDraftEnd(event.target.value)} className="h-10 flex-1 rounded-lg border px-2" />
+                  <div className="mt-2 flex items-end gap-2">
+                    <label className="ds-label min-w-0 flex-1">
+                      開始
+                      <input type="time" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} className="ds-input mt-1" />
+                    </label>
+                    <label className="ds-label min-w-0 flex-1">
+                      終了
+                      <input type="time" value={draftEnd} onChange={(event) => setDraftEnd(event.target.value)} className="ds-input mt-1" />
+                    </label>
                     <button
                       type="button"
                       onClick={() => {
@@ -386,7 +392,7 @@ function HopeForm({
                         }));
                         setTimeDate(null);
                       }}
-                      className="h-10 rounded-lg bg-slate-900 px-3 text-xs font-semibold text-white"
+                      className="ds-btn shrink-0 px-4"
                     >
                       決定
                     </button>
@@ -397,7 +403,7 @@ function HopeForm({
           </ul>
           <div ref={endRef} className="h-8" />
           {scrolledEnd && (
-            <div className="mt-2 rounded-2xl bg-white p-4 shadow-sm">
+            <div className="ds-card sticky bottom-4 mt-2 p-4">
               {summary.some((item) => item.choice?.kind === "free") && freeRange && (
                 <p className="text-sm text-slate-600">
                   Fは {freeRange.start}–{freeRange.end} です
@@ -407,7 +413,7 @@ function HopeForm({
                 type="button"
                 onClick={() => setStep(3)}
                 disabled={days.some((date) => !choices[date])}
-                className="mt-3 h-12 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white disabled:opacity-40"
+                className="ds-btn mt-3 w-full disabled:opacity-40"
               >
                 確認へ
               </button>
@@ -429,17 +435,18 @@ function HopeForm({
               </li>
             ))}
           </ul>
-          <label className="mt-4 block text-sm text-slate-500">
+          <label className="ds-label mt-4">
             特別なリクエスト
+            <span className="ds-help">休みたい日や用事があれば書いてください。</span>
             <textarea
               value={note}
               onChange={(event) => setNote(event.target.value)}
               rows={3}
-              className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-base text-slate-900"
+              className="ds-input mt-2"
             />
           </label>
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-          <button type="button" onClick={() => void send()} className="mt-4 h-12 w-full rounded-xl bg-blue-600 text-sm font-semibold text-white">
+          {error && <p className="mt-2 text-sm text-[#e0002e]">{error}</p>}
+          <button type="button" onClick={() => void send()} className="ds-btn mt-4 w-full">
             送信する
           </button>
         </section>
@@ -449,10 +456,10 @@ function HopeForm({
         <Modal title="すでに提出済みです">
           <p>再度編集しますか？</p>
           <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => { setAskEdit(false); setStaffId(null); }} className="h-11 rounded-xl bg-slate-100 font-semibold">
+            <button type="button" onClick={() => { setAskEdit(false); setStaffId(null); }} className="ds-btn-neutral">
               いいえ
             </button>
-            <button type="button" onClick={loadExisting} className="h-11 rounded-xl bg-blue-600 font-semibold text-white">
+            <button type="button" onClick={loadExisting} className="ds-btn">
               はい
             </button>
           </div>
@@ -463,10 +470,16 @@ function HopeForm({
         <Modal title="Fの時間">
           <p>何時から何時をFとしますか？</p>
           <div className="mt-3 flex gap-2">
-            <input type="time" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} className="h-11 flex-1 rounded-xl border px-2" />
-            <input type="time" value={draftEnd} onChange={(event) => setDraftEnd(event.target.value)} className="h-11 flex-1 rounded-xl border px-2" />
+            <label className="ds-label flex-1">
+              開始
+              <input type="time" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} className="ds-input mt-1" />
+            </label>
+            <label className="ds-label flex-1">
+              終了
+              <input type="time" value={draftEnd} onChange={(event) => setDraftEnd(event.target.value)} className="ds-input mt-1" />
+            </label>
           </div>
-          <button type="button" onClick={confirmFree} className="mt-4 h-11 w-full rounded-xl bg-blue-600 font-semibold text-white">
+          <button type="button" onClick={confirmFree} className="ds-btn mt-4 w-full">
             この時間にする
           </button>
         </Modal>
@@ -484,7 +497,7 @@ function HopeForm({
               onClick={() => {
                 setFModal("ask");
               }}
-              className="h-11 rounded-xl bg-slate-100 font-semibold"
+              className="ds-btn-neutral"
             >
               変える
             </button>
@@ -496,7 +509,7 @@ function HopeForm({
                 setFModal(null);
                 setPendingDate(null);
               }}
-              className="h-11 rounded-xl bg-blue-600 font-semibold text-white"
+              className="ds-btn"
             >
               同じでいい
             </button>
@@ -528,8 +541,8 @@ function StepBar({ step }: { step: Step }) {
         const active = number <= step;
         return (
           <li key={label}>
-            <div className={`h-1.5 rounded-full ${active ? "bg-blue-600" : "bg-slate-200"}`} />
-            <p className={`mt-1 text-xs ${number === step ? "font-bold text-blue-700" : "text-slate-400"}`}>
+            <div className={`h-1.5 rounded-full ${active ? "bg-[var(--ds-green)]" : "bg-[#e6e6e6]"}`} />
+            <p className={`mt-1 text-xs ${number === step ? "font-bold text-[var(--ds-ink)]" : "text-[var(--ds-muted)]"}`}>
               {number}. {label}
             </p>
         </li>

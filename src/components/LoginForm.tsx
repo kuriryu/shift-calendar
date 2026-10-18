@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PrimaryButton from "@/components/PrimaryButton";
-import { FieldInput } from "@/components/FieldControl";
+import FieldControl, { FieldInput } from "@/components/FieldControl";
 import { useAppStore } from "@/stores/useAppStore";
 
 export default function LoginForm() {
@@ -43,29 +43,26 @@ export default function LoginForm() {
   };
 
   return (
-    <main className="flex min-h-dvh flex-1 items-center justify-center bg-slate-50 px-4 py-8">
+    <main className="flex min-h-dvh flex-1 items-center justify-center bg-[var(--ds-canvas)] px-4 py-8">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4"
+        className="ds-card w-full max-w-sm space-y-4 p-6"
         aria-label="ログイン"
       >
-        <h1 className="text-center text-lg font-bold text-slate-900">
-          ログインしてください
-        </h1>
-
-        <FieldInput
-          id="login-password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="パスワード"
-          required
-          aria-label="パスワード"
-        />
+        <h1 className="ds-title text-center">ログインしてください</h1>
+        <FieldControl id="login-password" label="パスワード" required>
+          <FieldInput
+            id="login-password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </FieldControl>
 
         {error && (
-          <p role="alert" className="text-sm text-red-700">
+          <p role="alert" className="text-sm text-[#e0002e]">
             {error}
           </p>
         )}
