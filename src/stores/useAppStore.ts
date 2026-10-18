@@ -44,6 +44,8 @@ import {
 } from "@/lib/store-book";
 
 const DEFAULT_MONTH = nextMonthOf();
+export const DEFAULT_STORE_ID = "st-oimachi";
+export const DEFAULT_STORE_NAME = "大井町店";
 
 /** セレクタ用の安定した空配列（参照が変わらないようにする） */
 export const EMPTY_ASSIGNMENTS: ShiftAssignment[] = [];
@@ -307,6 +309,8 @@ type AppState = {
   recordLogin: (email: string) => void;
   clearLoginHistory: () => void;
   createStore: (name: string) => string;
+  /** 大井町店が無ければ追加し、その店舗IDを返す */
+  ensureDefaultStore: () => string;
   selectStore: (id: string) => void;
   closeStore: () => void;
   setReception: (month: string, patch: Partial<ReceptionWindow>) => void;
@@ -1087,6 +1091,24 @@ export const useAppStore = create<AppState>()(
               violations: [],
             };
           });
+          return id;
+        },
+
+        ensureDefaultStore: () => {
+          const current = get();
+          const named = current.stores.find((store) => store.name === DEFAULT_STORE_NAME);
+          if (named) return named.id;
+          const id = current.stores.some((store) => store.id === DEFAULT_STORE_ID)
+            ? `st-${Date.now().toString(36)}`
+            : DEFAULT_STORE_ID;
+          const month = current.selectedMonth || DEFAULT_MONTH;
+          set((s) => ({
+            stores: [...s.stores, { id, name: DEFAULT_STORE_NAME }],
+            storeBooks: {
+              ...s.storeBooks,
+              [id]: s.storeBooks[id] ?? emptyBook(month),
+            },
+          }));
           return id;
         },
 

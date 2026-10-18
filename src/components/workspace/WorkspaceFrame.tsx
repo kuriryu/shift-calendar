@@ -22,12 +22,12 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
   const stores = useAppStore((s) => s.stores);
   const activeStoreId = useAppStore((s) => s.activeStoreId);
   const closeStore = useAppStore((s) => s.closeStore);
+  const selectStore = useAppStore((s) => s.selectStore);
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   const setMonth = useAppStore((s) => s.setMonth);
   const activities = useAppStore((s) => s.activities);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
-  const store = stores.find((item) => item.id === activeStoreId);
   const logins = activities.filter((item) => item.kind === "login").slice(0, 8);
   const [year, month] = selectedMonth.split("-").map(Number);
 
@@ -79,16 +79,22 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
           >
             <Icon name="menu" size={22} />
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              closeStore();
-              router.push("/");
-            }}
-            className="min-w-0 truncate text-left text-base font-bold text-slate-900"
+          <label className="sr-only" htmlFor="header-store">
+            店舗
+          </label>
+          <select
+            id="header-store"
+            aria-label="店舗"
+            value={activeStoreId ?? ""}
+            onChange={(event) => selectStore(event.target.value)}
+            className="h-10 min-w-0 max-w-[14rem] rounded-lg border border-slate-200 bg-white px-2 text-sm font-bold text-slate-900"
           >
-            {store?.name ?? "店舗"}
-          </button>
+            {stores.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
           <div className="ml-auto flex items-center gap-2">
             <label className="sr-only" htmlFor="header-year">
               年
