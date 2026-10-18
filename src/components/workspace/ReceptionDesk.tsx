@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import CopyHopeUrlButton from "@/components/CopyHopeUrlButton";
+import Modal from "@/components/workspace/Modal";
 import { hopePageUrl } from "@/lib/public-url";
 import { defaultReception } from "@/lib/store-book";
 import { useAppStore } from "@/stores/useAppStore";
+
+type PendingReceptionUpdate =
+  | { kind: "month"; nextMonth: string }
+  | { kind: "from"; value: string }
+  | { kind: "to"; value: string };
 
 export default function ReceptionDesk() {
   const month = useAppStore((s) => s.selectedMonth);
@@ -14,6 +21,9 @@ export default function ReceptionDesk() {
   const exportBooks = useAppStore((s) => s.exportBooks);
   const period = reception ?? defaultReception(month);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmStop, setConfirmStop] = useState(false);
+  const [pendingUpdate, setPendingUpdate] = useState<PendingReceptionUpdate | null>(null);
+  const [confirmUpdate, setConfirmUpdate] = useState(false);
   const [yearText, monthText] = month.split("-");
   const year = Number(yearText);
   const monthNumber = Number(monthText);
@@ -23,8 +33,73 @@ export default function ReceptionDesk() {
     setNotice(null);
   };
 
-  const toggleReception = async () => {
-    const nextOpen = !period.open;
+  const syncBoard = async () => {
+    if (!storeId) return;
+    await fetch("/api/board", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stores: useAppStore.getState().exportBooks() }),
+    });
+  };
+
+  const requestMonthChange = (nextMonth: string) => {
+    if (nextMonth === month) return;
+    if (!period.open) {
+      selectMonth(nextMonth);
+      return;
+    }
+    setPendingUpdate({ kind: "month", nextMonth });
+    setConfirmUpdate(true);
+  };
+
+  const requestFromChange = (value: string) => {
+    if (value === period.from) return;
+    if (!period.open) {
+      setReception(month, { from: value });
+      return;
+    }
+    setPendingUpdate({ kind: "from", value });
+    setConfirmUpdate(true);
+  };
+
+  const requestToChange = (value: string) => {
+    if (value === period.to) return;
+    if (!period.open) {
+      setReception(month, { to: value });
+      return;
+    }
+    setPendingUpdate({ kind: "to", value });
+    setConfirmUpdate(true);
+  };
+
+  const cancelPendingUpdate = () => {
+    setConfirmUpdate(false);
+    setPendingUpdate(null);
+  };
+
+  const confirmPendingUpdate = () => {
+    if (!pendingUpdate) return;
+    const wasOpen = period.open;
+    const editingMonth = month;
+
+    if (pendingUpdate.kind === "month") {
+      setMonth(pendingUpdate.nextMonth);
+      setNotice(null);
+    } else if (pendingUpdate.kind === "from") {
+      setReception(editingMonth, { from: pendingUpdate.value });
+    } else {
+      setReception(editingMonth, { to: pendingUpdate.value });
+    }
+
+    setConfirmUpdate(false);
+    setPendingUpdate(null);
+
+    if (wasOpen && storeId) {
+      void syncBoard();
+    }
+  };
+
+  const applyReceptionOpen = async (nextOpen: boolean) => {
     setReception(month, { open: nextOpen, from: period.from, to: period.to });
     setNotice(null);
     if (!nextOpen || !storeId) return;
@@ -55,27 +130,24 @@ export default function ReceptionDesk() {
     }
   };
 
-  const updateUrl = async () => {
-    if (!storeId) return;
-    const fallback = defaultReception(month);
-    const from = period.from.startsWith(month) ? period.from : fallback.from;
-    const to = period.to.startsWith(month) ? period.to : fallback.to;
-    setReception(month, { open: true, from, to });
-    await fetch("/api/board", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stores: useAppStore.getState().exportBooks() }),
-    });
-    const issued = hopePageUrl(storeId, month);
-    await navigator.clipboard.writeText(issued).catch(() => undefined);
-    setNotice("URLを更新しました");
+  const toggleReception = () => {
+    if (period.open) {
+      setConfirmStop(true);
+      return;
+    }
+    void applyReceptionOpen(true);
+  };
+
+  const confirmStopReception = () => {
+    setConfirmStop(false);
+    void applyReceptionOpen(false);
   };
 
   return (
     <div className="ds-page">
       <h1 className="ds-title">シフト希望受付</h1>
       <p className="ds-lead">
-        対象の年月を選び、受付期間を決めてから募集を開始します。年月を変えたら URLを更新すると、その月の希望リンクになります。
+        対象の年月を選び、受付期間を決めてから募集を開始します。店舗や年月を変えると、表示されるリンクもその店舗・月用に変わります。
       </p>
 
       <div className="ds-card mt-6 grid max-w-xl gap-4 p-5">
@@ -85,7 +157,7 @@ export default function ReceptionDesk() {
             <select
               value={year}
               onChange={(event) =>
-                selectMonth(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
+                requestMonthChange(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
               }
               className="ds-input mt-1"
             >
@@ -101,7 +173,7 @@ export default function ReceptionDesk() {
             <select
               value={monthNumber}
               onChange={(event) =>
-                selectMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
+                requestMonthChange(`${year}-${String(event.target.value).padStart(2, "0")}`)
               }
               className="ds-input mt-1"
             >
@@ -120,7 +192,7 @@ export default function ReceptionDesk() {
             <input
               type="date"
               value={period.from}
-              onChange={(event) => setReception(month, { from: event.target.value })}
+              onChange={(event) => requestFromChange(event.target.value)}
               className="ds-input mt-1"
             />
           </label>
@@ -129,7 +201,7 @@ export default function ReceptionDesk() {
             <input
               type="date"
               value={period.to}
-              onChange={(event) => setReception(month, { to: event.target.value })}
+              onChange={(event) => requestToChange(event.target.value)}
               className="ds-input mt-1"
             />
           </label>
@@ -137,21 +209,54 @@ export default function ReceptionDesk() {
 
         <button
           type="button"
-          onClick={() => void toggleReception()}
+          onClick={toggleReception}
           className={period.open ? "ds-btn-neutral w-full" : "ds-btn w-full"}
         >
           {period.open ? "受付を停止する" : "受付を開始する"}
         </button>
 
-        <div className="rounded-xl bg-[#f7f7f7] p-4">
-          <p className="text-xs font-bold text-[var(--ds-muted)]">希望を送るURL</p>
-          <p className="mt-1 break-all text-sm text-[var(--ds-ink)]">{url}</p>
-          <button type="button" onClick={() => void updateUrl()} className="ds-btn-line mt-3">
-            URLを更新
-          </button>
-          {notice && <p className="mt-2 text-sm text-slate-700">{notice}</p>}
-        </div>
+        {period.open && (
+          <div className="rounded-xl bg-[#f7f7f7] p-4">
+            <p className="text-xs font-bold text-[var(--ds-muted)]">希望を送るURL</p>
+            <div className="mt-2">
+              <CopyHopeUrlButton url={url} variant="bar" />
+            </div>
+          </div>
+        )}
+
+        {notice && period.open && (
+          <p className="text-sm text-slate-700">{notice}</p>
+        )}
       </div>
+
+      {confirmUpdate && pendingUpdate && (
+        <Modal title="更新してよろしいですか？" onClose={cancelPendingUpdate}>
+          <p>受付中の設定を変更します。</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" onClick={cancelPendingUpdate} className="ds-btn-neutral">
+              戻る
+            </button>
+            <button type="button" onClick={confirmPendingUpdate} className="ds-btn">
+              更新する
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {confirmStop && (
+        <Modal title="よろしいですか？" onClose={() => setConfirmStop(false)}>
+          <p>受付を解除していいですか？</p>
+          <p className="mt-2 text-xs text-[var(--ds-muted)]">停止中はスタッフが希望を送れません。</p>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setConfirmStop(false)} className="ds-btn-neutral">
+              戻る
+            </button>
+            <button type="button" onClick={confirmStopReception} className="ds-btn-danger-fill">
+              停止する
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

@@ -20,7 +20,7 @@ const inter = Inter({
 });
 
 const siteUrl = "https://shift-kit.vercel.app";
-const siteTitle = "Shift Kit";
+const siteTitle = "ShiftKit";
 const siteDescription =
   "シフトの事務作業をスマートに。希望の収集からシフト作成まで、面倒な作業を減らします。";
 

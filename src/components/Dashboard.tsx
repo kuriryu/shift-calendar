@@ -11,6 +11,8 @@ import RequestStep from "@/components/steps/RequestStep";
 import GenerateStep from "@/components/steps/GenerateStep";
 import AdjustStep from "@/components/steps/AdjustStep";
 import RulesGate from "@/components/steps/RulesGate";
+import CopyHopeUrlButton from "@/components/CopyHopeUrlButton";
+import { hopePageUrl } from "@/lib/public-url";
 import type { StepId } from "@/types";
 
 export default function Dashboard() {
@@ -19,6 +21,9 @@ export default function Dashboard() {
     (s) => s.assignments[s.selectedMonth] ?? EMPTY_ASSIGNMENTS,
   );
   const currentStep = useAppStore((s) => s.currentStep);
+  const activeStoreId = useAppStore((s) => s.activeStoreId);
+  const selectedMonth = useAppStore((s) => s.selectedMonth);
+  const hopeUrl = activeStoreId ? hopePageUrl(activeStoreId, selectedMonth) : "";
 
   if (!mounted) {
     return <div className="py-20 text-center text-sm text-slate-400">読み込み中…</div>;
@@ -43,26 +48,23 @@ export default function Dashboard() {
     <div className="flex min-h-0 flex-1 flex-col gap-3 md:gap-12 md:space-y-0">
       <div className="shrink-0">
         <header className="flex flex-wrap items-start justify-between gap-2 px-0.5 py-1 md:gap-4 md:py-3">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold tracking-wide text-blue-600 md:text-xs">
-              STEP {active}
-            </p>
-            <h1
-              id={`step-${active}-title`}
-              className="mt-1 text-xl font-bold leading-tight tracking-tight text-slate-900 md:mt-5 md:text-4xl"
-            >
-              {def.label}
-            </h1>
-            <p className="mt-1.5 text-xs leading-snug text-slate-500 md:mt-14 md:mb-2 md:text-base md:leading-relaxed">
-              {def.desc}
-            </p>
+          <div className="flex min-w-0 flex-1 items-center gap-4">
+            <StepProgress current={active} />
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1
+                  id={`step-${active}-title`}
+                  className="text-2xl font-bold leading-tight tracking-tight text-slate-900 md:text-3xl"
+                >
+                  {def.label}
+                </h1>
+                {active === 4 && <CopyHopeUrlButton url={hopeUrl} />}
+              </div>
+              <p className="mt-1 text-sm text-slate-400">{def.desc}</p>
+            </div>
           </div>
           {active !== 3 && <ViolationBadge />}
         </header>
-
-        <div className="mt-2 md:mt-8">
-          <StepProgress current={active} />
-        </div>
       </div>
 
       <div

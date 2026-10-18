@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import BrandMark from "@/components/BrandMark";
 import { DEFAULT_STORE_NAME, useAppStore } from "@/stores/useAppStore";
 
 export default function StorePicker() {
@@ -42,7 +43,7 @@ export default function StorePicker() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center bg-[var(--ds-canvas)] px-4 py-10">
-      <p className="text-xs font-bold tracking-[0.16em] text-[var(--ds-action)]">SHIFT</p>
+      <BrandMark size="lg" />
       <h1 className="ds-title mt-2">店舗を選択</h1>
       <p className="ds-lead">店舗を選んで、その店舗のシフト希望とシフト表を開きます。</p>
 

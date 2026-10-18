@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { staffLabel } from "@/lib/store-book";
 import { useAppStore } from "@/stores/useAppStore";
 import type { CoverageNeed, Role, Staff } from "@/types";
@@ -9,6 +9,7 @@ import { ROLE_LABELS } from "@/types";
 const emptyForm = {
   familyName: "",
   minHours: "",
+  minHoursUnset: true,
   coverage: "needs_employee" as CoverageNeed,
   role: "part_time" as Role,
 };
@@ -20,6 +21,7 @@ export default function StaffDesk() {
   const removeStaff = useAppStore((s) => s.removeStaff);
   const [form, setForm] = useState(emptyForm);
   const [editing, setEditing] = useState<string | null>(null);
+  const minHoursInputRef = useRef<HTMLInputElement>(null);
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -33,7 +35,7 @@ export default function StaffDesk() {
       maxHoursPerWeek: 0,
       maxConsecutiveDays: 0,
       monthlyDaysOffTarget: form.role === "employee" ? 9 : 0,
-      minHours: Number(form.minHours) || 0,
+      minHours: form.minHoursUnset ? 0 : Number(form.minHours) || 0,
       coverage: form.coverage,
     };
     if (editing) {
@@ -49,9 +51,11 @@ export default function StaffDesk() {
 
   const startEdit = (member: Staff) => {
     setEditing(member.id);
+    const hasMinHours = (member.minHours ?? 0) > 0;
     setForm({
       familyName: staffLabel(member),
-      minHours: member.minHours ? String(member.minHours) : "",
+      minHoursUnset: !hasMinHours,
+      minHours: hasMinHours ? String(member.minHours) : "",
       coverage: member.coverage ?? (member.role === "employee" ? "alone" : "needs_employee"),
       role: member.role,
     });
@@ -75,21 +79,52 @@ export default function StaffDesk() {
             required
           />
         </label>
-        <label className="ds-label">
+        <div className="ds-label">
           最低時間
           <span className="ds-help">1か月あたりの最低労働時間です。</span>
-          <span className="ds-suffix mt-2">
-            <input
-              type="number"
-              min={0}
-              inputMode="numeric"
-              value={form.minHours}
-              onChange={(event) => setForm({ ...form, minHours: event.target.value })}
-              className="ds-input w-32"
-            />
-            <span>時間</span>
-          </span>
-        </label>
+          <fieldset className="mt-2 border-0 p-0">
+            <legend className="sr-only">最低時間の指定方法</legend>
+            <div className="flex flex-wrap gap-4 text-sm text-slate-700">
+              <label className="inline-flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="minHoursMode"
+                  checked={form.minHoursUnset}
+                  onChange={() => setForm({ ...form, minHoursUnset: true, minHours: "" })}
+                  className="h-4 w-4 accent-[var(--ds-action)]"
+                />
+                指定なし
+              </label>
+              <label className="inline-flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  name="minHoursMode"
+                  checked={!form.minHoursUnset}
+                  onChange={() => {
+                    setForm({ ...form, minHoursUnset: false });
+                    requestAnimationFrame(() => minHoursInputRef.current?.focus());
+                  }}
+                  className="h-4 w-4 accent-[var(--ds-action)]"
+                />
+                時間を指定
+              </label>
+            </div>
+          </fieldset>
+          {!form.minHoursUnset && (
+            <span className="ds-suffix mt-2">
+              <input
+                ref={minHoursInputRef}
+                type="number"
+                min={0}
+                inputMode="numeric"
+                value={form.minHours}
+                onChange={(event) => setForm({ ...form, minHours: event.target.value })}
+                className="ds-input w-32"
+              />
+              <span>時間</span>
+            </span>
+          )}
+        </div>
         <label className="ds-label" htmlFor="staff-coverage">
           勤務の条件
           <select
@@ -130,7 +165,10 @@ export default function StaffDesk() {
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-slate-900">{staffLabel(member)}</p>
               <p className="text-xs text-slate-500">
-                最低 {member.minHours || 0} 時間 /{" "}
+                {(member.minHours ?? 0) > 0
+                  ? `最低 ${member.minHours} 時間`
+                  : "最低時間 指定なし"}{" "}
+                /{" "}
                 {member.coverage === "alone" ? "一人で大丈夫" : "社員が必要"} / {ROLE_LABELS[member.role]} /{" "}
                 {member.lineUserId ? "LINE連携済み" : "LINE未連携"}
               </p>

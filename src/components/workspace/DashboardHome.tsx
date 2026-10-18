@@ -63,19 +63,21 @@ function SubmissionFigure({
   return (
     <div className="submission-figure" aria-hidden>
       <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
-      <p
-        className={`mt-2 text-5xl font-bold leading-none tracking-tight tabular-nums ${
-          done ? "text-[var(--ds-green)]" : "text-[var(--ds-ink)]"
-        }`}
-      >
-        <span>
-          {shownRate}
-          <span className="ml-0.5 text-2xl">%</span>
-        </span>
-      </p>
-      <p className="mt-2 text-sm tabular-nums text-[var(--ds-muted)]">
-        {shownSubmitted} / {total} 人
-      </p>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <p
+          className={`text-5xl font-bold leading-none tracking-tight tabular-nums ${
+            done ? "text-[var(--ds-green)]" : "text-[var(--ds-ink)]"
+          }`}
+        >
+          <span>
+            {shownRate}
+            <span className="ml-0.5 text-2xl">%</span>
+          </span>
+        </p>
+        <p className="text-sm tabular-nums text-[var(--ds-muted)]">
+          {shownSubmitted} / {total} 人
+        </p>
+      </div>
     </div>
   );
 }
