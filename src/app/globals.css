@@ -190,18 +190,44 @@ textarea.ds-input {
 .ds-suffix .ds-input {
   width: 8rem;
 }
-header .ds-input {
+/* ヘッダーの店舗・年月は、業態設定の時刻セレクトと同じ smarthr-ui Select */
+.header-select-row {
+  scrollbar-width: none;
+}
+.header-select-row::-webkit-scrollbar {
+  display: none;
+}
+.header-select {
+  flex: 0 0 auto;
+}
+.header-select .smarthr-ui-Select {
+  display: block;
+}
+.header-select select {
   width: auto;
-  height: 40px;
+  text-overflow: ellipsis;
 }
-header #header-store {
-  max-width: 10rem;
+.header-select-store select {
+  min-width: 9rem;
+  max-width: 12rem;
 }
-header #header-year {
-  width: 6.75rem;
+.header-select-year select {
+  min-width: 7.75rem;
 }
-header #header-month {
-  width: 5.25rem;
+.header-select-month select {
+  min-width: 6.5rem;
+}
+@media (max-width: 767px) {
+  .header-select-store select {
+    min-width: 108px;
+    max-width: 7.5rem;
+  }
+  .header-select-year select {
+    min-width: 98px;
+  }
+  .header-select-month select {
+    min-width: 80px;
+  }
 }
 .ds-suffix {
   display: flex;
