@@ -31,6 +31,32 @@ export type Staff = {
   unavailableWeekdays?: number[]; // 0=日 … 6=土
   specialNote?: string; // 特別な要望（自由テキスト。AIが解釈して生成に反映）
   note?: string;
+  /** 希望提出で選ぶ苗字。未設定なら name を使う */
+  familyName?: string;
+  /** 月の最低労働時間。0 は未設定 */
+  minHours?: number;
+  /** 一人で勤務できるか、社員が一緒にいないとだめか */
+  coverage?: CoverageNeed;
+  /** LINE公式アカウントのユーザーID。募集開始時の自動配信先 */
+  lineUserId?: string;
+};
+
+export type CoverageNeed = "alone" | "needs_employee";
+
+export type ShopPlace = {
+  id: string;
+  name: string;
+};
+
+export type ReceptionWindow = {
+  open: boolean;
+  from: string;
+  to: string;
+};
+
+export type HopeNote = {
+  staffId: string;
+  message: string;
 };
 
 /** 特別な要望テキストの解釈結果 */

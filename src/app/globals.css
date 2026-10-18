@@ -18,6 +18,28 @@ body {
   min-height: 100dvh;
 }
 
+@media print {
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #shift-print-sheet,
+  #shift-print-sheet * {
+    visibility: visible;
+  }
+
+  #shift-print-sheet {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+}
+
 /* smarthr の input { padding-inline: unset } より優先し、共通入力枠は上下左右 12px */
 .field-control {
   padding: 12px;

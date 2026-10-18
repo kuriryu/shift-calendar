@@ -1,6 +1,6 @@
-import RedirectToStep from "@/components/RedirectToStep";
+import { redirect } from "next/navigation";
 
-// 希望入力はトップのステップ4に統合したためリダイレクト
+/** 希望入力は公開URLと受付画面へ移した */
 export default function RequestsPage() {
-  return <RedirectToStep step={4} />;
+  redirect("/reception");
 }

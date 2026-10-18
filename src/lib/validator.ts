@@ -59,6 +59,28 @@ export function validateMonth(
       });
     }
 
+    for (const assignment of dayAsg) {
+      const person = staffById.get(assignment.staffId);
+      if (!person || person.coverage !== "needs_employee") continue;
+      const start = toMinutes(assignment.startTime);
+      const end = toMinutes(assignment.endTime);
+      const withEmployee = dayAsg.some((other) => {
+        if (other.staffId === assignment.staffId) return false;
+        if (staffById.get(other.staffId)?.role !== "employee") return false;
+        return toMinutes(other.startTime) < end && toMinutes(other.endTime) > start;
+      });
+      if (!withEmployee) {
+        violations.push({
+          id: vid(),
+          severity: "warning",
+          rule: "EMPLOYEE_PRESENT",
+          date,
+          staffId: person.id,
+          message: `${dayLabel(date)}: ${person.familyName || person.name} は社員が一緒にいる必要があります`,
+        });
+      }
+    }
+
     // 必要人数との不一致（連続スロットをまとめて報告）
     // 通常・ピーク・開店閉店は、指定人数より多くても少なくてもエラー
     // 休憩だけで一時的に下回る場合もエラー
@@ -302,6 +324,21 @@ export function validateMonth(
             message: `${staff.name} の週出勤日数が最低日数を下回っています（${workedDays} / ${requiredDays}日、週 ${bucket.label}）`,
           });
         }
+      }
+    }
+
+    const minimumMinutes = (staff.minHours ?? 0) * 60;
+    if (minimumMinutes > 0) {
+      const assigned = mine.reduce((total, assignment) => total + workMinutesOf(assignment), 0);
+      if (assigned < minimumMinutes) {
+        violations.push({
+          id: vid(),
+          severity: "warning",
+          rule: "WEEKLY_MIN_HOURS",
+          date: days[days.length - 1] ?? `${month}-01`,
+          staffId: staff.id,
+          message: `${staff.familyName || staff.name} の月間時間が最低時間を下回っています（${minutesToHoursLabel(assigned)} / ${staff.minHours}時間）`,
+        });
       }
     }
 
