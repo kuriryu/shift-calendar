@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { Select } from "smarthr-ui";
 import BoardSync from "@/components/workspace/BoardSync";
 import Icon from "@/components/Icon";
 import { monthLabel, shiftMonth } from "@/lib/dates";
@@ -70,7 +71,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-[var(--ds-line)] bg-white px-4">
+        <header className="flex h-16 shrink-0 items-center gap-0.5 border-b border-[var(--ds-line)] bg-white px-2 md:gap-2 md:px-4">
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 md:hidden"
@@ -79,57 +80,55 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
           >
             <Icon name="menu" size={22} />
           </button>
-          <label className="sr-only" htmlFor="header-store">
-            店舗
-          </label>
-          <select
-            id="header-store"
-            aria-label="店舗"
-            value={activeStoreId ?? ""}
-            onChange={(event) => selectStore(event.target.value)}
-            className="ds-input ds-input-fit h-10 max-w-[10rem] font-bold"
-          >
-            {stores.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="header-year">
-            年
-          </label>
-          <select
-            id="header-year"
-            value={year}
-            onChange={(event) =>
-              setMonth(`${event.target.value}-${String(month).padStart(2, "0")}`)
-            }
-            className="ds-input ds-input-fit h-10 w-[6.75rem]"
-          >
-            {[year - 1, year, year + 1].map((value) => (
-              <option key={value} value={value}>
-                {value}年
-              </option>
-            ))}
-          </select>
-          <label className="sr-only" htmlFor="header-month">
-            月
-          </label>
-          <select
-            id="header-month"
-            value={month}
-            onChange={(event) =>
-              setMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
-            }
-            className="ds-input ds-input-fit h-10 w-[5.25rem]"
-          >
-            {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
-              <option key={value} value={value}>
-                {value}月
-              </option>
-            ))}
-          </select>
-          <div className="ml-auto flex items-center">
+          <div className="header-select-row flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:gap-2">
+            <label className="sr-only" htmlFor="header-store">
+              店舗
+            </label>
+            <div className="header-select header-select-store">
+              <Select
+                id="header-store"
+                aria-label="店舗"
+                value={activeStoreId ?? ""}
+                onChange={(event) => selectStore(event.target.value)}
+                options={stores.map((item) => ({ value: item.id, label: item.name }))}
+              />
+            </div>
+            <label className="sr-only" htmlFor="header-year">
+              年
+            </label>
+            <div className="header-select header-select-year">
+              <Select
+                id="header-year"
+                aria-label="年"
+                value={String(year)}
+                onChange={(event) =>
+                  setMonth(`${event.target.value}-${String(month).padStart(2, "0")}`)
+                }
+                options={[year - 1, year, year + 1].map((value) => ({
+                  value: String(value),
+                  label: `${value}年`,
+                }))}
+              />
+            </div>
+            <label className="sr-only" htmlFor="header-month">
+              月
+            </label>
+            <div className="header-select header-select-month">
+              <Select
+                id="header-month"
+                aria-label="月"
+                value={String(month)}
+                onChange={(event) =>
+                  setMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
+                }
+                options={Array.from({ length: 12 }, (_, index) => {
+                  const value = index + 1;
+                  return { value: String(value), label: `${value}月` };
+                })}
+              />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center">
             <button
               type="button"
               aria-label="メニューを開く"
