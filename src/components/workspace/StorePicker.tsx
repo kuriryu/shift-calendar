@@ -49,7 +49,9 @@ export default function StorePicker() {
       <div className="ds-card mt-6 p-5">
         <label htmlFor="store-select" className="ds-label">
           店舗
-          <span className="ds-help">いま開く店舗です。最初は大井町店です。</span>
+          <span className="ds-help">
+            {stores.length === 0 ? "店舗を追加すると、ここに並びます。" : "開く店舗を選んでください。"}
+          </span>
         </label>
         <select
           id="store-select"
@@ -57,11 +59,12 @@ export default function StorePicker() {
           onChange={(event) => setSelectedId(event.target.value)}
           className="ds-input mt-2"
         >
-          {stores.map((store) => (
-            <option key={store.id} value={store.id}>
-              {store.name}
-            </option>
-          ))}
+{stores.length === 0 && <option value="">店舗がありません</option>}
+        {stores.map((store) => (
+          <option key={store.id} value={store.id}>
+            {store.name}
+          </option>
+        ))}
         </select>
         <button
           type="button"

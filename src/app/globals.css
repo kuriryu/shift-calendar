@@ -307,6 +307,38 @@ textarea.ds-input {
 .ds-btn-line:hover {
   background: var(--ds-green-press);
 }
+.ds-btn-danger {
+  display: inline-flex;
+  height: 48px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #e0002e;
+  border-radius: 24px;
+  background: #fff;
+  color: #e0002e;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ds-btn-danger:hover {
+  background: #ffebef;
+}
+.ds-btn-danger-fill {
+  display: inline-flex;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 26px;
+  background: #e0002e;
+  padding: 0 20px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ds-btn-danger-fill:hover {
+  background: #c40028;
+}
 .ds-nav-active {
   background: var(--ds-tint);
   color: var(--ds-navy);
