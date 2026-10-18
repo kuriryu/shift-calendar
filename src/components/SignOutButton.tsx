@@ -6,9 +6,11 @@ import { useAppStore } from "@/stores/useAppStore";
 export default function SignOutButton() {
   const router = useRouter();
   const showHero = useAppStore((s) => s.showHero);
+  const closeStore = useAppStore((s) => s.closeStore);
 
   const handleSignOut = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    closeStore();
     showHero();
     router.replace("/");
     router.refresh();
