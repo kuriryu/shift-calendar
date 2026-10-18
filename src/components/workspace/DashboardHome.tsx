@@ -23,61 +23,58 @@ function usePrefersReducedMotion(): boolean {
   return reduced;
 }
 
-/** 提出率を、円のパラメーターが伸びるモーションで見せる */
-function SubmissionGauge({ rate }: { rate: number }) {
-  const reduced = usePrefersReducedMotion();
-  const [shown, setShown] = useState(reduced ? rate : 0);
-  const radius = 34;
-  const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(100, Math.max(0, shown));
-  const color = rate >= 100 ? "var(--ds-green)" : "var(--ds-action)";
-  const angle = -Math.PI / 2 + (progress / 100) * Math.PI * 2;
-  const knobX = 50 + radius * Math.cos(angle);
-  const knobY = 50 + radius * Math.sin(angle);
-
+function useCountUp(target: number, reduced: boolean): number {
+  const [shown, setShown] = useState(reduced ? target : 0);
   useEffect(() => {
     if (reduced) {
-      setShown(rate);
+      setShown(target);
       return;
     }
     const start = performance.now();
-    const duration = 900;
+    const duration = 800;
     let frame = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
       const eased = 1 - (1 - t) ** 3;
-      setShown(Math.round(rate * eased));
+      setShown(Math.round(target * eased));
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [rate, reduced]);
+  }, [reduced, target]);
+  return shown;
+}
+
+/** 提出率を、数字だけが 0 から伸びるインフォグラフィクスで見せる */
+function SubmissionFigure({
+  rate,
+  submitted,
+  total,
+}: {
+  rate: number;
+  submitted: number;
+  total: number;
+}) {
+  const reduced = usePrefersReducedMotion();
+  const shownRate = useCountUp(rate, reduced);
+  const shownSubmitted = useCountUp(submitted, reduced);
+  const done = rate >= 100;
 
   return (
-    <div className="submission-gauge relative h-28 w-28 shrink-0" aria-hidden>
-      <svg viewBox="0 0 100 100" className="h-full w-full">
-        <circle cx="50" cy="50" r={radius} fill="none" stroke="#e6e6e6" strokeWidth="9" />
-        {progress > 0 && (
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            fill="none"
-            stroke={color}
-            strokeWidth="9"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={circumference * (1 - progress / 100)}
-            transform="rotate(-90 50 50)"
-          />
-        )}
-        <circle cx={knobX} cy={knobY} r="5.5" fill="#fff" stroke={color} strokeWidth="3" />
-      </svg>
-      <p className="absolute inset-0 grid place-items-center text-[1.65rem] font-bold leading-none tracking-tight text-[var(--ds-ink)] tabular-nums">
+    <div className="submission-figure" aria-hidden>
+      <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
+      <p
+        className={`mt-2 text-5xl font-bold leading-none tracking-tight tabular-nums ${
+          done ? "text-[var(--ds-green)]" : "text-[var(--ds-ink)]"
+        }`}
+      >
         <span>
-          {progress}
-          <span className="ml-0.5 text-sm">%</span>
+          {shownRate}
+          <span className="ml-0.5 text-2xl">%</span>
         </span>
+      </p>
+      <p className="mt-2 text-sm tabular-nums text-[var(--ds-muted)]">
+        {shownSubmitted} / {total} 人
       </p>
     </div>
   );
@@ -139,16 +136,10 @@ export default function DashboardHome() {
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
         <article
-          className="ds-card flex items-center gap-4 p-5"
+          className="ds-card p-5"
           aria-label={`シフトの提出率 ${rate}%。${staff.length}人中${submitted}人`}
         >
-          <SubmissionGauge rate={rate} />
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
-            <p className="mt-1 text-sm text-[var(--ds-muted)]">
-              {submitted} / {staff.length} 人
-            </p>
-          </div>
+          <SubmissionFigure rate={rate} submitted={submitted} total={staff.length} />
         </article>
         <article className="ds-card p-5">
           <label htmlFor="budget-hours" className="ds-label">
