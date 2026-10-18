@@ -1,12 +1,17 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 export default function Modal({
   title,
   children,
+  footer,
   onClose,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
+  /** モーダル本文の下に置くフッター（例: ModalActions）。children 内に書いてもよい。 */
+  footer?: ReactNode;
   onClose?: () => void;
 }) {
   return (
@@ -19,6 +24,7 @@ export default function Modal({
       >
         <h2 className="text-lg font-bold text-[var(--ds-ink)]">{title}</h2>
         <div className="mt-3 text-sm leading-relaxed text-slate-600">{children}</div>
+        {footer}
         {onClose && (
           <button type="button" className="sr-only" onClick={onClose}>
             閉じる

@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
 import { DEFAULT_STORE_NAME, useAppStore } from "@/stores/useAppStore";
 
 export default function StorePicker() {
@@ -47,7 +49,7 @@ export default function StorePicker() {
       <h1 className="ds-title mt-2">店舗を選択</h1>
       <p className="ds-lead">店舗を選んで、その店舗のシフト希望とシフト表を開きます。</p>
 
-      <div className="ds-card mt-6 p-5">
+      <Card className="mt-6">
         <label htmlFor="store-select" className="ds-label">
           店舗
           <span className="ds-help">
@@ -67,17 +69,19 @@ export default function StorePicker() {
           </option>
         ))}
         </select>
-        <button
+        <Button
           type="button"
           onClick={() => open(chosen)}
           disabled={!chosen}
-          className="ds-btn mt-4 w-full"
+          className="mt-4"
+          fullWidth
         >
           この店舗を開く
-        </button>
-      </div>
+        </Button>
+      </Card>
 
-      <form onSubmit={onCreate} className="ds-card mt-4 p-5">
+      <form onSubmit={onCreate}>
+        <Card className="mt-4">
         <label htmlFor="store-name" className="ds-label">
           別の店舗名
           <span className="ds-help">追加した店舗は上のセレクトに並びます。</span>
@@ -88,9 +92,10 @@ export default function StorePicker() {
           onChange={(event) => setName(event.target.value)}
           className="ds-input mt-2"
         />
-        <button type="submit" className="ds-btn-secondary mt-3 w-full">
+        <Button type="submit" variant="secondary" className="mt-3" fullWidth>
           追加する
-        </button>
+        </Button>
+        </Card>
       </form>
     </main>
   );

@@ -1,9 +1,8 @@
-import Link from "next/link";
+import Button, { buttonVariantClassName } from "@/components/ui/Button";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 /** PayPayの主要アクション。高さ52px、Primary Blue、白文字、1行。 */
-export const primaryButtonClassName =
-  "primary-button ds-btn gap-1 disabled:cursor-not-allowed";
+export const primaryButtonClassName = buttonVariantClassName.primary;
 
 export default function PrimaryButton({
   children,
@@ -16,19 +15,9 @@ export default function PrimaryButton({
   className?: string;
   href?: string;
 } & ButtonHTMLAttributes<HTMLButtonElement>) {
-  const classes = `${primaryButtonClassName} ${className}`;
-
-  if (href) {
-    return (
-      <Link href={href} className={classes} style={{ color: "#ffffff" }}>
-        {children}
-      </Link>
-    );
-  }
-
   return (
-    <button type={type} className={classes} style={{ color: "#ffffff" }} {...props}>
+    <Button variant="primary" className={className} href={href} type={type} {...props}>
       {children}
-    </button>
+    </Button>
   );
 }

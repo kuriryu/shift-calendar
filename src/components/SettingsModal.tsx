@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { ControlledActionDialog, Select } from "smarthr-ui";
 import type { ShopSettings, TimeRange } from "@/types";
-import { DEFAULT_SETTINGS } from "@/types";
 import { useAppStore } from "@/stores/useAppStore";
+import { toast } from "@/stores/useToastStore";
 import Icon from "@/components/Icon";
 
 /** 6:00〜24:00 の30分刻み */
@@ -395,17 +395,6 @@ export function SettingsForm({
           {error}
         </p>
       )}
-
-      <div className="flex justify-end pt-1">
-        <button
-          type="button"
-          onClick={() => setForm(DEFAULT_SETTINGS)}
-          className="flex items-center gap-1 rounded-md px-2.5 py-1 text-xs text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-        >
-          <Icon name="restart_alt" size={14} />
-          既定値に戻す
-        </button>
-      </div>
     </div>
   );
 }
@@ -430,6 +419,7 @@ export default function SettingsModal({
       return;
     }
     updateSettings(form);
+    toast("保存しました");
     onClose();
   };
 

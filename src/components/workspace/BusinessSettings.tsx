@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { SettingsForm, settingsError } from "@/components/SettingsModal";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import PageShell from "@/components/ui/PageShell";
 import { useAppStore } from "@/stores/useAppStore";
+import { toast } from "@/stores/useToastStore";
 import type { ShopSettings } from "@/types";
 
 export default function BusinessSettings() {
@@ -20,18 +24,20 @@ export default function BusinessSettings() {
     setError(nextError);
     if (nextError) return;
     updateSettings(form);
+    toast("保存しました");
   };
 
   return (
-    <div className="ds-page">
-      <h1 className="ds-title">業態設定</h1>
-      <p className="ds-lead">営業時間、ピーク、必要人数をこの店舗用に保存します。</p>
-      <div className="ds-card mt-6 max-w-3xl p-5">
+    <PageShell
+      title="業態設定"
+      lead="営業時間、ピーク、必要人数をこの店舗用に保存します。"
+    >
+      <Card className="mt-6 max-w-3xl">
         <SettingsForm form={form} setForm={setForm} error={error} />
-        <button type="button" onClick={save} className="ds-btn mt-4">
+        <Button type="button" onClick={save} className="mt-4">
           保存する
-        </button>
-      </div>
-    </div>
+        </Button>
+      </Card>
+    </PageShell>
   );
 }

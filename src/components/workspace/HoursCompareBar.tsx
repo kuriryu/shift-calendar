@@ -1,17 +1,24 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { useCountUp } from "@/hooks/useCountUp";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { minutesToJapaneseHours } from "@/lib/time";
 
 type HoursCompareBarProps = {
   requestedMinutes: number;
   assignedMinutes: number;
   className?: string;
+  animated?: boolean;
+  animationDelayMs?: number;
 };
 
 export default function HoursCompareBar({
   requestedMinutes,
   assignedMinutes,
   className = "",
+  animated = false,
+  animationDelayMs = 0,
 }: HoursCompareBarProps) {
   const requested = Math.max(0, requestedMinutes);
   const assigned = Math.max(0, assignedMinutes);
@@ -29,6 +36,26 @@ export default function HoursCompareBar({
   const ratioPercent =
     requested > 0 ? Math.round((assigned / requested) * 100) : assigned > 0 ? null : 0;
 
+  const reduced = usePrefersReducedMotion();
+  const motionOff = !animated || reduced;
+  const shownRequested = useCountUp(requested, motionOff, animationDelayMs);
+  const shownAssigned = useCountUp(assigned, motionOff, animationDelayMs);
+
+  const [barWidth, setBarWidth] = useState(motionOff ? fillPercent : 0);
+  useEffect(() => {
+    if (motionOff) {
+      setBarWidth(fillPercent);
+      return;
+    }
+    setBarWidth(0);
+    const id = window.setTimeout(() => setBarWidth(fillPercent), animationDelayMs);
+    return () => clearTimeout(id);
+  }, [motionOff, fillPercent, animationDelayMs]);
+
+  const displayRequested = animated ? shownRequested : requested;
+  const displayAssigned = animated ? shownAssigned : assigned;
+  const widthPercent = animated && !reduced ? barWidth : fillPercent;
+
   const ariaLabel =
     requested > 0
       ? `希望${minutesToJapaneseHours(requested)}、割当${minutesToJapaneseHours(assigned)}。割当は希望の${ratioPercent}%です。`
@@ -39,11 +66,11 @@ export default function HoursCompareBar({
   return (
     <div className={`flex min-w-0 w-full flex-1 flex-col ${className}`.trim()}>
       <div className="flex justify-between gap-2 text-xs sm:text-sm">
-        <span className="text-slate-600">
-          希望 {minutesToJapaneseHours(requested)}
+        <span className={`text-slate-600 ${animated ? "tabular-nums" : ""}`}>
+          希望 {minutesToJapaneseHours(displayRequested)}
         </span>
-        <span className="text-slate-500">
-          割当 {minutesToJapaneseHours(assigned)}
+        <span className={`text-slate-500 ${animated ? "tabular-nums" : ""}`}>
+          割当 {minutesToJapaneseHours(displayAssigned)}
         </span>
       </div>
       <div
@@ -55,8 +82,10 @@ export default function HoursCompareBar({
         aria-label={ariaLabel}
       >
         <div
-          className={`h-full rounded-full ${fillClass}`}
-          style={{ width: `${fillPercent}%` }}
+          className={`h-full rounded-full ${fillClass} ${
+            animated && !reduced ? "transition-[width] duration-700 ease-out" : ""
+          }`}
+          style={{ width: `${widthPercent}%` }}
         />
       </div>
       {requested === 0 && assigned > 0 ? (

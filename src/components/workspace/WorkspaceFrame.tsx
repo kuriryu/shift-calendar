@@ -6,9 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 import BrandMark from "@/components/BrandMark";
 import { Select } from "smarthr-ui";
 import BoardSync from "@/components/workspace/BoardSync";
+import Button from "@/components/ui/Button";
+import ModalActions from "@/components/ui/ModalActions";
 import Modal from "@/components/workspace/Modal";
 import Icon from "@/components/Icon";
 import { monthLabel, shiftMonth } from "@/lib/dates";
+import ToastHost from "@/components/ToastHost";
 import { useAppStore } from "@/stores/useAppStore";
 
 const NAV = [
@@ -68,6 +71,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
 
   return (
     <div className="flex h-dvh min-h-0 bg-[var(--ds-canvas)]">
+      <ToastHost />
       <BoardSync />
       <aside className="hidden w-56 shrink-0 flex-col border-r border-[var(--ds-line)] bg-white md:flex">
         <div className="px-4 py-5">
@@ -187,23 +191,20 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
                   </li>
                 ))}
               </ul>
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setMenuOpen(false);
                   setConfirmDelete(true);
                 }}
-                className="ds-btn-danger mt-4"
+                variant="danger"
+                className="mt-4"
               >
                 この店舗を削除
-              </button>
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="ds-btn mt-2 w-full"
-              >
+              </Button>
+              <Button type="button" onClick={() => void logout()} className="mt-2" fullWidth>
                 ログアウト
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -232,14 +233,12 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
         {confirmDelete && (
           <Modal title="店舗を削除" onClose={() => setConfirmDelete(false)}>
             <p>{storeName}を削除します。この店舗の希望とシフトも消えます。</p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setConfirmDelete(false)} className="ds-btn-neutral">
-                戻る
-              </button>
-              <button type="button" onClick={() => void removeStore()} className="ds-btn-danger-fill">
-                削除する
-              </button>
-            </div>
+            <ModalActions
+              onCancel={() => setConfirmDelete(false)}
+              onConfirm={() => void removeStore()}
+              confirmLabel="削除する"
+              confirmVariant="dangerFill"
+            />
           </Modal>
         )}
       </div>

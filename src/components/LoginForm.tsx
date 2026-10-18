@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PrimaryButton from "@/components/PrimaryButton";
+import Card from "@/components/ui/Card";
 import FieldControl, { FieldInput } from "@/components/FieldControl";
 import { useAppStore } from "@/stores/useAppStore";
 
@@ -44,11 +45,8 @@ export default function LoginForm() {
 
   return (
     <main className="flex min-h-dvh flex-1 items-center justify-center bg-[var(--ds-canvas)] px-4 py-8">
-      <form
-        onSubmit={handleSubmit}
-        className="ds-card w-full max-w-sm space-y-4 p-6"
-        aria-label="ログイン"
-      >
+      <form onSubmit={handleSubmit} className="w-full max-w-sm" aria-label="ログイン">
+        <Card className="space-y-4 p-6">
         <h1 className="ds-title text-center">ログインしてください</h1>
         <FieldControl id="login-password" label="パスワード" required>
           <FieldInput
@@ -70,6 +68,7 @@ export default function LoginForm() {
         <PrimaryButton type="submit" disabled={loading} className="w-full">
           {loading ? "確認中…" : "ログイン"}
         </PrimaryButton>
+        </Card>
       </form>
     </main>
   );

@@ -1,8 +1,12 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import PageShell from "@/components/ui/PageShell";
 import { staffLabel } from "@/lib/store-book";
 import { useAppStore } from "@/stores/useAppStore";
+import { toast } from "@/stores/useToastStore";
 import type { CoverageNeed, Role, Staff } from "@/types";
 import { ROLE_LABELS } from "@/types";
 
@@ -42,8 +46,10 @@ export default function StaffDesk() {
       const current = staff.find((member) => member.id === editing);
       if (!current) return;
       updateStaff({ ...current, ...payload });
+      toast("保存しました");
     } else {
       addStaff(payload);
+      toast("登録しました");
     }
     setForm(emptyForm);
     setEditing(null);
@@ -62,16 +68,11 @@ export default function StaffDesk() {
   };
 
   return (
-    <div className="ds-page">
-      <h1 className="ds-title">スタッフ</h1>
-      <p className="ds-lead">
-        苗字、最低時間、一人で入れるかを先に登録します。希望提出ではこの苗字だけを選びます。
-      </p>
-
-      <form onSubmit={onSubmit} className="ds-card mt-6 grid max-w-xl gap-4 p-5">
+    <PageShell title="スタッフ">
+      <form onSubmit={onSubmit}>
+        <Card className="mt-6 grid max-w-xl gap-4">
         <label className="ds-label">
-          苗字
-          <span className="ds-help">希望提出で選ぶ名前です。</span>
+          名字のみ
           <input
             value={form.familyName}
             onChange={(event) => setForm({ ...form, familyName: event.target.value })}
@@ -80,10 +81,9 @@ export default function StaffDesk() {
           />
         </label>
         <div className="ds-label">
-          最低時間
-          <span className="ds-help">1か月あたりの最低労働時間です。</span>
+          1ヶ月あたりの最低時間
           <fieldset className="mt-2 border-0 p-0">
-            <legend className="sr-only">最低時間の指定方法</legend>
+            <legend className="sr-only">1ヶ月あたりの最低時間の指定方法</legend>
             <div className="flex flex-wrap gap-4 text-sm text-slate-700">
               <label className="inline-flex cursor-pointer items-center gap-2">
                 <input
@@ -153,12 +153,14 @@ export default function StaffDesk() {
             ))}
           </select>
         </label>
-        <button type="submit" className="ds-btn w-full">
+        <Button type="submit" fullWidth>
           {editing ? "更新する" : "登録する"}
-        </button>
+        </Button>
+        </Card>
       </form>
 
-      <ul className="ds-card mt-4 max-w-xl divide-y divide-[var(--ds-line)]">
+      <Card className="mt-4 max-w-xl p-0">
+        <ul className="divide-y divide-[var(--ds-line)]">
         {staff.length === 0 && <li className="px-5 py-8 text-sm text-slate-400">まだ登録がありません</li>}
         {staff.map((member) => (
           <li key={member.id} className="flex items-center gap-3 px-5 py-4">
@@ -181,7 +183,8 @@ export default function StaffDesk() {
             </button>
           </li>
         ))}
-      </ul>
-    </div>
+        </ul>
+      </Card>
+    </PageShell>
   );
 }

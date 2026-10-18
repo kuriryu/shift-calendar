@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import DayTimeline from "@/components/DayTimeline";
 import Icon from "@/components/Icon";
 import HoursCompareBar from "@/components/workspace/HoursCompareBar";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import GenerateShiftButton from "@/components/workspace/GenerateShiftButton";
+import ModalActions from "@/components/ui/ModalActions";
 import Modal from "@/components/workspace/Modal";
 import { hopeChip } from "@/components/DayRequestList";
 import { navCircleButtonClassName } from "@/components/FieldControl";
 import {
-  dayLabel,
   daysOfMonth,
   formatDate,
   monthLabel,
@@ -23,9 +26,7 @@ import { businessRange, requestedMinutesOf, assignedMinutesOf } from "@/lib/hope
 import { drawShiftJpeg, downloadJpeg, downloadPdf } from "@/lib/print-shift";
 import { sharePageUrl } from "@/lib/public-url";
 import { staffLabel } from "@/lib/store-book";
-import { minutesToJapaneseHours, workMinutesOf } from "@/lib/time";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
-
 export default function ShiftBoard() {
   const router = useRouter();
   const month = useAppStore((s) => s.selectedMonth);
@@ -37,7 +38,6 @@ export default function ShiftBoard() {
   const assignments = useAppStore((s) => s.assignments[month] ?? EMPTY_ASSIGNMENTS);
   const violations = useAppStore((s) => s.violations);
   const setIssueOpen = useAppStore((s) => s.setIssueOpen);
-  const generate = useAppStore((s) => s.generate);
   const focusViolation = useAppStore((s) => s.focusViolation);
   const published = useAppStore((s) => s.publishedMonths.includes(month));
   const publishMonth = useAppStore((s) => s.publishMonth);
@@ -72,8 +72,6 @@ export default function ShiftBoard() {
   const errors = violations.filter((item) => item.severity === "error");
   const warnings = violations.filter((item) => item.severity === "warning");
   const dayRequests = requests.filter((request) => request.date === date);
-  const dayAssignments = assignments.filter((assignment) => assignment.date === date);
-  const dayMinutes = dayAssignments.reduce((total, assignment) => total + workMinutesOf(assignment), 0);
   const hours = businessRange(date, settings);
 
   const achievement = useMemo(
@@ -87,12 +85,6 @@ export default function ShiftBoard() {
       })),
     [assignments, requests, settings, staff],
   );
-
-  const generateShift = () => {
-    generate();
-    setIssueOpen(true);
-    if (!selectedDate.startsWith(month)) setSelectedDate(`${month}-01`);
-  };
 
   const complete = () => {
     if (errors.length > 0) return;
@@ -164,14 +156,15 @@ export default function ShiftBoard() {
             ))}
           </div>
           <div className="border-t border-slate-100 p-4">
-            <button
+            <Button
               type="button"
               disabled={errors.length > 0 || assignments.length === 0}
               onClick={complete}
-              className="ds-btn w-full disabled:opacity-40"
+              fullWidth
+              className="disabled:opacity-40"
             >
               完了
-            </button>
+            </Button>
           </div>
         </aside>
       )}
@@ -183,50 +176,51 @@ export default function ShiftBoard() {
             <p className="text-sm text-slate-500">{monthLabel(month)}</p>
           </div>
           {!published && (
-            <button
-              type="button"
-              onClick={generateShift}
+            <GenerateShiftButton
               disabled={staff.length === 0}
-              className="ds-btn disabled:opacity-40"
-            >
-              シフトを生成
-            </button>
+              className="disabled:opacity-40"
+              onGenerated={() => {
+                setIssueOpen(true);
+                if (!selectedDate.startsWith(month)) setSelectedDate(`${month}-01`);
+              }}
+            />
           )}
         </div>
 
         {published ? (
-          <section className="ds-card mt-6 p-6">
+          <Card className="mt-6 p-6">
             <h2 className="text-xl font-bold text-[var(--ds-ink)]">このシフトで確定しました</h2>
             <div className="mt-4 grid max-w-md gap-2">
-              <button type="button" onClick={() => window.print()} className="ds-btn w-full">
+              <Button type="button" onClick={() => window.print()} fullWidth>
                 印刷する
-              </button>
+              </Button>
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => void exportFile("jpeg")} className="ds-btn-secondary">
+                <Button type="button" onClick={() => void exportFile("jpeg")} variant="secondary">
                   JPEG
-                </button>
-                <button type="button" onClick={() => void exportFile("pdf")} className="ds-btn-secondary">
+                </Button>
+                <Button type="button" onClick={() => void exportFile("pdf")} variant="secondary">
                   PDF
-                </button>
+                </Button>
               </div>
-              <button type="button" onClick={() => void share()} className="ds-btn-line w-full">
+              <Button type="button" onClick={() => void share()} variant="line" fullWidth>
                 共有する
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => {
                   reopenMonth();
                   router.push("/shifts");
                 }}
-                className="ds-btn-neutral w-full"
+                variant="neutral"
+                fullWidth
               >
                 生成画面に戻る
-              </button>
+              </Button>
             </div>
             <div id="shift-print-sheet" className="mt-6">
               <PrintTable storeName={storeName} month={month} staff={staff} assignments={assignments} />
             </div>
-          </section>
+          </Card>
         ) : assignments.length === 0 ? (
           <p className="mt-8 text-sm text-slate-400">まだシフトはありません。希望が集まったら生成してください。</p>
         ) : (
@@ -270,8 +264,7 @@ export default function ShiftBoard() {
               </button>
             </div>
             <p className="mt-2 text-sm text-slate-500">
-              {dayLabel(date)}（{weekdayLabel(date)}）の時間 {hours.start}–{hours.end} / 入っている時間{" "}
-              {minutesToJapaneseHours(dayMinutes)}
+              {hours.start}–{hours.end}
             </p>
             <div className="mt-4">
               <DayTimeline date={date} />
@@ -324,14 +317,11 @@ export default function ShiftBoard() {
               <li key={item.id}>{item.message}</li>
             ))}
           </ul>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setModal(null)} className="ds-btn-neutral">
-              戻る
-            </button>
-            <button type="button" onClick={() => setModal("ok")} className="ds-btn">
-              続ける
-            </button>
-          </div>
+          <ModalActions
+            onCancel={() => setModal(null)}
+            onConfirm={() => setModal("ok")}
+            confirmLabel="続ける"
+          />
         </Modal>
       )}
 
@@ -355,14 +345,7 @@ export default function ShiftBoard() {
               </li>
             ))}
           </ul>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setModal(null)} className="ds-btn-neutral">
-              戻る
-            </button>
-            <button type="button" onClick={finish} className="ds-btn">
-              OK
-            </button>
-          </div>
+          <ModalActions onCancel={() => setModal(null)} onConfirm={finish} confirmLabel="OK" />
         </Modal>
       )}
     </div>

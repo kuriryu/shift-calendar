@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import CopyHopeUrlButton from "@/components/CopyHopeUrlButton";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import ModalActions from "@/components/ui/ModalActions";
+import PageShell from "@/components/ui/PageShell";
 import Modal from "@/components/workspace/Modal";
 import { hopePageUrl } from "@/lib/public-url";
 import { defaultReception } from "@/lib/store-book";
@@ -74,13 +78,11 @@ export default function ReceptionDesk() {
     "disabled:cursor-not-allowed disabled:opacity-50";
 
   return (
-    <div className="ds-page">
-      <h1 className="ds-title">シフト希望受付</h1>
-      <p className="ds-lead">
-        対象の年月を選び、受付期間を決めてから募集を開始します。店舗や年月を変えると、表示されるリンクもその店舗・月用に変わります。
-      </p>
-
-      <div className="ds-card mt-6 grid max-w-xl gap-4 p-5">
+    <PageShell
+      title="シフト希望受付"
+      lead="対象の年月を選び、受付期間を決めてから募集を開始します。店舗や年月を変えると、表示されるリンクもその店舗・月用に変わります。"
+    >
+      <Card className="mt-6 grid max-w-xl gap-4">
         <div className="flex gap-3">
           <label className="ds-label w-32">
             年
@@ -141,18 +143,19 @@ export default function ReceptionDesk() {
           </label>
         </div>
 
-        <button
+        <Button
           type="button"
           onClick={toggleReception}
-          className={period.open ? "ds-btn-neutral w-full" : "ds-btn w-full"}
+          variant={period.open ? "neutral" : "primary"}
+          fullWidth
         >
           {period.open ? "受付を停止する" : "受付を開始する"}
-        </button>
+        </Button>
 
         {period.open && (
           <div className="rounded-xl bg-[#f7f7f7] p-4">
-            <p className="text-xs font-bold text-[var(--ds-muted)]">希望を送るURL</p>
-            <div className="mt-2">
+            <p className="text-center text-xs font-bold text-[var(--ds-muted)]">希望を送るURL</p>
+            <div className="mx-auto mt-2 w-full max-w-lg">
               <CopyHopeUrlButton url={url} variant="bar" />
             </div>
           </div>
@@ -161,22 +164,20 @@ export default function ReceptionDesk() {
         {notice && period.open && (
           <p className="text-sm text-slate-700">{notice}</p>
         )}
-      </div>
+      </Card>
 
       {confirmStop && (
         <Modal title="よろしいですか？" onClose={() => setConfirmStop(false)}>
           <p>受付を解除していいですか？</p>
           <p className="mt-2 text-xs text-[var(--ds-muted)]">停止中はスタッフが希望を送れません。</p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setConfirmStop(false)} className="ds-btn-neutral">
-              戻る
-            </button>
-            <button type="button" onClick={confirmStopReception} className="ds-btn-danger-fill">
-              停止する
-            </button>
-          </div>
+          <ModalActions
+            onCancel={() => setConfirmStop(false)}
+            onConfirm={confirmStopReception}
+            confirmLabel="停止する"
+            confirmVariant="dangerFill"
+          />
         </Modal>
       )}
-    </div>
+    </PageShell>
   );
 }
