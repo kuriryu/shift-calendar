@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { monthLabel } from "@/lib/dates";
 import { assignedMinutesOf, requestedMinutesOf } from "@/lib/hope-hours";
@@ -10,6 +10,75 @@ import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppS
 import type { HopeNote } from "@/types";
 
 const EMPTY_NOTES: HopeNote[] = [];
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+  return reduced;
+}
+
+function useCountUp(target: number, reduced: boolean): number {
+  const [shown, setShown] = useState(reduced ? target : 0);
+  useEffect(() => {
+    if (reduced) {
+      setShown(target);
+      return;
+    }
+    const start = performance.now();
+    const duration = 800;
+    let frame = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - (1 - t) ** 3;
+      setShown(Math.round(target * eased));
+      if (t < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reduced, target]);
+  return shown;
+}
+
+/** 提出率を、数字だけが 0 から伸びるインフォグラフィクスで見せる */
+function SubmissionFigure({
+  rate,
+  submitted,
+  total,
+}: {
+  rate: number;
+  submitted: number;
+  total: number;
+}) {
+  const reduced = usePrefersReducedMotion();
+  const shownRate = useCountUp(rate, reduced);
+  const shownSubmitted = useCountUp(submitted, reduced);
+  const done = rate >= 100;
+
+  return (
+    <div className="submission-figure" aria-hidden>
+      <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
+      <p
+        className={`mt-2 text-5xl font-bold leading-none tracking-tight tabular-nums ${
+          done ? "text-[var(--ds-green)]" : "text-[var(--ds-ink)]"
+        }`}
+      >
+        <span>
+          {shownRate}
+          <span className="ml-0.5 text-2xl">%</span>
+        </span>
+      </p>
+      <p className="mt-2 text-sm tabular-nums text-[var(--ds-muted)]">
+        {shownSubmitted} / {total} 人
+      </p>
+    </div>
+  );
+}
 
 export default function DashboardHome() {
   const router = useRouter();
@@ -66,12 +135,11 @@ export default function DashboardHome() {
       </section>
 
       <div className="mt-4 grid gap-4 md:grid-cols-3">
-        <article className="ds-card p-5">
-          <p className="text-sm font-bold text-[var(--ds-body)]">シフトの提出率</p>
-          <p className="mt-2 text-4xl font-bold text-[var(--ds-ink)]">{rate}%</p>
-          <p className="mt-1 text-sm text-[var(--ds-muted)]">
-            {submitted} / {staff.length} 人
-          </p>
+        <article
+          className="ds-card p-5"
+          aria-label={`シフトの提出率 ${rate}%。${staff.length}人中${submitted}人`}
+        >
+          <SubmissionFigure rate={rate} submitted={submitted} total={staff.length} />
         </article>
         <article className="ds-card p-5">
           <label htmlFor="budget-hours" className="ds-label">
