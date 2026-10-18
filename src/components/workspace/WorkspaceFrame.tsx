@@ -12,8 +12,8 @@ const NAV = [
   { href: "/dashboard", label: "ダッシュボード", icon: "dashboard" },
   { href: "/shifts", label: "シフト表", icon: "calendar_view_day" },
   { href: "/reception", label: "シフト希望受付", icon: "inbox" },
-  { href: "/business", label: "業態設定", icon: "tune" },
   { href: "/staff", label: "スタッフ", icon: "group" },
+  { href: "/business", label: "業態設定", icon: "tune" },
 ];
 
 export default function WorkspaceFrame({ children }: { children: React.ReactNode }) {
