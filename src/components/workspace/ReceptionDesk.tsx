@@ -72,22 +72,22 @@ export default function ReceptionDesk() {
   };
 
   return (
-    <div className="h-full overflow-auto p-5 md:p-8">
-      <h1 className="text-2xl font-bold text-slate-900">シフト希望受付</h1>
-      <p className="mt-2 text-sm text-slate-500">
+    <div className="ds-page">
+      <h1 className="ds-title">シフト希望受付</h1>
+      <p className="ds-lead">
         対象の年月を選び、受付期間を決めてから募集を開始します。年月を変えたら URLを更新すると、その月の希望リンクになります。
       </p>
 
-      <div className="mt-6 grid max-w-xl gap-4 rounded-2xl bg-white p-5 shadow-sm">
+      <div className="ds-card mt-6 grid max-w-xl gap-4 p-5">
         <div className="flex gap-3">
-          <label className="flex-1 text-sm text-slate-500">
+          <label className="ds-label w-32">
             年
             <select
               value={year}
               onChange={(event) =>
                 selectMonth(`${event.target.value}-${String(monthNumber).padStart(2, "0")}`)
               }
-              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
+              className="ds-input mt-1"
             >
               {[year - 1, year, year + 1].map((value) => (
                 <option key={value} value={value}>
@@ -96,14 +96,14 @@ export default function ReceptionDesk() {
               ))}
             </select>
           </label>
-          <label className="flex-1 text-sm text-slate-500">
+          <label className="ds-label w-28">
             月
             <select
               value={monthNumber}
               onChange={(event) =>
                 selectMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
               }
-              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
+              className="ds-input mt-1"
             >
               {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
                 <option key={value} value={value}>
@@ -115,22 +115,22 @@ export default function ReceptionDesk() {
         </div>
 
         <div className="flex gap-3">
-          <label className="flex-1 text-sm text-slate-500">
+          <label className="ds-label flex-1">
             募集開始
             <input
               type="date"
               value={period.from}
               onChange={(event) => setReception(month, { from: event.target.value })}
-              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
+              className="ds-input mt-1"
             />
           </label>
-          <label className="flex-1 text-sm text-slate-500">
+          <label className="ds-label flex-1">
             募集終了
             <input
               type="date"
               value={period.to}
               onChange={(event) => setReception(month, { to: event.target.value })}
-              className="mt-1 h-11 w-full rounded-xl border border-slate-200 px-3 text-base text-slate-900"
+              className="ds-input mt-1"
             />
           </label>
         </div>
@@ -138,21 +138,15 @@ export default function ReceptionDesk() {
         <button
           type="button"
           onClick={() => void toggleReception()}
-          className={`h-12 rounded-xl text-sm font-semibold text-white ${
-            period.open ? "bg-slate-700" : "bg-blue-600"
-          }`}
+          className={period.open ? "ds-btn-neutral w-full" : "ds-btn w-full"}
         >
-          {period.open ? "受付を停止する" : "シフト希望の受付を開始する"}
+          {period.open ? "受付を停止する" : "受付を開始する"}
         </button>
 
-        <div className="rounded-xl bg-slate-50 p-4">
-          <p className="text-xs font-semibold text-slate-400">希望を送るURL</p>
-          <p className="mt-1 break-all text-sm text-slate-800">{url}</p>
-          <button
-            type="button"
-            onClick={() => void updateUrl()}
-            className="mt-3 h-11 rounded-full bg-[#06C755] px-4 text-sm font-semibold text-white"
-          >
+        <div className="rounded-xl bg-[#f7f7f7] p-4">
+          <p className="text-xs font-bold text-[var(--ds-muted)]">希望を送るURL</p>
+          <p className="mt-1 break-all text-sm text-[var(--ds-ink)]">{url}</p>
+          <button type="button" onClick={() => void updateUrl()} className="ds-btn-line mt-3">
             URLを更新
           </button>
           {notice && <p className="mt-2 text-sm text-slate-700">{notice}</p>}

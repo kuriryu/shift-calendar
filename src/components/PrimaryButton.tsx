@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
-/** 「次へ」と同系統のプライマリボタン（青背景・白文字・高さ44px） */
+/** PayPayの主要アクション。高さ52px、Primary Blue、白文字、1行。 */
 export const primaryButtonClassName =
-  "primary-button inline-flex h-11 min-h-11 items-center justify-center gap-1 rounded-md bg-blue-600 px-4 text-sm font-semibold !text-white hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300";
+  "primary-button ds-btn gap-1 disabled:cursor-not-allowed";
 
 export default function PrimaryButton({
   children,

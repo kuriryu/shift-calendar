@@ -10,8 +10,7 @@ import type {
  * 入力枠の共通スタイル。
  * 上下左右の余白をすべて 12px（p-3）で統一。高さはパディング＋文字サイズから自然に決める。
  */
-export const fieldClassName =
-  "field-control box-border w-full appearance-none rounded-md border border-slate-200 bg-white p-3 text-sm leading-none text-slate-700";
+export const fieldClassName = "field-control ds-input appearance-none";
 
 export default function FieldControl({
   id,
@@ -30,7 +29,7 @@ export default function FieldControl({
 }) {
   return (
     <div className={`space-y-2 ${className || "min-w-0 flex-1"}`}>
-      <label htmlFor={id} className="block text-xs font-medium leading-4 text-slate-500">
+      <label htmlFor={id} className="ds-label">
         {label}
         {required && (
           <>
@@ -40,9 +39,7 @@ export default function FieldControl({
             <span className="sr-only">必須</span>
           </>
         )}
-        {hint && (
-          <span className="ms-2 font-normal text-slate-400">{hint}</span>
-        )}
+        {hint && <span className="ds-help">{hint}</span>}
       </label>
       {children}
     </div>

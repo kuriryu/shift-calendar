@@ -44,11 +44,11 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
   };
 
   return (
-    <div className="flex h-dvh min-h-0 bg-slate-50">
+    <div className="flex h-dvh min-h-0 bg-[var(--ds-canvas)]">
       <BoardSync />
-      <aside className="hidden w-56 shrink-0 flex-col border-r border-slate-200 bg-white md:flex">
+      <aside className="hidden w-56 shrink-0 flex-col border-r border-[var(--ds-line)] bg-white md:flex">
         <div className="px-4 py-5">
-          <p className="text-[11px] font-semibold tracking-[0.16em] text-slate-400">MENU</p>
+          <p className="text-[11px] font-bold tracking-[0.16em] text-[var(--ds-muted)]">MENU</p>
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3">
           {NAV.map((item) => {
@@ -57,8 +57,8 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium ${
-                  active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50"
+                className={`flex h-12 items-center gap-2 rounded-xl px-3 text-sm ${
+                  active ? "ds-nav-active" : "font-medium text-[var(--ds-body)] hover:bg-[#f7f7f7]"
                 }`}
               >
                 <Icon name={item.icon} size={18} />
@@ -70,7 +70,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-[var(--ds-line)] bg-white px-4">
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 md:hidden"
@@ -87,7 +87,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
             aria-label="店舗"
             value={activeStoreId ?? ""}
             onChange={(event) => selectStore(event.target.value)}
-            className="h-10 min-w-0 max-w-[14rem] rounded-lg border border-slate-200 bg-white px-2 text-sm font-bold text-slate-900"
+            className="ds-input ds-input-fit h-10 max-w-[10rem] font-bold"
           >
             {stores.map((item) => (
               <option key={item.id} value={item.id}>
@@ -104,7 +104,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
             onChange={(event) =>
               setMonth(`${event.target.value}-${String(month).padStart(2, "0")}`)
             }
-            className="h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
+            className="ds-input ds-input-fit h-10 w-[6.75rem]"
           >
             {[year - 1, year, year + 1].map((value) => (
               <option key={value} value={value}>
@@ -121,7 +121,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
             onChange={(event) =>
               setMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
             }
-            className="h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
+            className="ds-input ds-input-fit h-10 w-[5.25rem]"
           >
             {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
               <option key={value} value={value}>
@@ -153,7 +153,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
         {menuOpen && (
           <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)}>
             <div
-              className="absolute right-4 top-16 w-72 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+              className="ds-card absolute right-4 top-16 w-72 p-4 shadow-[0_-8px_24px_rgba(0,0,0,0.08)]"
               onClick={(event) => event.stopPropagation()}
             >
               <p className="text-xs font-semibold text-slate-400">ログイン履歴</p>
@@ -169,7 +169,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
               <button
                 type="button"
                 onClick={() => void logout()}
-                className="mt-4 h-10 w-full rounded-xl bg-slate-900 text-sm font-semibold text-white"
+                className="ds-btn mt-4 w-full"
               >
                 ログアウト
               </button>
