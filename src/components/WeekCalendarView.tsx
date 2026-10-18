@@ -15,24 +15,13 @@ import { useMounted } from "@/hooks/useMounted";
 import { timeOptionsOf } from "@/lib/coverage";
 import {
   dayLabel,
-  formatDate,
-  parseDate,
+  weekDatesAround,
   weekKeyOf,
   weeksOfMonth,
 } from "@/lib/dates";
 import type { ShiftAssignment, Staff } from "@/types";
 
 const WEEKDAY_HEADERS = ["月", "火", "水", "木", "金", "土", "日"] as const;
-
-/** 選択日を含む週の7日（月〜日）。月外の日も含む */
-function weekDatesAround(dateStr: string): string[] {
-  const monday = parseDate(weekKeyOf(dateStr));
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return formatDate(d);
-  });
-}
 
 function shortTime(t: string): string {
   const [h, m] = t.split(":").map(Number);

@@ -9,11 +9,19 @@ const RADIUS = (SIZE_PX - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 /** 現在ステップに連動する円形プログレス（表示専用・タップ不可） */
-export default function StepProgress({ current }: { current: StepId }) {
-  const total = STEPS.length;
+export default function StepProgress({
+  current,
+  total = STEPS.length,
+  accent = "mint",
+}: {
+  current: StepId | number;
+  total?: number;
+  accent?: "mint" | "brand";
+}) {
   const fraction = current / total;
   const percent = Math.round(fraction * 100);
   const dashOffset = CIRCUMFERENCE * (1 - fraction);
+  const progressStroke = accent === "brand" ? "var(--ds-action)" : "#3cbe8c";
 
   return (
     <div
@@ -44,7 +52,7 @@ export default function StepProgress({ current }: { current: StepId }) {
           cy={SIZE_PX / 2}
           r={RADIUS}
           fill="none"
-          stroke="#3cbe8c"
+          stroke={progressStroke}
           strokeWidth={STROKE}
           strokeLinecap="round"
           strokeDasharray={CIRCUMFERENCE}

@@ -105,3 +105,13 @@ export function weekKeyOf(dateStr: string): string {
   monday.setDate(d.getDate() + mondayOffset);
   return formatDate(monday);
 }
+
+/** 選択日を含む週の7日（月〜日）。月外の日も含む */
+export function weekDatesAround(dateStr: string): string[] {
+  const monday = parseDate(weekKeyOf(dateStr));
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return formatDate(d);
+  });
+}

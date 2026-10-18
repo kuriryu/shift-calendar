@@ -19,6 +19,13 @@
   --ds-tint: #eaf3ff;
   --background: var(--ds-canvas);
   --foreground: var(--ds-ink);
+  --workspace-gutter-x: 16px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --workspace-gutter-x: 32px;
+  }
 }
 
 @theme inline {
@@ -125,11 +132,11 @@ button.primary-button {
 .ds-page {
   height: 100%;
   overflow: auto;
-  padding: 20px 16px 32px;
+  padding: 20px var(--workspace-gutter-x) 32px;
 }
 @media (min-width: 768px) {
   .ds-page {
-    padding: 32px;
+    padding: 32px var(--workspace-gutter-x);
   }
 }
 .ds-title {

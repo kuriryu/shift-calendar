@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import StepProgress from "@/components/StepProgress";
 import Modal from "@/components/workspace/Modal";
 import { monthLabel, weekdayLabel } from "@/lib/dates";
 import { businessRange, monthDaysInWindow } from "@/lib/hope-hours";
@@ -15,6 +16,12 @@ type Choice =
   | { kind: "time"; start: string; end: string };
 
 type Step = 1 | 2 | 3;
+
+const HOPE_STEP_COPY: Record<Step, { title: string; subtitle: string }> = {
+  1: { title: "名前", subtitle: "苗字を選んでください" },
+  2: { title: "希望", subtitle: "日ごとに希望を選んでください" },
+  3: { title: "確認", subtitle: "内容を確認して送信してください" },
+};
 
 export default function HopeFlow({ storeId, month }: { storeId: string; month: string }) {
   const local = useLocalBook(storeId);
@@ -42,7 +49,7 @@ export default function HopeFlow({ storeId, month }: { storeId: string; month: s
   const book = local ?? remote;
   if (!book) {
     return (
-      <main className="mx-auto min-h-dvh max-w-md px-5 py-16 text-center text-sm text-slate-500">
+      <main className="mx-auto min-h-dvh w-full max-w-md px-4 py-16 text-center text-sm text-slate-500 sm:max-w-lg sm:px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
         {missing ? "この募集は見つかりません。" : "読み込み中…"}
       </main>
     );
@@ -118,6 +125,7 @@ function HopeForm({
   const reception = book.receptions[month] ?? defaultReception(month);
   const days = monthDaysInWindow(month, reception.from, reception.to);
   const [step, setStep] = useState<Step>(1);
+  const [namePick, setNamePick] = useState("");
   const [staffId, setStaffId] = useState<string | null>(null);
   const [askEdit, setAskEdit] = useState(false);
   const [choices, setChoices] = useState<Record<string, Choice>>({});
@@ -160,7 +168,7 @@ function HopeForm({
 
   if (!reception.open) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md items-center px-5 text-center text-sm text-slate-500">
+      <main className="mx-auto flex min-h-dvh w-full max-w-md items-center px-4 text-center text-sm text-slate-500 sm:max-w-lg sm:px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
         現在、シフト希望の受付は停止しています。
       </main>
     );
@@ -303,7 +311,7 @@ function HopeForm({
 
   if (done) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center bg-[var(--ds-green)] px-6 text-center text-white">
+      <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col items-center justify-center bg-[var(--ds-action)] px-4 text-center text-white sm:max-w-lg sm:px-6 pb-[max(2.5rem,env(safe-area-inset-bottom))]">
         <p className="text-sm font-bold">{book.name}</p>
         <h1 className="mt-2 text-2xl font-bold">送信しました</h1>
         <p className="mt-2 text-sm">{monthLabel(month)}の希望を受け付けました。</p>
@@ -312,41 +320,69 @@ function HopeForm({
   }
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-md bg-[var(--ds-canvas)] pb-10">
-      <header className="bg-white px-4 pb-4 pt-6">
-        <p className="text-xs font-bold text-[var(--ds-green)]">{book.name}</p>
-        <h1 className="text-xl font-bold text-[var(--ds-ink)]">{monthLabel(month)}のシフト希望</h1>
-        <StepBar step={step} />
+    <main className="mx-auto min-h-dvh w-full max-w-md bg-[var(--ds-canvas)] sm:max-w-lg pb-[max(2.5rem,env(safe-area-inset-bottom))]">
+      <header className="bg-white px-4 pb-4 pt-6 sm:px-6">
+        <p className="text-xs font-bold text-[var(--ds-action)]">{book.name}</p>
+        <h1 className="text-lg font-bold text-[var(--ds-ink)] sm:text-xl">{monthLabel(month)}のシフト希望</h1>
+        <div className="mt-4 flex items-center gap-4">
+          <StepProgress current={step} total={3} accent="brand" />
+          <div className="min-w-0">
+            <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">{HOPE_STEP_COPY[step].title}</h2>
+            <p className="mt-1 text-sm text-slate-400">{HOPE_STEP_COPY[step].subtitle}</p>
+          </div>
+        </div>
       </header>
 
       {step === 1 && (
-        <section className="px-5 py-4">
-          <p className="text-sm text-slate-500">名前を選んでください</p>
-          <ul className="mt-3 space-y-2">
-            {book.staff.map((person) => (
-              <li key={person.id}>
-                <button
-                  type="button"
-                  onClick={() => chooseName(person.id)}
-                  className="h-14 w-full rounded-xl border border-[var(--ds-line)] bg-white text-lg font-bold text-[var(--ds-ink)]"
-                >
-                  {staffLabel(person)}
-                </button>
-              </li>
-            ))}
-          </ul>
+        <section className="px-4 py-4 sm:px-6">
+          {book.staff.length === 0 ? (
+            <p className="text-sm text-slate-500">スタッフが登録されていません</p>
+          ) : (
+            <>
+              <label htmlFor="hope-name-select" className="ds-label">
+                名前
+                <span className="ds-help">苗字を選んでください。</span>
+              </label>
+              <select
+                id="hope-name-select"
+                value={namePick}
+                onChange={(event) => setNamePick(event.target.value)}
+                className="ds-input mt-2"
+              >
+                <option value="" disabled>
+                  選んでください
+                </option>
+                {book.staff.map((person) => (
+                  <option key={person.id} value={person.id}>
+                    {staffLabel(person)}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => chooseName(namePick)}
+                disabled={!namePick}
+                className="ds-btn mt-4 w-full disabled:opacity-40"
+              >
+                次へ
+              </button>
+            </>
+          )}
         </section>
       )}
 
       {step === 2 && (
-        <section className="px-4 py-4">
+        <section className="px-4 py-4 sm:px-6">
+          {summary.some((item) => item.choice?.kind === "free") && freeRange && (
+            <FreeRangeEditor freeRange={freeRange} onChange={setFreeRange} className="mb-3" />
+          )}
           <ul className="space-y-3">
             {days.map((date) => (
               <li key={date} className="ds-card p-3">
                 <p className="text-sm font-bold text-slate-800">
                   {Number(date.slice(8))}日（{weekdayLabel(date)}）
                 </p>
-                <div className="mt-2 grid grid-cols-4 gap-2">
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {(
                     [
                       ["free", "F"],
@@ -361,7 +397,7 @@ function HopeForm({
                         key={kind}
                         type="button"
                         onClick={() => pick(date, kind)}
-                        className={`h-12 rounded-xl text-sm font-bold ${
+                        className={`min-h-12 h-12 rounded-xl text-sm font-bold ${
                           selected ? "bg-[var(--ds-action)] text-white" : "bg-[#f0f0f0] text-[var(--ds-body)]"
                         }`}
                       >
@@ -374,7 +410,7 @@ function HopeForm({
                   <p className="mt-2 text-xs text-slate-500">{choiceLabel(choices[date], freeRange)}</p>
                 )}
                 {timeDate === date && (
-                  <div className="mt-2 flex items-end gap-2">
+                  <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end">
                     <label className="ds-label min-w-0 flex-1">
                       開始
                       <input type="time" value={draftStart} onChange={(event) => setDraftStart(event.target.value)} className="ds-input mt-1" />
@@ -392,7 +428,7 @@ function HopeForm({
                         }));
                         setTimeDate(null);
                       }}
-                      className="ds-btn shrink-0 px-4"
+                      className="ds-btn w-full px-4 sm:w-auto sm:shrink-0"
                     >
                       決定
                     </button>
@@ -403,17 +439,12 @@ function HopeForm({
           </ul>
           <div ref={endRef} className="h-8" />
           {scrolledEnd && (
-            <div className="ds-card sticky bottom-4 mt-2 p-4">
-              {summary.some((item) => item.choice?.kind === "free") && freeRange && (
-                <p className="text-sm text-slate-600">
-                  Fは {freeRange.start}–{freeRange.end} です
-                </p>
-              )}
+            <div className="ds-card sticky bottom-0 z-10 mt-2 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:bottom-4">
               <button
                 type="button"
                 onClick={() => setStep(3)}
                 disabled={days.some((date) => !choices[date])}
-                className="ds-btn mt-3 w-full disabled:opacity-40"
+                className="ds-btn w-full disabled:opacity-40"
               >
                 確認へ
               </button>
@@ -423,15 +454,18 @@ function HopeForm({
       )}
 
       {step === 3 && (
-        <section className="px-5 py-4">
+        <section className="px-4 py-4 sm:px-6">
           <h2 className="text-lg font-bold text-slate-900">これでいいですか？</h2>
           <ul className="mt-3 space-y-1 text-sm text-slate-700">
             {summary.map((item) => (
-              <li key={item.date} className="flex justify-between border-b border-slate-100 py-2">
-                <span>
+              <li
+                key={item.date}
+                className="flex flex-col gap-1 border-b border-slate-100 py-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
+              >
+                <span className="shrink-0 font-medium text-slate-800">
                   {Number(item.date.slice(8))}日（{weekdayLabel(item.date)}）
                 </span>
-                <span>{choiceLabel(item.choice, freeRange)}</span>
+                <span className="text-slate-600 sm:text-right">{choiceLabel(item.choice, freeRange)}</span>
               </li>
             ))}
           </ul>
@@ -520,6 +554,45 @@ function HopeForm({
   );
 }
 
+function FreeRangeEditor({
+  freeRange,
+  onChange,
+  className = "",
+}: {
+  freeRange: TimeRange;
+  onChange: (range: TimeRange) => void;
+  className?: string;
+}) {
+  return (
+    <div className={`ds-card p-3 ${className}`.trim()}>
+      <label className="ds-label">
+        Fの時間
+        <span className="ds-help">Fにした日は、この時間帯で希望します。</span>
+      </label>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end">
+        <label className="ds-label min-w-0 flex-1">
+          開始
+          <input
+            type="time"
+            value={freeRange.start}
+            onChange={(event) => onChange({ start: event.target.value, end: freeRange.end })}
+            className="ds-input mt-1"
+          />
+        </label>
+        <label className="ds-label min-w-0 flex-1">
+          終了
+          <input
+            type="time"
+            value={freeRange.end}
+            onChange={(event) => onChange({ start: freeRange.start, end: event.target.value })}
+            className="ds-input mt-1"
+          />
+        </label>
+      </div>
+    </div>
+  );
+}
+
 function localHasStore(storeId: string): boolean {
   return useAppStore.getState().stores.some((store) => store.id === storeId);
 }
@@ -530,24 +603,4 @@ function choiceLabel(choice: Choice | null, freeRange: TimeRange | null): string
   if (choice.kind === "triangle") return "△";
   if (choice.kind === "off") return "×";
   return `${choice.start}–${choice.end}`;
-}
-
-function StepBar({ step }: { step: Step }) {
-  const labels = ["名前", "希望", "確認"];
-  return (
-    <ol className="mt-4 grid grid-cols-3 gap-2">
-      {labels.map((label, index) => {
-        const number = index + 1;
-        const active = number <= step;
-        return (
-          <li key={label}>
-            <div className={`h-1.5 rounded-full ${active ? "bg-[var(--ds-green)]" : "bg-[#e6e6e6]"}`} />
-            <p className={`mt-1 text-xs ${number === step ? "font-bold text-[var(--ds-ink)]" : "text-[var(--ds-muted)]"}`}>
-              {number}. {label}
-            </p>
-        </li>
-      );
-    })}
-    </ol>
-  );
 }

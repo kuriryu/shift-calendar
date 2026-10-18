@@ -93,7 +93,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center gap-0.5 border-b border-[var(--ds-line)] bg-white px-2 md:gap-2 md:px-4">
+        <header className="flex h-16 shrink-0 items-center gap-0.5 border-b border-[var(--ds-line)] bg-white px-[var(--workspace-gutter-x)] md:gap-2">
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-slate-600 md:hidden"

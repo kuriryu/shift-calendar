@@ -110,16 +110,18 @@ export default function ViolationBadge() {
                       <Icon name="error" size={14} />
                       エラー（{errors.length}）
                     </h3>
-                    <ul className="space-y-1">
+                    <ul>
                       {errors.map((v) => (
                         <li key={v.id}>
-                          <button
-                            onClick={() => pick(v)}
-                            className="flex w-full items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-left text-xs text-red-800 hover:bg-red-100"
-                          >
-                            <Icon name="location_on" size={14} className="mt-0.5 shrink-0" />
-                            <span>{v.message}</span>
-                          </button>
+                          <div className="m-1">
+                            <button
+                              onClick={() => pick(v)}
+                              className="flex w-full items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-left text-xs text-red-800 hover:bg-red-100"
+                            >
+                              <Icon name="location_on" size={14} className="mt-0.5 shrink-0" />
+                              <span>{v.message}</span>
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -131,16 +133,18 @@ export default function ViolationBadge() {
                       <Icon name="warning" size={14} />
                       警告（{warnings.length}）
                     </h3>
-                    <ul className="space-y-1">
+                    <ul>
                       {warnings.map((v) => (
                         <li key={v.id}>
-                          <button
-                            onClick={() => pick(v)}
-                            className="flex w-full items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-left text-xs text-amber-800 hover:bg-amber-100"
-                          >
-                            <Icon name="location_on" size={14} className="mt-0.5 shrink-0" />
-                            <span>{v.message}</span>
-                          </button>
+                          <div className="m-1">
+                            <button
+                              onClick={() => pick(v)}
+                              className="flex w-full items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-left text-xs text-amber-800 hover:bg-amber-100"
+                            >
+                              <Icon name="location_on" size={14} className="mt-0.5 shrink-0" />
+                              <span>{v.message}</span>
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>

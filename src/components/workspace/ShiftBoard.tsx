@@ -3,9 +3,22 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import DayTimeline from "@/components/DayTimeline";
+import Icon from "@/components/Icon";
+import HoursCompareBar from "@/components/workspace/HoursCompareBar";
 import Modal from "@/components/workspace/Modal";
 import { hopeChip } from "@/components/DayRequestList";
-import { dayLabel, daysOfMonth, monthLabel, weekdayLabel } from "@/lib/dates";
+import { navCircleButtonClassName } from "@/components/FieldControl";
+import {
+  dayLabel,
+  daysOfMonth,
+  formatDate,
+  monthLabel,
+  parseDate,
+  weekDatesAround,
+  weekKeyOf,
+  weekdayLabel,
+  weeksOfMonth,
+} from "@/lib/dates";
 import { businessRange, requestedMinutesOf, assignedMinutesOf } from "@/lib/hope-hours";
 import { drawShiftJpeg, downloadJpeg, downloadPdf } from "@/lib/print-shift";
 import { sharePageUrl } from "@/lib/public-url";
@@ -36,6 +49,26 @@ export default function ShiftBoard() {
   const [modal, setModal] = useState<"warn" | "ok" | null>(null);
   const date = selectedDate.startsWith(month) ? selectedDate : `${month}-01`;
   const days = daysOfMonth(month);
+  const weekDays = useMemo(() => {
+    const inMonth = weekDatesAround(date).filter((d) => d.startsWith(month));
+    if (inMonth.length > 0) return inMonth;
+    return date.startsWith(month) ? [date] : [];
+  }, [date, month]);
+  const weeks = useMemo(() => weeksOfMonth(month), [month]);
+  const weekIndex = weeks.findIndex((w) => w.key === weekKeyOf(date));
+  const canPrevWeek = weekIndex > 0;
+  const canNextWeek = weekIndex >= 0 && weekIndex < weeks.length - 1;
+
+  const goWeek = (delta: number) => {
+    const d = parseDate(date);
+    d.setDate(d.getDate() + delta * 7);
+    const first = days[0];
+    const last = days[days.length - 1];
+    let next = formatDate(d);
+    if (next < first) next = first;
+    if (next > last) next = last;
+    setSelectedDate(next);
+  };
   const errors = violations.filter((item) => item.severity === "error");
   const warnings = violations.filter((item) => item.severity === "warning");
   const dayRequests = requests.filter((request) => request.date === date);
@@ -105,7 +138,7 @@ export default function ShiftBoard() {
               修正が必要な内容が消えると完了できます。
             </p>
           </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto p-4">
+          <div className="min-h-0 flex-1 space-y-2 overflow-auto px-4 pb-4 pt-2">
             {errors.length === 0 && warnings.length === 0 && (
               <p className="text-sm text-slate-400">修正も警告もありません</p>
             )}
@@ -198,20 +231,43 @@ export default function ShiftBoard() {
           <p className="mt-8 text-sm text-slate-400">まだシフトはありません。希望が集まったら生成してください。</p>
         ) : (
           <>
-            <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-              {days.map((day) => (
-                <button
-                  key={day}
-                  type="button"
-                  onClick={() => setSelectedDate(day)}
-                  className={`h-16 w-14 shrink-0 rounded-2xl text-sm ${
-                    day === date ? "bg-[var(--ds-action)] text-white" : "border border-[var(--ds-line)] bg-white text-[var(--ds-ink)]"
-                  }`}
-                >
-                  <span className="block font-bold">{Number(day.slice(8))}</span>
-                  <span className="text-xs">{weekdayLabel(day)}</span>
-                </button>
-              ))}
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => goWeek(-1)}
+                disabled={!canPrevWeek}
+                aria-label="前の週"
+                className={navCircleButtonClassName}
+              >
+                <Icon name="chevron_left" size={20} />
+              </button>
+              <div className="flex min-w-0 flex-1 justify-center">
+                {weekDays.map((day) => (
+                  <div key={day} className="m-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(day)}
+                      className={`h-16 w-14 rounded-2xl text-sm ${
+                        day === date
+                          ? "bg-[var(--ds-action)] text-white"
+                          : "border border-[var(--ds-line)] bg-white text-[var(--ds-ink)]"
+                      }`}
+                    >
+                      <span className="block font-bold">{Number(day.slice(8))}</span>
+                      <span className="text-xs">{weekdayLabel(day)}</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => goWeek(1)}
+                disabled={!canNextWeek}
+                aria-label="次の週"
+                className={navCircleButtonClassName}
+              >
+                <Icon name="chevron_right" size={20} />
+              </button>
             </div>
             <p className="mt-2 text-sm text-slate-500">
               {dayLabel(date)}（{weekdayLabel(date)}）の時間 {hours.start}–{hours.end} / 入っている時間{" "}
@@ -226,18 +282,34 @@ export default function ShiftBoard() {
 
       {!published && assignments.length > 0 && (
         <aside className="hidden w-64 shrink-0 flex-col border-l border-slate-200 bg-white lg:flex">
-          <p className="px-4 py-4 text-sm font-bold text-slate-900">この日の希望</p>
-          <ul className="min-h-0 flex-1 space-y-2 overflow-auto px-4 pb-4">
-            {dayRequests.length === 0 && <li className="text-sm text-slate-400">希望はありません</li>}
+          <div className="border-b border-slate-100 px-4 py-4">
+            <p className="text-sm font-bold text-slate-900">この日の希望</p>
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-[11px] font-semibold text-slate-400">
+              <span>名前</span>
+              <span>希望</span>
+            </div>
+          </div>
+          <ul className="min-h-0 flex-1 space-y-2 overflow-auto px-4 pb-4 pt-2">
+            {dayRequests.length === 0 && (
+              <li className="rounded-xl bg-slate-50 px-3 py-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-center">
+                  <span className="col-span-2 text-sm text-slate-400">希望はありません</span>
+                </div>
+              </li>
+            )}
             {dayRequests.map((request) => {
               const member = staff.find((item) => item.id === request.staffId);
               const chip = hopeChip(request, member?.freeTimeRange);
               return (
                 <li key={`${request.staffId}-${request.date}`} className="rounded-xl bg-slate-50 px-3 py-3">
-                  <p className="text-sm font-semibold text-slate-800">
-                    {member ? staffLabel(member) : "スタッフ"}
-                  </p>
-                  <p className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs ${chip.className}`}>{chip.text}</p>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 items-center">
+                    <span className="truncate text-sm font-semibold text-slate-800">
+                      {member ? staffLabel(member) : "スタッフ"}
+                    </span>
+                    <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs ${chip.className}`}>
+                      {chip.text}
+                    </span>
+                  </div>
                 </li>
               );
             })}
@@ -267,16 +339,19 @@ export default function ShiftBoard() {
         <Modal title="よろしいですか？">
           <ul className="max-h-64 space-y-2 overflow-auto">
             {achievement.map((item) => (
-              <li key={item.id} className="flex justify-between gap-3">
-                <span>{item.name}</span>
-                <span>
-                  希望 {minutesToJapaneseHours(item.requested)} / 割当 {minutesToJapaneseHours(item.assigned)}
-                  {item.minimum > 0
-                    ? item.assigned >= item.minimum
-                      ? " 達成"
-                      : " 未達"
-                    : ""}
-                </span>
+              <li key={item.id} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium">{item.name}</span>
+                  {item.minimum > 0 ? (
+                    <span className="shrink-0 text-xs text-slate-500">
+                      {item.assigned >= item.minimum ? "達成" : "未達"}
+                    </span>
+                  ) : null}
+                </div>
+                <HoursCompareBar
+                  requestedMinutes={item.requested}
+                  assignedMinutes={item.assigned}
+                />
               </li>
             ))}
           </ul>

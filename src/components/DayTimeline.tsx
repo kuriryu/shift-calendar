@@ -13,9 +13,8 @@ import AssignmentEditPopover, {
 } from "@/components/AssignmentEditPopover";
 import StaffHoursModal from "@/components/StaffHoursModal";
 import { hopeChip, isShiftHope } from "@/components/DayRequestList";
-import { navCircleButtonClassName } from "@/components/FieldControl";
 import { toMinutes } from "@/lib/time";
-import { dayLabel, daysOfMonth, weekdayLabel } from "@/lib/dates";
+import { dayLabel } from "@/lib/dates";
 import type { ShiftAssignment, Staff } from "@/types";
 
 export default function DayTimeline({ date }: { date: string }) {
@@ -29,7 +28,6 @@ export default function DayTimeline({ date }: { date: string }) {
   const hiddenStaffIds = useAppStore((s) => s.hiddenStaffIds);
   const highlight = useAppStore((s) => s.highlight);
   const clearHighlight = useAppStore((s) => s.clearHighlight);
-  const setSelectedDate = useAppStore((s) => s.setSelectedDate);
   const reorderStaff = useAppStore((s) => s.reorderStaff);
   const requests = useAppStore((s) => s.requests[s.selectedMonth] ?? EMPTY_REQUESTS);
   const requestByStaff = new Map(
@@ -120,57 +118,26 @@ export default function DayTimeline({ date }: { date: string }) {
   const highlightRange = isHighlightDay ? highlight?.timeRange : undefined;
   const highlightStaffId = isHighlightDay ? highlight?.staffId : undefined;
 
-  const month = date.slice(0, 7);
-  const monthDays = daysOfMonth(month);
-  const dayIndex = Math.max(0, monthDays.indexOf(date));
-
-  const goDay = (delta: number) => {
-    const next = monthDays[dayIndex + delta];
-    if (next) setSelectedDate(next);
-  };
-
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-1 items-center gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        <div className="flex items-center justify-center gap-2 sm:col-start-2 sm:row-start-1">
-          <button
-            type="button"
-            onClick={() => goDay(-1)}
-            disabled={dayIndex <= 0}
-            aria-label="前の日"
-            className={navCircleButtonClassName}
-          >
-            <Icon name="chevron_left" size={20} />
-          </button>
-          <h4 className="min-w-[7.5rem] text-center text-lg font-bold text-slate-800" aria-live="polite">
-            {dayLabel(date)}（{weekdayLabel(date)}）
-          </h4>
-          <button
-            type="button"
-            onClick={() => goDay(1)}
-            disabled={dayIndex >= monthDays.length - 1}
-            aria-label="次の日"
-            className={navCircleButtonClassName}
-          >
-            <Icon name="chevron_right" size={20} />
-          </button>
-        </div>
-        <ul className="flex flex-wrap items-center gap-3 text-[11px] text-slate-600 sm:col-start-3 sm:row-start-1 sm:justify-self-end" aria-label="凡例">
-          {visibleStaff.slice(0, 8).map((s) => (
-              <li key={s.id} className="flex items-center gap-1">
-                <span className="h-2.5 w-2.5 rounded-sm bg-slate-100" aria-hidden />
-                {s.name}
-              </li>
-            ))}
-          {visibleStaff.length > 8 && (
-            <li className="text-slate-600">他 {visibleStaff.length - 8}名</li>
-          )}
-          <li className="flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm bg-pink-200" aria-hidden />
-            ピーク
+      <ul
+        className="flex flex-wrap items-center justify-end gap-3 text-[11px] text-slate-600"
+        aria-label="凡例"
+      >
+        {visibleStaff.slice(0, 8).map((s) => (
+          <li key={s.id} className="flex items-center gap-1">
+            <span className="h-2.5 w-2.5 rounded-sm bg-slate-100" aria-hidden />
+            {s.name}
           </li>
-        </ul>
-      </div>
+        ))}
+        {visibleStaff.length > 8 && (
+          <li className="text-slate-600">他 {visibleStaff.length - 8}名</li>
+        )}
+        <li className="flex items-center gap-1">
+          <span className="h-2.5 w-2.5 rounded-sm bg-pink-200" aria-hidden />
+          ピーク
+        </li>
+      </ul>
 
       <div
         ref={chartRef}

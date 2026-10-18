@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { monthLabel } from "@/lib/dates";
 import { assignedMinutesOf, requestedMinutesOf } from "@/lib/hope-hours";
-import { minutesToJapaneseHours } from "@/lib/time";
+import HoursCompareBar from "@/components/workspace/HoursCompareBar";
 import { staffLabel } from "@/lib/store-book";
 import { EMPTY_ASSIGNMENTS, EMPTY_REQUESTS, useAppStore } from "@/stores/useAppStore";
 import type { HopeNote } from "@/types";
@@ -181,13 +181,20 @@ export default function DashboardHome() {
       <section className="ds-card mt-4 p-5">
         <h2 className="text-base font-bold text-[var(--ds-ink)]">希望時間が多い順</h2>
         <ol className="mt-4 divide-y divide-slate-100">
-          {ranked.length === 0 && <li className="py-6 text-sm text-slate-400">スタッフがまだいません</li>}
+          {ranked.length === 0 && (
+            <li className="py-6 pl-10 text-sm text-slate-400">スタッフがまだいません</li>
+          )}
           {ranked.map(({ member, minutes, assigned }, index) => (
-            <li key={member.id} className="flex items-center gap-4 py-3">
-              <span className="w-6 text-sm font-semibold text-slate-400">{index + 1}</span>
-              <span className="flex-1 font-medium text-slate-800">{staffLabel(member)}</span>
-              <span className="text-sm text-slate-500">希望 {minutesToJapaneseHours(minutes)}</span>
-              <span className="text-sm text-slate-400">割当 {minutesToJapaneseHours(assigned)}</span>
+            <li key={member.id} className="py-3">
+              <div className="flex items-center gap-4">
+                <span className="w-6 shrink-0 text-sm font-semibold text-slate-400">{index + 1}</span>
+                <span className="min-w-0 flex-1 font-medium text-slate-800">{staffLabel(member)}</span>
+              </div>
+              <HoursCompareBar
+                requestedMinutes={minutes}
+                assignedMinutes={assigned}
+                className="mt-2 pl-10 sm:pl-10"
+              />
             </li>
           ))}
         </ol>
