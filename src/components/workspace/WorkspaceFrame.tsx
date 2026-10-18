@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import BrandMark from "@/components/BrandMark";
 import BoardSync from "@/components/workspace/BoardSync";
 import Icon from "@/components/Icon";
 import { monthLabel, shiftMonth } from "@/lib/dates";
@@ -50,7 +51,7 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
       <BoardSync />
       <aside className="hidden w-56 shrink-0 flex-col border-r border-[var(--ds-line)] bg-white md:flex">
         <div className="px-4 py-5">
-          <p className="text-[11px] font-bold tracking-[0.16em] text-[var(--ds-muted)]">MENU</p>
+          <BrandMark />
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3">
           {NAV.map((item) => {
