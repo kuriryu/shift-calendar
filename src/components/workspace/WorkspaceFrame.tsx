@@ -95,41 +95,41 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
               </option>
             ))}
           </select>
-          <div className="ml-auto flex items-center gap-2">
-            <label className="sr-only" htmlFor="header-year">
-              年
-            </label>
-            <select
-              id="header-year"
-              value={year}
-              onChange={(event) =>
-                setMonth(`${event.target.value}-${String(month).padStart(2, "0")}`)
-              }
-              className="h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
-            >
-              {[year - 1, year, year + 1].map((value) => (
-                <option key={value} value={value}>
-                  {value}年
-                </option>
-              ))}
-            </select>
-            <label className="sr-only" htmlFor="header-month">
-              月
-            </label>
-            <select
-              id="header-month"
-              value={month}
-              onChange={(event) =>
-                setMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
-              }
-              className="h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
-            >
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
-                <option key={value} value={value}>
-                  {value}月
-                </option>
-              ))}
-            </select>
+          <label className="sr-only" htmlFor="header-year">
+            年
+          </label>
+          <select
+            id="header-year"
+            value={year}
+            onChange={(event) =>
+              setMonth(`${event.target.value}-${String(month).padStart(2, "0")}`)
+            }
+            className="h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
+          >
+            {[year - 1, year, year + 1].map((value) => (
+              <option key={value} value={value}>
+                {value}年
+              </option>
+            ))}
+          </select>
+          <label className="sr-only" htmlFor="header-month">
+            月
+          </label>
+          <select
+            id="header-month"
+            value={month}
+            onChange={(event) =>
+              setMonth(`${year}-${String(event.target.value).padStart(2, "0")}`)
+            }
+            className="h-10 rounded-lg border border-slate-200 bg-white px-2 text-sm"
+          >
+            {Array.from({ length: 12 }, (_, index) => index + 1).map((value) => (
+              <option key={value} value={value}>
+                {value}月
+              </option>
+            ))}
+          </select>
+          <div className="ml-auto flex items-center">
             <button
               type="button"
               aria-label="メニューを開く"
