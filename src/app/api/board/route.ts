@@ -75,6 +75,33 @@ export async function PUT(request: Request) {
   return NextResponse.json(saved);
 }
 
+export async function DELETE(request: Request) {
+  const jar = await cookies();
+  const session = await parseSessionToken(jar.get(SESSION_COOKIE)?.value);
+  if (!session) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
+
+  let body: { storeId?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "リクエストが不正です" }, { status: 400 });
+  }
+  if (!body.storeId) {
+    return NextResponse.json({ error: "店舗が指定されていません" }, { status: 400 });
+  }
+
+  const current = await readBoard();
+  if (!current.stores[body.storeId]) {
+    return NextResponse.json({ ok: true });
+  }
+  const stores = { ...current.stores };
+  delete stores[body.storeId];
+  const saved = await writeBoard(stores);
+  return NextResponse.json({ ok: true, updatedAt: saved.updatedAt });
+}
+
 export async function POST(request: Request) {
   let body: {
     storeId?: string;

@@ -243,6 +243,8 @@ type AppState = {
   highlight: HighlightTarget | null;
   stores: ShopPlace[];
   activeStoreId: string | null;
+  /** 初回の大井町店を一度作ったあとは、削除した店舗を自動では戻さない */
+  defaultStoreSeeded: boolean;
   storeBooks: Record<string, StoreBook>;
   receptions: Record<string, ReceptionWindow>;
   hopeNotes: Record<string, { staffId: string; message: string }[]>;
@@ -311,6 +313,8 @@ type AppState = {
   createStore: (name: string) => string;
   /** 大井町店が無ければ追加し、その店舗IDを返す */
   ensureDefaultStore: () => string;
+  /** いま開いている店舗を削除し、残っていれば次の店舗IDを返す */
+  deleteActiveStore: () => string | null;
   selectStore: (id: string) => void;
   closeStore: () => void;
   setReception: (month: string, patch: Partial<ReceptionWindow>) => void;
@@ -390,6 +394,7 @@ export const useAppStore = create<AppState>()(
         highlight: null,
         stores: [],
         activeStoreId: null,
+        defaultStoreSeeded: false,
         storeBooks: {},
         receptions: {},
         hopeNotes: {},
@@ -1097,10 +1102,14 @@ export const useAppStore = create<AppState>()(
         ensureDefaultStore: () => {
           const current = get();
           const named = current.stores.find((store) => store.name === DEFAULT_STORE_NAME);
-          if (named) return named.id;
-          const id = current.stores.some((store) => store.id === DEFAULT_STORE_ID)
-            ? `st-${Date.now().toString(36)}`
-            : DEFAULT_STORE_ID;
+          if (named) {
+            if (!current.defaultStoreSeeded) set({ defaultStoreSeeded: true });
+            return named.id;
+          }
+          if (current.stores.length > 0 || current.defaultStoreSeeded) {
+            return current.stores[0]?.id ?? "";
+          }
+          const id = DEFAULT_STORE_ID;
           const month = current.selectedMonth || DEFAULT_MONTH;
           set((s) => ({
             stores: [...s.stores, { id, name: DEFAULT_STORE_NAME }],
@@ -1108,8 +1117,54 @@ export const useAppStore = create<AppState>()(
               ...s.storeBooks,
               [id]: s.storeBooks[id] ?? emptyBook(month),
             },
+            defaultStoreSeeded: true,
           }));
           return id;
+        },
+
+        deleteActiveStore: () => {
+          const current = get();
+          const id = current.activeStoreId;
+          if (!id || !current.stores.some((store) => store.id === id)) return null;
+          const storeBooks = { ...current.storeBooks };
+          delete storeBooks[id];
+          const stores = current.stores.filter((store) => store.id !== id);
+          const nextId = stores[0]?.id ?? null;
+          const month = current.selectedMonth || DEFAULT_MONTH;
+          if (!nextId) {
+            set({
+              stores,
+              storeBooks,
+              defaultStoreSeeded: true,
+              activeStoreId: null,
+              issueOpen: false,
+              ...unpackBook(emptyBook(month)),
+              violations: [],
+            });
+            return null;
+          }
+          const book = storeBooks[nextId] ?? emptyBook(month);
+          const unpacked = unpackBook(book);
+          const monthAssignments = unpacked.assignments[unpacked.selectedMonth] ?? [];
+          set({
+            stores,
+            storeBooks,
+            defaultStoreSeeded: true,
+            activeStoreId: nextId,
+            issueOpen: false,
+            ...unpacked,
+            violations:
+              monthAssignments.length === 0
+                ? []
+                : validateMonth(
+                    unpacked.selectedMonth,
+                    unpacked.staff,
+                    unpacked.requests[unpacked.selectedMonth] ?? [],
+                    monthAssignments,
+                    unpacked.settings,
+                  ),
+          });
+          return nextId;
         },
 
         selectStore: (id) =>
@@ -1303,6 +1358,7 @@ export const useAppStore = create<AppState>()(
           hourDefaultsMigrated: true,
           stores: hasLegacy ? [{ id: legacyId, name: "これまでの店舗" }] : [],
           activeStoreId: null,
+          defaultStoreSeeded: hasLegacy,
           storeBooks,
           receptions: {},
           hopeNotes: {},
@@ -1324,6 +1380,7 @@ export const useAppStore = create<AppState>()(
         hourDefaultsMigrated: s.hourDefaultsMigrated,
         stores: s.stores,
         activeStoreId: s.activeStoreId,
+        defaultStoreSeeded: s.defaultStoreSeeded,
         storeBooks: s.storeBooks,
         receptions: s.receptions,
         hopeNotes: s.hopeNotes,

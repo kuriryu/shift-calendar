@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import BoardSync from "@/components/workspace/BoardSync";
+import Modal from "@/components/workspace/Modal";
 import Icon from "@/components/Icon";
 import { monthLabel, shiftMonth } from "@/lib/dates";
 import { useAppStore } from "@/stores/useAppStore";
@@ -23,18 +24,36 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
   const activeStoreId = useAppStore((s) => s.activeStoreId);
   const closeStore = useAppStore((s) => s.closeStore);
   const selectStore = useAppStore((s) => s.selectStore);
+  const deleteActiveStore = useAppStore((s) => s.deleteActiveStore);
   const selectedMonth = useAppStore((s) => s.selectedMonth);
   const setMonth = useAppStore((s) => s.setMonth);
   const activities = useAppStore((s) => s.activities);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const logins = activities.filter((item) => item.kind === "login").slice(0, 8);
+  const storeName = stores.find((item) => item.id === activeStoreId)?.name ?? "店舗";
   const [year, month] = selectedMonth.split("-").map(Number);
 
   useEffect(() => {
     setNavOpen(false);
     setMenuOpen(false);
+    setConfirmDelete(false);
   }, [pathname]);
+
+  const removeStore = async () => {
+    const storeId = activeStoreId;
+    if (!storeId) return;
+    const nextId = deleteActiveStore();
+    setConfirmDelete(false);
+    setMenuOpen(false);
+    await fetch("/api/board", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storeId }),
+    }).catch(() => undefined);
+    if (!nextId) router.push("/");
+  };
 
   const logout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -168,8 +187,18 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
               </ul>
               <button
                 type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setConfirmDelete(true);
+                }}
+                className="ds-btn-danger mt-4"
+              >
+                この店舗を削除
+              </button>
+              <button
+                type="button"
                 onClick={() => void logout()}
-                className="ds-btn mt-4 w-full"
+                className="ds-btn mt-2 w-full"
               >
                 ログアウト
               </button>
@@ -198,6 +227,19 @@ export default function WorkspaceFrame({ children }: { children: React.ReactNode
         )}
 
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+        {confirmDelete && (
+          <Modal title="店舗を削除" onClose={() => setConfirmDelete(false)}>
+            <p>{storeName}を削除します。この店舗の希望とシフトも消えます。</p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setConfirmDelete(false)} className="ds-btn-neutral">
+                戻る
+              </button>
+              <button type="button" onClick={() => void removeStore()} className="ds-btn-danger-fill">
+                削除する
+              </button>
+            </div>
+          </Modal>
+        )}
       </div>
     </div>
   );
